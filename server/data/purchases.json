@@ -1,5 +1,45 @@
 [
   {
+    "id": "purchase_mq0ol0j9_bidyu0",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "plan": "VIP",
+    "amount": 1980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-05T08:47:22.101Z"
+  },
+  {
+    "id": "purchase_mq0okzrc_myrc9d",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "plan": "FREE",
+    "amount": 0,
+    "status": "demo_paid",
+    "createdAt": "2026-06-05T08:47:21.096Z"
+  },
+  {
+    "id": "purchase_mq0okzh8_qhazin",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "plan": "PLUS",
+    "amount": 980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-05T08:47:20.732Z"
+  },
+  {
+    "id": "purchase_mq0okygj_o29vkx",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "plan": "VIP",
+    "amount": 1980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-05T08:47:19.411Z"
+  },
+  {
+    "id": "purchase_mq0okxi6_6z3slp",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "plan": "PLUS",
+    "amount": 980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-05T08:47:18.174Z"
+  },
+  {
     "id": "purchase_mpz97k17_abfb06",
     "userId": "user_mpz95kd3_qkxsgn",
     "plan": "VIP",

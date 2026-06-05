@@ -110,5 +110,29 @@
     "type": "like",
     "plan": "FREE",
     "createdAt": "2026-06-05T08:41:31.583Z"
+  },
+  {
+    "id": "like_mq0ol3da_n5mv8o",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "profileId": "p06",
+    "type": "like",
+    "plan": "VIP",
+    "createdAt": "2026-06-05T08:47:25.774Z"
+  },
+  {
+    "id": "like_mq0ol40c_4311kl",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "profileId": "p01",
+    "type": "like",
+    "plan": "VIP",
+    "createdAt": "2026-06-05T08:47:26.604Z"
+  },
+  {
+    "id": "like_mq0ol4lt_7dqjnj",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "profileId": "p03",
+    "type": "like",
+    "plan": "VIP",
+    "createdAt": "2026-06-05T08:47:27.377Z"
   }
 ]
