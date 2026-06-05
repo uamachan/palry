@@ -38,6 +38,7 @@
 .registered-email{margin:8px 0 0;color:var(--muted);font-size:13px;font-weight:800}
 .account-signup-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:900px){.account-signup-fields{grid-template-columns:1fr}}
+.email-confirm-card{display:grid;gap:18px;text-align:center;padding:28px}.mail-check-icon{width:70px;height:70px;border-radius:22px;background:#fff1f6;color:var(--pink2);display:grid;place-items:center;margin:0 auto;font-family:Outfit,sans-serif;font-size:34px;font-weight:900;border:1px solid #ffc3d4}.email-confirm-steps{display:grid;gap:8px;text-align:left}.email-confirm-steps span,.auth-code-note{background:#f9f5f0;border:1px solid var(--line);border-radius:14px;color:var(--muted);font-size:13px;font-weight:800;line-height:1.65;padding:10px 12px}.auth-code-note{margin:0}.verification-panel .email-signup-header p{word-break:break-word}
 
 /* ── Tinder-style Match Panel ─────────────────────────────────────── */
 .tinder-match-panel{display:flex;flex-direction:column;align-items:center;gap:18px;padding:4px 0 24px}
