@@ -987,6 +987,23 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, submitLabel = '無�
       alert('写真の読み込みに失敗しました。別の画像を選んでください。');
     }
   }
+  const currentTabIndex = tabs.indexOf(activeSetupTab);
+  const isLastTab = currentTabIndex === tabs.length - 1;
+  const isAgreementTab = activeSetupTab === '規約';
+
+  function goNext() {
+    if (!isLastTab) setActiveSetupTab(tabs[currentTabIndex + 1]);
+  }
+
+  function handleAgreementChange(e) {
+    const agreed = e.target.checked;
+    setForm({ ...form, agreed });
+    if (agreed) {
+      const fakeEvent = { preventDefault: () => {} };
+      onSubmit(fakeEvent);
+    }
+  }
+
   return <form className="signup-card profile-setup-card" onSubmit={onSubmit}>
     <div className="setup-tabs" role="tablist">{tabs.map((label) => <button type="button" role="tab" key={label} className={activeSetupTab === label ? 'active' : ''} aria-selected={activeSetupTab === label} onClick={() => setActiveSetupTab(label)}>{label}</button>)}</div>
     <div className="setup-pane">
@@ -1027,9 +1044,13 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, submitLabel = '無�
           {form.voiceIntro && <audio className="voice-player" src={form.voiceIntro} controls />}
         </div>
       </div>}
-      {activeSetupTab === '規約' && showAgreement && <label className="check"><input type="checkbox" checked={form.agreed} onChange={(e) => setForm({ ...form, agreed: e.target.checked })} />本サービスを閲覧・登録・ログイン・いいね・マッチング・メッセージ・通報・課金・外部SNS連携などで使用した時点で利用規約に同意したものとみなします。登録時にも規約へ同意します。</label>}
+      {activeSetupTab === '規約' && showAgreement && <label className="check"><input type="checkbox" checked={form.agreed} onChange={handleAgreementChange} />本サービスを閲覧・登録・ログイン・いいね・マッチング・メッセージ・通報・課金・外部SNS連携などで使用した時点で利用規約に同意したものとみなします。登録時にも規約へ同意します。</label>}
     </div>
-    <div className="form-actions"><button className="primary" type="submit">{submitLabel}</button><button type="button" className="secondary" onClick={onShowLogin}>{cancelLabel}</button></div>
+    <div className="form-actions">
+      {!isAgreementTab && !isLastTab && <button type="button" className="primary" onClick={goNext}>次へ</button>}
+      {(!showAgreement || isLastTab) && !isAgreementTab && <button className="primary" type="submit">{submitLabel}</button>}
+      <button type="button" className="secondary" onClick={onShowLogin}>{cancelLabel}</button>
+    </div>
   </form>;
 }
 
