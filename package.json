@@ -1,0 +1,27 @@
+{
+  "name": "pairly-pro-fullstack",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pairly - VALORANT teammate matching service",
+  "scripts": {
+    "dev": "concurrently \"node server/index.js\" \"vite --host 0.0.0.0\"",
+    "local": "concurrently \"node server/index.js\" \"vite --host 127.0.0.1 --open /\"",
+    "build": "vite build",
+    "start": "NODE_ENV=production node server/index.js",
+    "reset-data": "node server/reset-data.js"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "concurrently": "latest",
+    "cors": "latest",
+    "express": "latest",
+    "firebase": "^12.14.0",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite": "latest"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
