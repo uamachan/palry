@@ -930,12 +930,23 @@ app.use('/api', (req, res) => {
 
 if (isProduction) {
   const distPath = path.resolve(__dirname, '../dist');
-  app.use(express.static(distPath, { maxAge: '1h', etag: true }));
+  // index.html は no-cache（デプロイ後に最新を取得させる）
+  // ハッシュ付きアセット（JS/CSS）は長期キャッシュ可
+  app.use(express.static(distPath, {
+    maxAge: '1y',
+    etag: true,
+    setHeaders(res, filePath) {
+      if (path.basename(filePath) === 'index.html') {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
+    }
+  }));
   // SPA フォールバック。Express 5 (path-to-regexp v8) では裸の '*' は使えないため
   // 名前付きワイルドカード '/*splat' を使う。/api は上で処理済み。
   app.get('/*splat', (req, res, next) => {
     const indexPath = path.join(distPath, 'index.html');
     if (!fs.existsSync(indexPath)) return next();
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     return res.sendFile(indexPath);
   });
 }
