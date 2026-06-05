@@ -57,3 +57,16 @@ npm run local
 npm run build
 npm start
 ```
+
+## 本番リリース準備
+
+本番公開前は以下を確認してください。
+
+```bash
+npm run release:check
+```
+
+本番環境変数は `.env.production.example` を参考に設定します。
+Firebase Authenticationの承認済みドメインには、実際の公開ドメインを追加してください。
+
+詳しい手順は `RELEASE_CHECKLIST.md` を確認してください。

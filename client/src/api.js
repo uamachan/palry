@@ -1,8 +1,15 @@
+import { firebaseAuth } from './firebase.js';
+
 const API_BASE = '';
 
 async function request(path, options = {}) {
+  let authHeader = {};
+  try {
+    const token = await firebaseAuth?.currentUser?.getIdToken();
+    if (token) authHeader = { Authorization: `Bearer ${token}` };
+  } catch { /* no auth token */ }
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) },
     ...options
   });
   let payload = {};
@@ -17,7 +24,7 @@ async function request(path, options = {}) {
 
 export const api = {
   plans: () => request('/api/plans'),
-  profiles: ({ plan = 'FREE', targetGender = 'all' } = {}) => request(`/api/profiles?plan=${encodeURIComponent(plan)}&targetGender=${encodeURIComponent(targetGender)}`),
+  profiles: ({ plan = 'FREE', targetGender = 'all', userId = '' } = {}) => request(`/api/profiles?plan=${encodeURIComponent(plan)}&targetGender=${encodeURIComponent(targetGender)}&userId=${encodeURIComponent(userId)}`),
   register: (body) => request('/api/register', { method: 'POST', body: JSON.stringify(body) }),
   login: (body) => request('/api/login', { method: 'POST', body: JSON.stringify(body) }),
   updateProfile: (body) => request('/api/profile', { method: 'PUT', body: JSON.stringify(body) }),
