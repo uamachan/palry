@@ -731,12 +731,12 @@ function App() {
   return <>
     {toast && <div className="toast">{toast}</div>}
     {isAuthed && profileEditorOpen && <AuthModal onClose={() => setProfileEditorOpen(false)} size="profile">
-      <ProfileEditSection form={editForm} setForm={setEditForm} user={user} onSubmit={saveProfileEdit} onCancel={() => setProfileEditorOpen(false)} />
+      <ProfileEditSection form={editForm} setForm={setEditForm} user={user} onSubmit={saveProfileEdit} onCancel={() => setProfileEditorOpen(false)} showToast={showToast} />
     </AuthModal>}
     {!isAuthed && authMode && <AuthModal onClose={() => setAuthMode(null)} size={authMode === 'profileSetup' ? 'profile' : ['register', 'login', 'emailVerification'].includes(authMode) ? 'narrow' : undefined}>
       {authMode === 'register' && <AccountSignupSection form={form} setForm={setForm} onSubmit={createAccount} onGoogle={continueWithGoogle} onShowLogin={() => showAuth('login')} />}
       {authMode === 'emailVerification' && <EmailVerificationSection pendingEmail={pendingFirebaseUser?.email} onCheck={confirmEmailVerified} onResend={resendVerificationEmail} onShowLogin={() => showAuth('login')} />}
-      {authMode === 'profileSetup' && <SignupSection form={form} setForm={setForm} pendingEmail={pendingFirebaseUser?.email} onSubmit={register} onShowLogin={() => showAuth('login')} />}
+      {authMode === 'profileSetup' && <SignupSection form={form} setForm={setForm} pendingEmail={pendingFirebaseUser?.email} onSubmit={register} onShowLogin={() => showAuth('login')} showToast={showToast} />}
       {authMode === 'login' && <LoginSection form={form} setForm={setForm} onLogin={loginWithFirebase} onGoogle={continueWithGoogle} onResetPassword={resetPassword} onShowRegister={() => showAuth('register')} />}
     </AuthModal>}
     {view === 'app' && user ? <AppDashboard {...shared} onBackSite={() => setView('site')} /> : <>
@@ -916,25 +916,26 @@ function EmailVerificationSection({ pendingEmail, onCheck, onResend, onShowLogin
   </section>;
 }
 
-function SignupSection({ form, setForm, pendingEmail, onSubmit, onShowLogin }) {
-  return <section className="setup-profile-section"><div className="setup-title"><span>プロフィール設定</span><h2>プロフィール設定</h2>{pendingEmail && <p className="registered-email">登録メール: {pendingEmail}</p>}</div><SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onShowLogin} /></section>;
+function SignupSection({ form, setForm, pendingEmail, onSubmit, onShowLogin, showToast }) {
+  return <section className="setup-profile-section"><div className="setup-title"><span>プロフィール設定</span><h2>プロフィール設定</h2>{pendingEmail && <p className="registered-email">登録メール: {pendingEmail}</p>}</div><SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onShowLogin} showToast={showToast} /></section>;
 }
 
-function ProfileEditSection({ form, setForm, user, onSubmit, onCancel }) {
+function ProfileEditSection({ form, setForm, user, onSubmit, onCancel, showToast }) {
   return <section className="setup-profile-section profile-edit-section">
     <div className="setup-title">
       <span>アカウント</span>
       <h2>プロフィール編集</h2>
       <p className="registered-email">ログイン中: {user.email || user.name}</p>
     </div>
-    <SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onCancel} submitLabel="変更を保存" cancelLabel="キャンセル" showAgreement={false} />
+    <SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onCancel} showToast={showToast} submitLabel="変更を保存" cancelLabel="キャンセル" showAgreement={false} />
   </section>;
 }
 
-function SignupForm({ form, setForm, onSubmit, onShowLogin, submitLabel = '無料でアカウント作成', cancelLabel = 'ログインに戻る', showAgreement = true }) {
+function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLabel = '無料でアカウント作成', cancelLabel = 'ログインに戻る', showAgreement = true }) {
   const tabs = ['基本情報', 'ランク', 'プレイスタイル', '自己紹介', ...(showAgreement ? ['規約'] : [])];
   const [activeSetupTab, setActiveSetupTab] = useState(tabs[0]);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [submitAfterAgree, setSubmitAfterAgree] = useState(false);
   const recorderRef = useRef(null);
   const streamRef = useRef(null);
   const recordTimerRef = useRef(null);
@@ -944,6 +945,12 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, submitLabel = '無�
     clearTimeout(recordTimerRef.current);
     streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
+  useEffect(() => {
+    if (submitAfterAgree && form.agreed) {
+      setSubmitAfterAgree(false);
+      onSubmit({ preventDefault: () => {} });
+    }
+  }, [submitAfterAgree, form.agreed]);
   async function startVoiceRecording() {
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return alert('このブラウザは音声録音に対応していません。');
     let stream;
@@ -990,22 +997,29 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, submitLabel = '無�
   const currentTabIndex = tabs.indexOf(activeSetupTab);
   const isLastTab = currentTabIndex === tabs.length - 1;
   const isAgreementTab = activeSetupTab === '規約';
+  const basicInfoComplete = Boolean(form.name && form.gender && form.riotId && form.age && form.region);
+
+  function goToTab(label) {
+    const targetIndex = tabs.indexOf(label);
+    if (targetIndex > 0 && !basicInfoComplete) {
+      showToast?.('基本情報（表示名・性別・Riot ID・年齢・地域）をすべて入力してください');
+      return;
+    }
+    setActiveSetupTab(label);
+  }
 
   function goNext() {
-    if (!isLastTab) setActiveSetupTab(tabs[currentTabIndex + 1]);
+    if (!isLastTab) goToTab(tabs[currentTabIndex + 1]);
   }
 
   function handleAgreementChange(e) {
     const agreed = e.target.checked;
     setForm({ ...form, agreed });
-    if (agreed) {
-      const fakeEvent = { preventDefault: () => {} };
-      onSubmit(fakeEvent);
-    }
+    setSubmitAfterAgree(agreed);
   }
 
   return <form className="signup-card profile-setup-card" onSubmit={onSubmit}>
-    <div className="setup-tabs" role="tablist">{tabs.map((label) => <button type="button" role="tab" key={label} className={activeSetupTab === label ? 'active' : ''} aria-selected={activeSetupTab === label} onClick={() => setActiveSetupTab(label)}>{label}</button>)}</div>
+    <div className="setup-tabs" role="tablist">{tabs.map((label) => <button type="button" role="tab" key={label} className={activeSetupTab === label ? 'active' : ''} aria-selected={activeSetupTab === label} onClick={() => goToTab(label)}>{label}</button>)}</div>
     <div className="setup-pane">
       {activeSetupTab === '基本情報' && <div className="profile-setup-grid">
         <label className="photo-uploader">
