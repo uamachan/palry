@@ -190,6 +190,18 @@ function cleanText(value, max = 160) {
   return String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
 }
 
+// プロフィール写真/ボイスはユーザー入力をそのまま src として配信するため、
+// 安全な media data URL（または https URL）以外は弾く。
+// data:text/html や javascript: などのスキーム混入・ストレージ悪用を防ぐ。
+function sanitizeMedia(value, kind, max) {
+  const v = String(value || '').trim();
+  if (!v || v.length > max) return '';
+  if (kind === 'image' && /^data:image\/(png|jpe?g|webp|gif|avif);base64,[A-Za-z0-9+/=\s]+$/.test(v)) return v;
+  if (kind === 'audio' && /^data:audio\/(webm|ogg|mpeg|mp3|wav|mp4|x-m4a);base64,[A-Za-z0-9+/=\s]+$/.test(v)) return v;
+  if (/^https:\/\/[^\s"'<>]+$/.test(v)) return v;
+  return '';
+}
+
 function publicUser(user) {
   const { authCode, authCodeHash, authCodeSalt, otpSecret, ...safeUser } = user;
   return safeUser;
@@ -197,6 +209,18 @@ function publicUser(user) {
 
 function emailKey(email) {
   return cleanText(email, 120).toLowerCase();
+}
+
+// 管理者メール許可リスト（ADMIN_EMAILS=a@x.com,b@y.com）。
+// 未設定なら誰も管理者でない（管理APIは全拒否＝フェイルクローズ）。
+const adminEmails = new Set(
+  (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+);
+function isAdmin(user) {
+  return adminEmails.size > 0 && adminEmails.has(emailKey(user?.email));
 }
 
 async function findAndLinkFirebaseProfile(firebaseUser) {
@@ -214,6 +238,11 @@ async function findAndLinkFirebaseProfile(firebaseUser) {
 
     const byEmailIndex = users.findIndex((user) => firebaseEmailKey && emailKey(user.email) === firebaseEmailKey);
     if (byEmailIndex < 0) return { value: undefined, result: null };
+
+    // メール一致での自動リンクは「メール所有を証明済み（emailVerified）」の時だけ許可。
+    // 未確認メールでリンクを許すと、攻撃者が被害者のメールで未確認アカウントを作り
+    // 既存プロフィールを自分の firebaseUid に奪える（アカウント乗っ取り）。
+    if (!firebaseUser.emailVerified) return { value: undefined, result: null };
 
     const existing = users[byEmailIndex];
     const updated = {
@@ -458,6 +487,7 @@ async function requireAuth(req, res, next) {
   } catch (error) {
     return res.status(error.status || 401).json({ message: error.message || '認証に失敗しました。' });
   }
+  if (!firebaseUser.emailVerified) return res.status(403).json({ message: 'メール認証を完了してください。' });
   const user = await findAndLinkFirebaseProfile(firebaseUser);
   if (!user) return res.status(404).json({ message: 'Pairlyプロフィールが見つかりません。' });
   req.authedUser = user;
@@ -508,14 +538,14 @@ app.post('/api/register', authLimiter, async (req, res) => {
     riotId: cleanText(payload.riotId, 60),
     age: cleanText(payload.age, 10),
     region: cleanText(payload.region, 40),
-    profilePhoto: cleanText(payload.profilePhoto, 2000000),
+    profilePhoto: sanitizeMedia(payload.profilePhoto, 'image', 2000000),
     rank: cleanText(payload.rank || 'Gold', 30),
     role: normalizeRole(payload.role || 'デュエリスト'),
     tags: Array.isArray(payload.tags) ? payload.tags.map((v) => cleanText(v, 30)).slice(0, 4) : [],
     agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
     xHandle: cleanText(payload.xHandle, 40),
     bio: cleanText(payload.bio, 240),
-    voiceIntro: cleanText(payload.voiceIntro, 1500000),
+    voiceIntro: sanitizeMedia(payload.voiceIntro, 'audio', 1500000),
     plan: 'FREE',
     verified: true,
     agreedAt: new Date().toISOString(),
@@ -564,14 +594,14 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     riotId,
     age: cleanText(payload.age, 10),
     region: cleanText(payload.region, 40),
-    profilePhoto: cleanText(payload.profilePhoto, 2000000),
+    profilePhoto: sanitizeMedia(payload.profilePhoto, 'image', 2000000),
     rank: cleanText(payload.rank || users[index].rank || 'Gold', 30),
     role: normalizeRole(payload.role || users[index].role || 'デュエリスト'),
     tags: Array.isArray(payload.tags) ? payload.tags.map((v) => cleanText(v, 30)).slice(0, 4) : [],
     agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
     xHandle: cleanText(payload.xHandle, 40),
     bio: cleanText(payload.bio, 240),
-    voiceIntro: cleanText(payload.voiceIntro, 1500000),
+    voiceIntro: sanitizeMedia(payload.voiceIntro, 'audio', 1500000),
     updatedAt: new Date().toISOString()
   };
   users[index] = updated;
@@ -804,7 +834,7 @@ app.post('/api/dm', requireAuth, async (req, res) => {
 
 app.post('/api/report', requireAuth, async (req, res) => {
   const reports = await readJson('reports.json', []);
-  const report = { id: uid('report'), userId: req.authedUser.id, profileId: req.body.profileId, reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
+  const report = { id: uid('report'), userId: req.authedUser.id, profileId: cleanText(req.body.profileId, 80), reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
   reports.unshift(report);
   await writeJson('reports.json', reports);
   res.status(201).json({ report });
@@ -853,6 +883,7 @@ app.post('/api/block', requireAuth, async (req, res) => {
 });
 
 app.get('/api/admin/reports', requireAuth, async (req, res) => {
+  if (!isAdmin(req.authedUser)) return res.status(403).json({ message: '管理者のみアクセスできます。' });
   const reports = await readJson('reports.json', []);
   res.json({ reports });
 });
