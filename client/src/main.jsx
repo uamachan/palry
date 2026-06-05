@@ -30,11 +30,13 @@ const regions = ['北海道', '東北', '関東', '中部', '関西', '中国・
 const intentTags = ['気軽に遊ぶ友達', 'ランクガチ', '恋人探し', 'まずはデュオ', '固定相方', 'VCで話したい', '聞き専OK', '初心者歓迎', '夜メイン', '休日メイン'];
 const appTabs = [
   { id: 'match', label: 'マッチング' },
+  { id: 'notifications', label: '通知' },
   { id: 'dm', label: 'メッセージ' },
   { id: 'footprints', label: '足あと' },
 ];
 const TAB_ICONS = {
   match: <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>,
+  notifications: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
   dm: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
   footprints: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
 };
@@ -111,6 +113,8 @@ function App() {
   const [reports, setReports] = useState([]);
   const [toast, setToast] = useState('');
   const toastTimer = useRef(null);
+  const notificationBooted = useRef(false);
+  const lastNotificationCount = useRef(0);
   const [form, setForm] = useState({ name: '', gender: '', riotId: '', email: '', emailConfirm: '', password: '', age: '', region: '', profilePhoto: '', rank: 'Gold 1', role: defaultRole, tags: [], agents: [], xHandle: '', bio: '', voiceIntro: '', agreed: false });
   const [editForm, setEditForm] = useState({ name: '', gender: '', riotId: '', age: '', region: '', profilePhoto: '', rank: 'Gold 1', role: defaultRole, tags: [], agents: [], xHandle: '', bio: '', voiceIntro: '', agreed: true });
 
@@ -118,6 +122,8 @@ function App() {
   const current = profiles[index] || null;
   const activePlan = plansData.plans?.[plan] || null;
   const genderFilterLocked = !activePlan?.genderFilter;
+  const unreadDmCount = useMemo(() => dmThreads.reduce((sum, thread) => sum + Number(thread.unreadCount || 0), 0), [dmThreads]);
+  const notificationCount = receivedLikes.length + unreadDmCount;
 
   useEffect(() => { api.plans().then(setPlansData).catch(() => showToast('料金データの取得に失敗しました')); }, []);
 
@@ -197,6 +203,31 @@ function App() {
     refreshDmThreads();
     refreshReceivedLikes();
   }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      notificationBooted.current = false;
+      lastNotificationCount.current = 0;
+      return;
+    }
+    const timer = setInterval(() => {
+      refreshReceivedLikes();
+      refreshDmThreads();
+      refreshMatches();
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (!notificationBooted.current) {
+      notificationBooted.current = true;
+      lastNotificationCount.current = notificationCount;
+      return;
+    }
+    if (notificationCount > lastNotificationCount.current) showToast('新しい通知があります');
+    lastNotificationCount.current = notificationCount;
+  }, [notificationCount, user]);
 
   useEffect(() => {
     if (activeTab === 'dm') refreshDmThreads();
@@ -497,9 +528,10 @@ function App() {
       const payload = await api.acceptLike({ userId: user.id, receivedLikeId });
       setReceivedLikes((list) => list.filter((r) => r.id !== receivedLikeId));
       setStats((s) => ({ ...s, matches: s.matches + 1 }));
-      showToast('マッチしました。メッセージを送れます');
+      showToast('いいねを返しました。マッチ成立、DMできます');
       await refreshMatches();
       await refreshDmThreads(payload.match?.id);
+      setActiveTab('dm');
     } catch (e) { showToast(e.message); }
   }
 
@@ -555,26 +587,42 @@ function App() {
     try {
       const payload = await api.like({ userId: user.id, profileId: current.id, type, plan });
       const label = type === 'super' ? 'スーパーいいね' : type === 'dual' ? '両いいね' : 'いいね';
-      setStats((s) => ({
-        ...s,
-        likes: type === 'like' ? s.likes + 1 : s.likes,
-        super: type === 'super' ? s.super + 1 : s.super,
-        dual: type === 'dual' && plan !== 'VIP' ? Math.max(0, s.dual - 1) : s.dual,
-      }));
-      track(current, label);
+      if (payload.already_matched) {
+        showToast(`${current.name}さんとはすでにマッチ済みです`);
+        await refreshMatches();
+        await refreshDmThreads(payload.match?.id);
+        nextCard();
+        return;
+      }
+      if (payload.already_liked && !payload.matched) {
+        showToast(`${current.name}さんにはすでにいいね済みです`);
+        nextCard();
+        return;
+      }
+      if (!payload.already_liked) {
+        setStats((s) => ({
+          ...s,
+          super: type === 'super' ? s.super + 1 : s.super,
+          dual: type === 'dual' && plan !== 'VIP' ? Math.max(0, s.dual - 1) : s.dual,
+        }));
+        track(current, label);
+      }
       if (payload.matched) {
         // 相互いいね成立 → その場でマッチ。両者の会話が同期される。
         showToast(`${current.name}さんとマッチしました！メッセージを送れます`);
         setStats((s) => ({ ...s, matches: s.matches + 1 }));
         await refreshMatches();
         await refreshDmThreads(payload.match?.id);
-      } else if (payload.liked_back) {
-        showToast(`${current.name}さんからいいねが届いています。承認するとマッチします`);
+        nextCard();
+        return;
+      }
+      if (payload.liked_back) {
+        showToast(`${current.name}さんとマッチしました！DMできます`);
         await refreshReceivedLikes();
       } else if (payload.pending_sent) {
-        showToast(`${current.name}さんにいいねを送りました。相手が承認するとマッチします`);
+        showToast(`${current.name}さんにいいねを送りました。相手からも返るとマッチします`);
       } else {
-        showToast(`${label}を送りました`);
+        showToast(`${label}しました`);
       }
       nextCard();
     } catch (e) { showToast(e.message); }
@@ -610,6 +658,26 @@ function App() {
     nextCard();
   }
 
+  async function reportProfile(profileId, profileName = '相手') {
+    if (!isAuthed || !profileId) return;
+    await api.report({ userId: user.id, profileId, reason: 'DMでの迷惑行為/不適切な内容' }).catch(() => null);
+    const payload = await api.reports().catch(() => ({ reports: [] }));
+    setReports(payload.reports || []);
+    showToast(`${profileName}さんを通報しました`);
+  }
+
+  async function blockProfile(profileId, profileName = '相手') {
+    if (!isAuthed || !profileId) return;
+    await api.block({ userId: user.id, profileId }).catch(() => null);
+    setDmThreads((threads) => threads.filter((thread) => thread.match.profileId !== profileId));
+    setActiveThreadId((currentId) => {
+      const remaining = dmThreads.filter((thread) => thread.match.profileId !== profileId);
+      return remaining.some((thread) => thread.match.id === currentId) ? currentId : remaining[0]?.match.id || '';
+    });
+    await refreshDmThreads();
+    showToast(`${profileName}さんをブロックしました`);
+  }
+
   async function buyPlan(nextPlan) {
     if (!isAuthed) {
       showToast('ログインしてください');
@@ -622,7 +690,7 @@ function App() {
       showToast(`${planLabel(nextPlan)} に切り替えました（デモ）`);
   }
 
-  const shared = { user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, pricingTab, setPricingTab, buyPlan, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, stats, matches, receivedLikes, acceptLike, dmThreads, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout };
+  const shared = { user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, pricingTab, setPricingTab, buyPlan, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout };
 
   return <>
     {toast && <div className="toast">{toast}</div>}
@@ -933,8 +1001,9 @@ function ReturnToAppCard({ user, openApp }) {
 }
 
 function AppDashboard(props) {
-  const { activeTab, setActiveTab, tabs, onBackSite, user, plan, stats, openProfileEditor, logout } = props;
+  const { activeTab, setActiveTab, tabs, onBackSite, user, plan, dmThreads, notificationCount, openProfileEditor, logout } = props;
   const [accountOpen, setAccountOpen] = useState(false);
+  const totalUnread = dmThreads.reduce((sum, thread) => sum + Number(thread.unreadCount || 0), 0);
   function openSiteSection(sectionId) {
     onBackSite();
     window.setTimeout(() => {
@@ -980,7 +1049,7 @@ function AppDashboard(props) {
       <nav className="appv2-bottom-nav">
         {tabs.map((tab) => (
           <button key={tab.id} className={cx('appv2-nav-btn', activeTab === tab.id && 'active')} onClick={() => setActiveTab(tab.id)}>
-            <span className="appv2-nav-icon">{TAB_ICONS[tab.id]}</span>
+            <span className="appv2-nav-icon">{TAB_ICONS[tab.id]}{tab.id === 'notifications' && notificationCount > 0 && <em className="appv2-nav-badge">{notificationCount}</em>}{tab.id === 'dm' && totalUnread > 0 && <em className="appv2-nav-badge">{totalUnread}</em>}</span>
             <span className="appv2-nav-label">{tab.label}</span>
           </button>
         ))}
@@ -989,17 +1058,51 @@ function AppDashboard(props) {
   );
 }
 
-function ProfileSummary({ user, plan, stats }) {
-  return <div className="side-card"><h3>自分の状態</h3><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0,1) || 'P'}</div><b>{user.name}</b><p>{user.riotId}</p><div className="mini-list"><span>{user.gender}</span><span>{user.age ? `${user.age}歳` : '年齢未設定'}</span><span>{user.region || '地域未設定'}</span><span>{user.rank}</span><span>{user.role}</span>{user.tags?.map((tag) => <span key={tag}>{tag}</span>)}</div><div className="statline"><span>いいね {stats.likes}</span><span>マッチ {stats.matches}</span></div><span className="plan-pill">{planLabel(plan)}</span></div>;
+function ProfileSummary({ user, plan, stats, receivedLikes = [] }) {
+  return <div className="side-card"><h3>自分の状態</h3><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0,1) || 'P'}</div><b>{user.name}</b><p>{user.riotId}</p><div className="mini-list"><span>{user.gender}</span><span>{user.age ? `${user.age}歳` : '年齢未設定'}</span><span>{user.region || '地域未設定'}</span><span>{user.rank}</span><span>{user.role}</span>{user.tags?.map((tag) => <span key={tag}>{tag}</span>)}</div><div className="statline"><span>好意あり {receivedLikes.length}</span><span>マッチ {stats.matches}</span></div><span className="plan-pill">{planLabel(plan)}</span></div>;
 }
 
 function GenderFilter({ targetGender, setTargetGender, genderFilterLocked }) {
   return <div className="side-card"><h3>表示フィルター</h3><label>表示する性別<select disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)}><option value="all">すべて</option><option value="女性">女性だけ</option><option value="男性">男性だけ</option><option value="その他/未設定">その他/未設定</option></select></label>{genderFilterLocked ? <p className="hint">性別指定はPLUS/VIPで解放。FREEはすべて表示です。</p> : <p className="hint">性別指定フィルター使用中。</p>}<p className="hint">表示性別による特典差はありません。</p></div>;
 }
 
+function NotificationsPanel({ receivedLikes, dmThreads, setActiveTab, selectDmThread, acceptLike }) {
+  const unreadThreads = dmThreads.filter((thread) => Number(thread.unreadCount || 0) > 0);
+  const recentThreads = dmThreads.slice(0, 3);
+  return <div className="notifications-panel list-panel">
+    <div className="notifications-head">
+      <div><span>通知</span><h3>通知</h3></div>
+      <b>{receivedLikes.length + unreadThreads.reduce((sum, thread) => sum + Number(thread.unreadCount || 0), 0)}件</b>
+    </div>
+    <div className="notification-list">
+      {receivedLikes.map((like) => <article className="notification-card important" key={like.id}>
+        <div className="notification-icon">♡</div>
+        <div><b>{like.fromProfileName}さんからいいね</b><p>{like.fromRank || 'ランク未設定'} · {like.fromRole || 'ロール未設定'}</p></div>
+        <button type="button" onClick={() => acceptLike(like.id)}>いいねを返す</button>
+      </article>)}
+      {unreadThreads.map((thread) => <article className="notification-card" key={`unread_${thread.match.id}`}>
+        <div className="notification-icon">✉</div>
+        <div><b>{thread.match.profileName}さんからメッセージ</b><p>{thread.unreadCount}件の未読があります</p></div>
+        <button type="button" onClick={() => { selectDmThread(thread.match.id); setActiveTab('dm'); }}>開く</button>
+      </article>)}
+      {!receivedLikes.length && !unreadThreads.length && recentThreads.map((thread) => <article className="notification-card quiet" key={`recent_${thread.match.id}`}>
+        <div className="notification-icon">✓</div>
+        <div><b>{thread.match.profileName}さんとマッチ済み</b><p>DMで会話できます</p></div>
+        <button type="button" onClick={() => { selectDmThread(thread.match.id); setActiveTab('dm'); }}>DM</button>
+      </article>)}
+      {!receivedLikes.length && !unreadThreads.length && !recentThreads.length && <div className="notification-empty">
+        <div className="notification-empty-icon">{TAB_ICONS.notifications}</div>
+        <h3>通知はまだありません</h3>
+        <p>いいねが届いた時やDMが来た時にここへ表示されます。</p>
+      </div>}
+    </div>
+  </div>;
+}
+
 function TabPanel(props) {
   switch (props.activeTab) {
     case 'match': return <MatchPanel {...props} />;
+    case 'notifications': return <NotificationsPanel {...props} />;
     case 'dm': return <DmPanel {...props} />;
     case 'footprints': return <FootprintsPanel {...props} />;
     default: return <MatchPanel {...props} />;
@@ -1008,24 +1111,42 @@ function TabPanel(props) {
 
 function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, profiles, index, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike }) {
   const [swipeDir, setSwipeDir] = React.useState(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [acceptingLikeId, setAcceptingLikeId] = useState('');
   const [detailProfile, setDetailProfile] = useState(null);
 
   async function handleSwipe(type) {
+    if (actionBusy || !current) return;
+    setActionBusy(true);
     const dir = type === 'pass' ? 'left' : type === 'super' ? 'up' : 'right';
-    setSwipeDir(dir);
-    await new Promise((r) => setTimeout(r, 300));
-    setSwipeDir(null);
-    swipe(type);
+    try {
+      setSwipeDir(dir);
+      await new Promise((r) => setTimeout(r, 300));
+      setSwipeDir(null);
+      await swipe(type);
+    } finally {
+      setSwipeDir(null);
+      setActionBusy(false);
+    }
+  }
+
+  async function handleAcceptLike(receivedLikeId) {
+    if (acceptingLikeId) return;
+    setAcceptingLikeId(receivedLikeId);
+    try {
+      await acceptLike(receivedLikeId);
+    } finally {
+      setAcceptingLikeId('');
+    }
   }
 
   return (
     <div className="mp-wrap">
-      {/* 受け取ったいいね */}
-      {receivedLikes?.length > 0 && (
-        <div className="mp-received-section">
-          <div className="mp-received-header">いいねが届いています <span>{receivedLikes.length}</span></div>
+      {/* 自分に届いた返答待ちのいいね */}
+      <div className={cx('mp-received-section', !receivedLikes?.length && 'empty')}>
+          <div className="mp-received-header">届いたいいね <span>{receivedLikes.length}</span></div>
           <div className="mp-received-list">
-            {receivedLikes.map((rl) => (
+            {receivedLikes?.length ? receivedLikes.map((rl) => (
               <div key={rl.id} className="mp-received-card">
                 <div className="mp-received-avatar">
                   {rl.fromPhoto ? <img src={rl.fromPhoto} alt={rl.fromProfileName} /> : rl.fromProfileName?.slice(0,1) || '?'}
@@ -1034,12 +1155,11 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, 
                   <b>{rl.fromProfileName}</b>
                   <span>{rl.fromRank} · {rl.fromRole}</span>
                 </div>
-                <button className="mp-accept-btn" onClick={() => acceptLike(rl.id)}>承認する</button>
+                <button className="mp-accept-btn" onClick={() => handleAcceptLike(rl.id)} disabled={acceptingLikeId === rl.id}>{acceptingLikeId === rl.id ? '送信中' : 'いいねを返す'}</button>
               </div>
-            ))}
+            )) : <p className="mp-received-empty">まだ届いたいいねはありません。</p>}
           </div>
         </div>
-      )}
 
       {/* フィルター行 */}
       <div className="mp-filter-row">
@@ -1067,13 +1187,13 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, 
 
       {/* アクションボタン */}
       <div className="mp-actions">
-        <button className="mp-btn mp-btn-undo" title="元に戻す" onClick={() => {}}>
+        <button className="mp-btn mp-btn-undo" title="元に戻す" onClick={() => {}} disabled={actionBusy}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
         </button>
-        <button className="mp-btn mp-btn-pass mp-btn-lg" onClick={() => handleSwipe('pass')} title="見送る">
+        <button className="mp-btn mp-btn-pass mp-btn-lg" onClick={() => handleSwipe('pass')} title="見送る" disabled={actionBusy || !current}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
-        <button className="mp-btn mp-btn-like mp-btn-lg" onClick={() => handleSwipe('like')} title="いいね">
+        <button className="mp-btn mp-btn-like mp-btn-lg" onClick={() => handleSwipe('like')} title="いいね" disabled={actionBusy || !current}>
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>
       </div>
@@ -1225,11 +1345,31 @@ function VoiceIntroPlayer({ src, compact = false }) {
   </div>;
 }
 
-function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm }) {
+const dmStarters = ['よろしくお願いします！', '何時ごろ遊べますか？', 'ランク一緒に行きませんか？'];
+
+function profileFromMatch(match) {
+  return {
+    id: match.profileId,
+    name: match.profileName,
+    profilePhoto: match.profilePhoto || '',
+    rank: match.profileRank || '未設定',
+    role: match.profileRole || '未設定',
+    gender: match.profileGender || '',
+    ageRange: match.profileAgeRange || '',
+    region: match.profileRegion || '',
+    matchScore: 100,
+    opener: match.opener || `${match.profileName}さんとマッチしました！`,
+    bio: match.profileBio || 'DMで会話しながら相性を確かめましょう。'
+  };
+}
+
+function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, reportProfile, blockProfile }) {
   const activeThread = dmThreads.find((thread) => thread.match.id === activeThreadId) || dmThreads[0];
+  const [detailProfile, setDetailProfile] = useState(null);
   useEffect(() => {
     if (activeThread?.match.id) markDmRead(activeThread.match.id);
   }, [activeThread?.match.id]);
+  const hasUserMessage = Boolean(activeThread?.messages?.some((message) => message.sender === 'user' && !message.system));
   return <div className="dm-panel">
     <aside className="dm-thread-list">
       <div className="dm-head"><h3>マッチ後メッセージ</h3><span>{dmThreads.length}件</span></div>
@@ -1244,8 +1384,13 @@ function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraf
     <section className="dm-conversation">
       {activeThread ? <>
         <div className="dm-conversation-head">
-          <div className="avatar small">{activeThread.match.profileName?.slice(0, 1) || 'P'}</div>
+          <div className="avatar small">{activeThread.match.profilePhoto ? <img src={activeThread.match.profilePhoto} alt="" /> : activeThread.match.profileName?.slice(0, 1) || 'P'}</div>
           <div><h3>{activeThread.match.profileName}</h3><span>メッセージ解放済み</span></div>
+          <div className="dm-head-actions">
+            <button type="button" onClick={() => setDetailProfile(profileFromMatch(activeThread.match))}>プロフィール</button>
+            <button type="button" onClick={() => reportProfile(activeThread.match.profileId, activeThread.match.profileName)}>通報</button>
+            <button type="button" className="danger" onClick={() => blockProfile(activeThread.match.profileId, activeThread.match.profileName)}>ブロック</button>
+          </div>
         </div>
         <div className="dm-messages">
           {activeThread.messages.map((message) => <div className={cx('dm-bubble', message.sender === 'user' && 'mine')} key={message.id}>
@@ -1256,11 +1401,15 @@ function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraf
             </div>
           </div>)}
         </div>
+        {!hasUserMessage && <div className="dm-starters">
+          {dmStarters.map((starter) => <button type="button" key={starter} onClick={() => setDmDraft(starter)}>{starter}</button>)}
+        </div>}
         <form className="dm-form" onSubmit={sendDm}>
           <input value={dmDraft} maxLength="500" onChange={(e) => setDmDraft(e.target.value)} placeholder="メッセージを入力" />
           <button className="primary" type="submit">送信</button>
         </form>
-      </> : <div className="locked-panel"><h3>メッセージはマッチ後に解放</h3><p>いいねや両いいねでマッチすると、ここに会話が表示されます。</p></div>}
+        {detailProfile && <ProfileDetailModal profile={detailProfile} onClose={() => setDetailProfile(null)} />}
+      </> : <div className="locked-panel"><h3>メッセージはマッチ後に解放</h3><p>お互いにいいねすると、ここに1対1の会話が表示されます。</p></div>}
     </section>
   </div>;
 }

@@ -1,9 +1,10 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = dirname(fileURLToPath(import.meta.url));
+const clientRoot = resolve(projectRoot, 'client');
 
 export default defineConfig(({ mode }) => {
   // .env ファイルを読み込む（ローカル開発用）
@@ -21,7 +22,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    root: 'client',
+    root: clientRoot,
     envDir: projectRoot,
     plugins: [react()],
     define: viteDefines,
@@ -32,7 +33,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      outDir: '../dist',
+      outDir: resolve(projectRoot, 'dist'),
       emptyOutDir: true
     }
   };
