@@ -232,8 +232,103 @@ async function readCandidateProfiles(excludeUserId = '') {
   ]);
   const userProfiles = users
     .filter((user) => user.id !== excludeUserId)
-    .map(userToProfile);
+    .map((user) => ({ ...userToProfile(user), isRealUser: true }));
   return [...profiles, ...userProfiles];
+}
+
+// --- 実プレイヤー同士の接続（双方向マッチング）ヘルパー ---
+
+function isRealUserId(id, users) {
+  return users.some((user) => user.id === id);
+}
+
+// received_likes の1件を組み立てる。
+// fromProfile = いいねを「送った側」のプロフィール、forUserId = 受け取る側のユーザーID。
+function buildReceivedLikeEntry(fromProfile, forUserId, likeType) {
+  return {
+    id: uid('rl'),
+    forUserId,
+    fromProfileId: fromProfile.id,
+    fromProfileName: fromProfile.name,
+    fromPhoto: fromProfile.profilePhoto || '',
+    fromRank: fromProfile.rank || '',
+    fromRole: fromProfile.role || '',
+    fromGender: fromProfile.gender || '',
+    fromAgeRange: fromProfile.ageRange || '',
+    likeType,
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+}
+
+function pairAlreadyMatched(matches, aId, bId) {
+  return matches.some((m) =>
+    (m.userId === aId && m.profileId === bId) ||
+    (m.userId === bId && m.profileId === aId));
+}
+
+function makeMatchRow(ownerUserId, otherProfile, conversationId, isRealUser) {
+  return {
+    id: uid('match'),
+    userId: ownerUserId,
+    profileId: otherProfile.id,
+    profileName: otherProfile.name,
+    profilePhoto: otherProfile.profilePhoto || '',
+    opener: `${otherProfile.name}さんとマッチしました！`,
+    dmUnlocked: true,
+    conversationId,
+    isRealUser: Boolean(isRealUser),
+    createdAt: new Date().toISOString()
+  };
+}
+
+// 2人の実ユーザー間に双方向のマッチ行を作る（冪等）。
+// 既にマッチ済みなら新規作成せず、対象ペアの両側のマッチ行を返す。
+async function ensureMutualMatch(userA, userB) {
+  await updateJson('matches.json', [], (matches) => {
+    if (pairAlreadyMatched(matches, userA.id, userB.id)) {
+      return { value: undefined, result: false };
+    }
+    const conversationId = uid('conv');
+    const rowForA = makeMatchRow(userA.id, userToProfile(userB), conversationId, true);
+    const rowForB = makeMatchRow(userB.id, userToProfile(userA), conversationId, true);
+    return { value: [rowForB, rowForA, ...matches], result: true };
+  });
+  const matches = await readJson('matches.json', []);
+  return matches.filter((m) =>
+    (m.userId === userA.id && m.profileId === userB.id) ||
+    (m.userId === userB.id && m.profileId === userA.id));
+}
+
+// 対象ペア間で pending のままの received_likes を accepted に変える。
+async function resolvePendingBetween(userAId, userBId) {
+  await updateJson('received_likes.json', [], (received) => {
+    let changed = false;
+    const next = received.map((r) => {
+      const betweenPair =
+        (r.forUserId === userAId && r.fromProfileId === userBId) ||
+        (r.forUserId === userBId && r.fromProfileId === userAId);
+      if (betweenPair && r.status === 'pending') {
+        changed = true;
+        return { ...r, status: 'accepted', acceptedAt: new Date().toISOString() };
+      }
+      return r;
+    });
+    return { value: changed ? next : undefined, result: changed };
+  });
+}
+
+// あるメッセージが、ある人の視点で「自分が送った」ものかを判定。
+function senderFor(message, viewerUserId) {
+  if (message.senderUserId) return message.senderUserId === viewerUserId ? 'user' : 'match';
+  return message.sender || 'match'; // 旧データ互換
+}
+
+// メッセージがそのマッチ（会話）に属するか。conversationId 優先、旧データは matchId。
+function messageBelongsToMatch(message, match) {
+  const convId = match.conversationId || match.id;
+  if (message.conversationId) return message.conversationId === convId;
+  return message.matchId === match.id;
 }
 
 // 検証済みトークンの短期キャッシュ。
@@ -449,7 +544,10 @@ app.post('/api/like', requireAuth, async (req, res) => {
   const selectedType = ['like', 'super', 'dual'].includes(type) ? type : 'like';
   const limit = quotaFor(planName, selectedType);
 
-  const profiles = await readCandidateProfiles(userId);
+  const [profiles, users] = await Promise.all([
+    readCandidateProfiles(userId),
+    readJson('users.json', [])
+  ]);
   const profile = profiles.find((item) => item.id === profileId);
   if (!profile) return res.status(404).json({ message: 'プロフィールが見つかりません。' });
 
@@ -463,18 +561,43 @@ app.post('/api/like', requireAuth, async (req, res) => {
   });
   if (!accepted) return res.status(402).json({ message: '本日の利用枠を使い切りました。PLUS/VIPで上限を増やせます。' });
 
-  // マッチングは自動ではなく「相手が承認したとき」に確定する。
-  // プロフィールが返いいねする確率を計算し、返いいねした場合は received_likes に積む。
+  // === 相手が実プレイヤーの場合: 本物の双方向マッチング ===
+  if (isRealUserId(profileId, users)) {
+    const me = req.authedUser;
+    const targetUser = users.find((u) => u.id === profileId);
+
+    // 相手が既に自分をいいね済みか？（相互いいね → 即マッチ）
+    const likes = await readJson('likes.json', []);
+    const targetLikedMe = likes.some((l) => l.userId === profileId && l.profileId === userId);
+
+    if (targetLikedMe) {
+      const created = await ensureMutualMatch(me, targetUser);
+      await resolvePendingBetween(userId, profileId);
+      const myMatch = created.find((m) => m.userId === userId) || null;
+      return res.json({ ok: true, like, matched: true, match: myMatch, liked_back: false });
+    }
+
+    // まだ片想い → 相手に pending の「いいねが届いた」を1件積む（重複は作らない）。
+    const myProfile = userToProfile(me);
+    await updateJson('received_likes.json', [], (received) => {
+      const exists = received.some((r) => r.forUserId === profileId && r.fromProfileId === userId && r.status === 'pending');
+      if (exists) return { value: undefined, result: false };
+      return { value: [buildReceivedLikeEntry(myProfile, profileId, selectedType), ...received], result: true };
+    });
+    return res.json({ ok: true, like, matched: false, pending_sent: true, liked_back: false });
+  }
+
+  // === 相手がダミー（シードプロフィール）の場合: 従来のシミュレーション ===
+  // 乱数で「返いいね」を判定し、返いいねした場合は自分の received_likes に積む。
   const likedBack = calculateMatch(profile, selectedType, planName);
   if (likedBack) {
     await updateJson('received_likes.json', [], (received) => {
       const alreadyPending = received.some((r) => r.forUserId === userId && r.fromProfileId === profileId && r.status === 'pending');
       if (alreadyPending) return { value: undefined, result: false };
-      const entry = { id: uid('rl'), forUserId: userId, fromProfileId: profileId, fromProfileName: profile.name, fromPhoto: profile.profilePhoto || '', fromRank: profile.rank || '', fromRole: profile.role || '', fromGender: profile.gender || '', fromAgeRange: profile.ageRange || '', likeType: selectedType, status: 'pending', createdAt: new Date().toISOString() };
-      return { value: [entry, ...received], result: true };
+      return { value: [buildReceivedLikeEntry(profile, userId, selectedType), ...received], result: true };
     });
   }
-  res.json({ ok: true, like, liked_back: likedBack });
+  res.json({ ok: true, like, liked_back: likedBack, matched: false });
 });
 
 app.get('/api/received-likes/:userId', requireAuth, async (req, res) => {
@@ -485,18 +608,41 @@ app.get('/api/received-likes/:userId', requireAuth, async (req, res) => {
 app.post('/api/accept-like', requireAuth, async (req, res) => {
   const { receivedLikeId } = req.body || {};
   const userId = req.authedUser.id;
+  const me = req.authedUser;
+
   const received = await readJson('received_likes.json', []);
   const idx = received.findIndex((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
   if (idx < 0) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
   const rl = received[idx];
   received[idx] = { ...rl, status: 'accepted', acceptedAt: new Date().toISOString() };
   await writeJson('received_likes.json', received);
+
+  const users = await readJson('users.json', []);
+  const fromUser = users.find((u) => u.id === rl.fromProfileId);
+
+  // === 相手が実プレイヤー: 双方向マッチを作成し、両者の会話を同期 ===
+  if (fromUser) {
+    // 承認＝自分も相手をいいねしたとみなし、likes.json にも記録（真の相互いいね）。
+    await updateJson('likes.json', [], (likes) => {
+      const exists = likes.some((l) => l.userId === userId && l.profileId === rl.fromProfileId);
+      if (exists) return { value: undefined, result: false };
+      return { value: [...likes, { id: uid('like'), userId, profileId: rl.fromProfileId, type: 'like', plan: me.plan || 'FREE', createdAt: new Date().toISOString() }], result: true };
+    });
+    const created = await ensureMutualMatch(me, fromUser);
+    await resolvePendingBetween(userId, rl.fromProfileId);
+    const myMatch = created.find((m) => m.userId === userId) || null;
+    return res.json({ ok: true, match: myMatch, matched: true });
+  }
+
+  // === 相手がダミー: 片側のみのマッチ（従来動作） ===
   const profiles = await readCandidateProfiles(userId);
   const profile = profiles.find((p) => p.id === rl.fromProfileId);
-  const matches = await readJson('matches.json', []);
-  const match = { id: uid('match'), userId, profileId: rl.fromProfileId, profileName: rl.fromProfileName, opener: profile?.opener || `${rl.fromProfileName}さんとマッチしました！`, dmUnlocked: true, createdAt: new Date().toISOString() };
-  matches.unshift(match);
-  await writeJson('matches.json', matches);
+  const conversationId = uid('conv');
+  let match;
+  await updateJson('matches.json', [], (matches) => {
+    match = { id: uid('match'), userId, profileId: rl.fromProfileId, profileName: rl.fromProfileName, profilePhoto: rl.fromPhoto || '', opener: profile?.opener || `${rl.fromProfileName}さんとマッチしました！`, dmUnlocked: true, conversationId, isRealUser: false, createdAt: new Date().toISOString() };
+    return { value: [match, ...matches], result: true };
+  });
   res.json({ ok: true, match, matched: true });
 });
 
@@ -506,12 +652,16 @@ app.get('/api/matches/:userId', requireAuth, async (req, res) => {
 });
 
 app.get('/api/dm/:userId', requireAuth, async (req, res) => {
-  const matches = await readJson('matches.json', []);
-  const messages = await readJson('messages.json', []);
-  const userMatches = matches.filter((match) => match.userId === req.authedUser.id && match.dmUnlocked);
+  const viewerId = req.authedUser.id;
+  const [matches, messages] = await Promise.all([
+    readJson('matches.json', []),
+    readJson('messages.json', [])
+  ]);
+  const userMatches = matches.filter((match) => match.userId === viewerId && match.dmUnlocked);
   const threads = userMatches.map((match) => {
     const threadMessages = messages
-      .filter((message) => message.matchId === match.id)
+      .filter((message) => messageBelongsToMatch(message, match))
+      .map((message) => ({ ...message, sender: senderFor(message, viewerId) }))
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     const openerMessage = {
       id: `opener_${match.id}`,
@@ -522,6 +672,7 @@ app.get('/api/dm/:userId', requireAuth, async (req, res) => {
       readAt: match.readAt || null,
       system: true
     };
+    // 自分が送ったメッセージは自分視点では常に既読扱いにして表示。
     const normalizedMessages = threadMessages.map((message) => (
       message.sender === 'user' && !message.readAt ? { ...message, readAt: message.createdAt } : message
     ));
@@ -536,22 +687,26 @@ app.get('/api/dm/:userId', requireAuth, async (req, res) => {
 });
 
 app.post('/api/dm/read', requireAuth, async (req, res) => {
-  const userId = req.authedUser.id;
+  const viewerId = req.authedUser.id;
   const matchId = cleanText(req.body?.matchId, 80);
   if (!matchId) return res.status(400).json({ message: '既読にする会話が必要です。' });
 
   const matches = await readJson('matches.json', []);
-  const matchIndex = matches.findIndex((item) => item.id === matchId && item.userId === userId && item.dmUnlocked);
+  const matchIndex = matches.findIndex((item) => item.id === matchId && item.userId === viewerId && item.dmUnlocked);
   if (matchIndex < 0) return res.status(403).json({ message: 'マッチ後だけ既読にできます。' });
+  const match = matches[matchIndex];
+  const convId = match.conversationId || match.id;
 
   const readAt = new Date().toISOString();
-  matches[matchIndex] = { ...matches[matchIndex], readAt };
+  matches[matchIndex] = { ...match, readAt };
   await writeJson('matches.json', matches);
 
   const messages = await readJson('messages.json', []);
   let changed = false;
   const nextMessages = messages.map((message) => {
-    if (message.matchId === matchId && message.sender !== 'user' && !message.readAt) {
+    const belongs = message.conversationId ? message.conversationId === convId : message.matchId === matchId;
+    const incoming = senderFor(message, viewerId) !== 'user';
+    if (belongs && incoming && !message.readAt) {
       changed = true;
       return { ...message, readAt };
     }
@@ -563,21 +718,23 @@ app.post('/api/dm/read', requireAuth, async (req, res) => {
 });
 
 app.post('/api/dm', requireAuth, async (req, res) => {
-  const userId = req.authedUser.id;
+  const viewerId = req.authedUser.id;
   const matchId = cleanText(req.body?.matchId, 80);
   const body = cleanText(req.body?.body, 500);
   if (!matchId || !body) return res.status(400).json({ message: '送信先とメッセージ本文が必要です。' });
 
   const matches = await readJson('matches.json', []);
-  const match = matches.find((item) => item.id === matchId && item.userId === userId && item.dmUnlocked);
+  const match = matches.find((item) => item.id === matchId && item.userId === viewerId && item.dmUnlocked);
   if (!match) return res.status(403).json({ message: 'マッチ後だけDMを送信できます。' });
 
-  const messages = await readJson('messages.json', []);
+  // 会話IDで保存することで、双方向マッチの両側に同じメッセージが見える。
+  const conversationId = match.conversationId || match.id;
   const createdAt = new Date().toISOString();
-  const message = { id: uid('msg'), matchId, userId, profileId: match.profileId, sender: 'user', body, createdAt, readAt: createdAt };
+  const message = { id: uid('msg'), conversationId, matchId: match.id, senderUserId: viewerId, profileId: match.profileId, body, createdAt, readAt: null };
+  const messages = await readJson('messages.json', []);
   messages.push(message);
   await writeJson('messages.json', messages);
-  res.status(201).json({ message });
+  res.status(201).json({ message: { ...message, sender: 'user' } });
 });
 
 app.post('/api/report', requireAuth, async (req, res) => {

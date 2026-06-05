@@ -562,9 +562,17 @@ function App() {
         dual: type === 'dual' && plan !== 'VIP' ? Math.max(0, s.dual - 1) : s.dual,
       }));
       track(current, label);
-      if (payload.liked_back) {
+      if (payload.matched) {
+        // 相互いいね成立 → その場でマッチ。両者の会話が同期される。
+        showToast(`${current.name}さんとマッチしました！メッセージを送れます`);
+        setStats((s) => ({ ...s, matches: s.matches + 1 }));
+        await refreshMatches();
+        await refreshDmThreads(payload.match?.id);
+      } else if (payload.liked_back) {
         showToast(`${current.name}さんからいいねが届いています。承認するとマッチします`);
         await refreshReceivedLikes();
+      } else if (payload.pending_sent) {
+        showToast(`${current.name}さんにいいねを送りました。相手が承認するとマッチします`);
       } else {
         showToast(`${label}を送りました`);
       }
