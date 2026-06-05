@@ -8,18 +8,19 @@
     "dev": "concurrently \"node server/index.js\" \"vite --host 0.0.0.0\"",
     "local": "concurrently \"node server/index.js\" \"vite --host localhost --open /\"",
     "build": "vite build",
-    "start": "NODE_ENV=production node server/index.js",
+    "release:check": "npm run build && node --check server/index.js",
+    "start": "node server/start-production.js",
     "reset-data": "node server/reset-data.js"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "concurrently": "latest",
-    "cors": "latest",
-    "express": "latest",
+    "@vitejs/plugin-react": "^6.0.2",
+    "concurrently": "^10.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "firebase": "^12.14.0",
-    "react": "latest",
-    "react-dom": "latest",
-    "vite": "latest"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "vite": "^8.0.16"
   },
   "engines": {
     "node": ">=18"

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" aria-labelledby="title desc">
+  <title id="title">Pairly</title>
+  <desc id="desc">Pairly transparent wordmark</desc>
+  <defs>
+    <linearGradient id="pairly-pink" x1="44" y1="60" x2="214" y2="258" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff6f86"/>
+      <stop offset=".56" stop-color="#ff3f86"/>
+      <stop offset="1" stop-color="#f11892"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <path fill="url(#pairly-pink)" d="M92 110h50c14 0 27 6 37 16l23 23-35 36-28-28h-38c-14 0-25 11-25 25 0 7 3 13 8 18l70 70c7 7 2 19-8 19h-24c-8 0-16-3-22-9l-66-66c-17-17-26-40-24-64 3-23 14-40 32-51 14-8 30-9 50-9Z"/>
+    <circle cx="108" cy="66" r="27" fill="#ff607a"/>
+    <path fill="#241f1c" d="M223 110h47c26 0 47 21 47 47v82c0 8-4 15-11 19l-51 30v-96l-54 54c-8 8-21 8-29 0l-27-27 88-88c-4-13-17-21-31-21h21Z"/>
+    <circle cx="249" cy="67" r="27" fill="#241f1c"/>
+    <text x="378" y="238" fill="#241f1c" font-family="Outfit, Arial, sans-serif" font-size="152" font-weight="900" letter-spacing="-7">Pairly</text>
+    <g fill="#ff3f86">
+      <path d="M382 268h14l9 12h-16z"/>
+      <path d="M820 268h16l-10 12h-15z"/>
+    </g>
+    <text x="414" y="282" fill="#6f6862" font-family="Outfit, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="14">FIND YOUR PERFECT TEAMMATE</text>
+  </g>
+</svg>

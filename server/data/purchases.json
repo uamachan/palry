@@ -1,5 +1,13 @@
 [
   {
+    "id": "purchase_mq0xh7am_rxfkwa",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "plan": "FREE",
+    "amount": 0,
+    "status": "demo_paid",
+    "createdAt": "2026-06-05T12:56:20.782Z"
+  },
+  {
     "id": "purchase_mq0ol0j9_bidyu0",
     "userId": "user_mq0mtuzj_hyrnt0",
     "plan": "VIP",

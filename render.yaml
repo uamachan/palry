@@ -1,0 +1,51 @@
+# Render.com 用の Blueprint。
+# Render ダッシュボードで「New > Blueprint」からこのリポジトリを指定すると、
+# 下記の設定でサービスが作成されます。
+#
+# 重要:
+# - persistentDisk でデータを永続化します（これがないと再デプロイでデータが消えます）。
+# - 機密値（Firebase キー等）は sync: false にしてあるので、Render の管理画面で入力します。
+# - 単一インスタンス前提です。インスタンスを増やす場合は JSON ファイル保存では
+#   データを共有できないため、Firestore 等への移行が必要です（RELEASE_CHECKLIST.md 参照）。
+
+services:
+  - type: web
+    name: pairly
+    runtime: node
+    plan: starter
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: node server/start-production.js
+    healthCheckPath: /api/health
+    numInstances: 1
+    autoDeploy: true
+    disk:
+      name: pairly-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATA_DIR
+        value: /data
+      # 公開URL。Render が割り当てるドメイン or 独自ドメインに合わせて設定。
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: VITE_FIREBASE_API_KEY
+        sync: false
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: VITE_FIREBASE_PROJECT_ID
+        sync: false
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: VITE_FIREBASE_APP_ID
+        sync: false
+      - key: VITE_FIREBASE_MEASUREMENT_ID
+        sync: false
+      - key: FIREBASE_WEB_API_KEY
+        sync: false

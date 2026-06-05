@@ -17,7 +17,8 @@ const ranks = [
   'Immortal 1', 'Immortal 2', 'Immortal 3',
   'Radiant'
 ];
-const roles = ['フレックス', 'デュエリスト', 'イニシエーター', 'センチネル', 'コントローラー'];
+const roles = ['デュエリスト', 'イニシエーター', 'コントローラー', 'センチネル'];
+const defaultRole = roles[0];
 const agents = [
   'Astra', 'Breach', 'Brimstone', 'Chamber', 'Clove', 'Cypher',
   'Deadlock', 'Fade', 'Gekko', 'Harbor', 'Iso', 'Jett',
@@ -28,13 +29,42 @@ const agents = [
 const regions = ['北海道', '東北', '関東', '中部', '関西', '中国・四国', '九州・沖縄', '海外'];
 const intentTags = ['気軽に遊ぶ友達', 'ランクガチ', '恋人探し', 'まずはデュオ', '固定相方', 'VCで話したい', '聞き専OK', '初心者歓迎', '夜メイン', '休日メイン'];
 const appTabs = [
-  { id: 'match', label: 'マッチング', emoji: '🎯' },
-  { id: 'dm', label: 'メッセージ', emoji: '💬' },
-  { id: 'footprints', label: '足あと', emoji: '👣' },
+  { id: 'match', label: 'マッチング' },
+  { id: 'dm', label: 'メッセージ' },
+  { id: 'footprints', label: '足あと' },
 ];
+const TAB_ICONS = {
+  match: <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>,
+  dm: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+  footprints: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+};
 const googleProvider = new GoogleAuthProvider();
 
 function cx(...v) { return v.filter(Boolean).join(' '); }
+
+function resizePhoto(file, maxSize = 900, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext('2d');
+      if (!context) return reject(new Error('画像を処理できませんでした'));
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('画像を読み込めませんでした'));
+    };
+    image.src = objectUrl;
+  });
+}
+
 function planLabel(name) {
   return name === 'FREE' ? '無料' : name === 'PLUS' ? 'プラス' : name === 'VIP' ? 'VIP' : name;
 }
@@ -81,8 +111,8 @@ function App() {
   const [reports, setReports] = useState([]);
   const [toast, setToast] = useState('');
   const toastTimer = useRef(null);
-  const [form, setForm] = useState({ name: '', gender: '', riotId: '', email: '', emailConfirm: '', password: '', age: '', region: '', profilePhoto: '', rank: 'Gold 1', role: 'フレックス', tags: [], agents: [], xHandle: '', bio: '', agreed: false });
-  const [editForm, setEditForm] = useState({ name: '', gender: '', riotId: '', age: '', region: '', profilePhoto: '', rank: 'Gold 1', role: 'フレックス', tags: [], agents: [], xHandle: '', bio: '', agreed: true });
+  const [form, setForm] = useState({ name: '', gender: '', riotId: '', email: '', emailConfirm: '', password: '', age: '', region: '', profilePhoto: '', rank: 'Gold 1', role: defaultRole, tags: [], agents: [], xHandle: '', bio: '', voiceIntro: '', agreed: false });
+  const [editForm, setEditForm] = useState({ name: '', gender: '', riotId: '', age: '', region: '', profilePhoto: '', rank: 'Gold 1', role: defaultRole, tags: [], agents: [], xHandle: '', bio: '', voiceIntro: '', agreed: true });
 
   const isAuthed = Boolean(user);
   const current = profiles[index] || null;
@@ -153,13 +183,13 @@ function App() {
     if (!isAuthed) return;
     const appliedTarget = genderFilterLocked ? 'all' : targetGender;
     if (genderFilterLocked && targetGender !== 'all') setTargetGender('all');
-    api.profiles({ plan, targetGender: appliedTarget }).then((payload) => {
+    api.profiles({ plan, targetGender: appliedTarget, userId: user.id }).then((payload) => {
       setProfiles(payload.profiles || []);
       setIndex(0);
     }).catch(() => showToast('候補の取得に失敗しました'));
   }, [isAuthed, plan, targetGender, genderFilterLocked]);
 
-  useEffect(() => { api.reports().then((p) => setReports(p.reports || [])).catch(() => showToast('通報データの取得に失敗しました')); }, []);
+  useEffect(() => { if (!user) return; api.reports().then((p) => setReports(p.reports || [])).catch(() => null); }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -199,11 +229,12 @@ function App() {
       region: user.region || '',
       profilePhoto: user.profilePhoto || '',
       rank: user.rank || 'Gold 1',
-      role: user.role || 'フレックス',
+      role: roles.includes(user.role) ? user.role : defaultRole,
       tags: Array.isArray(user.tags) ? user.tags : [],
       agents: Array.isArray(user.agents) ? user.agents : [],
       xHandle: user.xHandle || '',
       bio: user.bio || '',
+      voiceIntro: user.voiceIntro || '',
       agreed: true
     });
     setProfileEditorOpen(true);
@@ -466,7 +497,7 @@ function App() {
       const payload = await api.acceptLike({ userId: user.id, receivedLikeId });
       setReceivedLikes((list) => list.filter((r) => r.id !== receivedLikeId));
       setStats((s) => ({ ...s, matches: s.matches + 1 }));
-      showToast('🎉 マッチしました！メッセージを送れます');
+      showToast('マッチしました。メッセージを送れます');
       await refreshMatches();
       await refreshDmThreads(payload.match?.id);
     } catch (e) { showToast(e.message); }
@@ -501,7 +532,6 @@ function App() {
 
   function selectDmThread(matchId) {
     setActiveThreadId(matchId);
-    markDmRead(matchId);
   }
 
   function track(profile, action) {
@@ -509,7 +539,9 @@ function App() {
     setFootprints((list) => [{ name: profile.name, action, time, rank: profile.rank, gender: profile.gender }, ...list].slice(0, 20));
   }
 
-  function nextCard() { setIndex((i) => Math.min(i + 1, profiles.length)); }
+  function nextCard() {
+    setIndex((i) => profiles.length ? (i + 1) % profiles.length : 0);
+  }
 
   async function swipe(type) {
     if (!isAuthed) return openApp('match');
@@ -522,7 +554,7 @@ function App() {
     }
     try {
       const payload = await api.like({ userId: user.id, profileId: current.id, type, plan });
-      const label = type === 'super' ? 'スーパーいいね ⭐' : type === 'dual' ? '両いいね ⚡' : 'いいね 💖';
+      const label = type === 'super' ? 'スーパーいいね' : type === 'dual' ? '両いいね' : 'いいね';
       setStats((s) => ({
         ...s,
         likes: type === 'like' ? s.likes + 1 : s.likes,
@@ -531,7 +563,7 @@ function App() {
       }));
       track(current, label);
       if (payload.liked_back) {
-        showToast(`💌 ${current.name}さんからいいねが届きました！承認するとマッチします`);
+        showToast(`${current.name}さんからいいねが届いています。承認するとマッチします`);
         await refreshReceivedLikes();
       } else {
         showToast(`${label}を送りました`);
@@ -586,7 +618,7 @@ function App() {
 
   return <>
     {toast && <div className="toast">{toast}</div>}
-    {isAuthed && profileEditorOpen && <AuthModal onClose={() => setProfileEditorOpen(false)}>
+    {isAuthed && profileEditorOpen && <AuthModal onClose={() => setProfileEditorOpen(false)} size="profile">
       <ProfileEditSection form={editForm} setForm={setEditForm} user={user} onSubmit={saveProfileEdit} onCancel={() => setProfileEditorOpen(false)} />
     </AuthModal>}
     {!isAuthed && authMode && <AuthModal onClose={() => setAuthMode(null)} size={['register', 'login', 'emailVerification'].includes(authMode) ? 'narrow' : undefined}>
@@ -610,7 +642,7 @@ function App() {
 
 function SiteHeader({ isAuthed, plan, onSignup, onLogin, onOpenApp }) {
   return <header className="site-header">
-    <a className="brand" href="#top"><img src="/assets/pairly-logo-wide.png" alt="Pairly" /></a>
+    <a className="brand" href="#top"><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" /></a>
     <nav className="site-nav">
       <button className="nav-button" onClick={onOpenApp}>マッチング</button><a href="#pricing">料金</a><a href="#safety">安全・規約</a>
     </nav>
@@ -624,7 +656,7 @@ function SiteHeader({ isAuthed, plan, onSignup, onLogin, onOpenApp }) {
 function AuthModal({ children, onClose, size }) {
   return <div className="auth-modal" role="dialog" aria-modal="true">
     <button className="auth-scrim" type="button" aria-label="閉じる" onClick={onClose}></button>
-    <div className={cx('auth-modal-panel', size === 'narrow' && 'auth-modal-panel--narrow')}>
+    <div className={cx('auth-modal-panel', size === 'narrow' && 'auth-modal-panel--narrow', size === 'profile' && 'auth-modal-panel--profile')}>
       <button className="auth-close" type="button" onClick={onClose}>×</button>
       {children}
     </div>
@@ -632,6 +664,11 @@ function AuthModal({ children, onClose, size }) {
 }
 
 function Hero({ onSignup, onOpenApp }) {
+  const actions = [
+    { label: '登録', icon: 'user', onClick: onSignup },
+    { label: 'アプリを開く', icon: 'open', onClick: onOpenApp },
+    { label: 'マッチ', icon: 'heart', onClick: onOpenApp }
+  ];
   return <section id="top" className="hero section">
     <div className="hero-copy">
       <span className="eyebrow">VALORANT 相方・パーティー募集</span>
@@ -643,9 +680,20 @@ function Hero({ onSignup, onOpenApp }) {
     <div className="hero-card">
       <div className="browser-bar"><i></i><i></i><i></i><span>pairly.gg/app</span></div>
       <div className="mock-card"><div className="mock-photo">P</div><div><b>専用マッチング画面</b><span>登録後にいいね / 見送り / メッセージを解放</span></div></div>
-      <div className="mock-row"><span>登録</span><span>アプリを開く</span><span>マッチ</span></div>
+      <div className="mock-row">
+        {actions.map((action) => <button key={action.label} type="button" onClick={action.onClick} aria-label={action.label}>
+          <MockIcon name={action.icon} />
+          <span>{action.label}</span>
+        </button>)}
+      </div>
     </div>
   </section>;
+}
+
+function MockIcon({ name }) {
+  if (name === 'user') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.2a4.3 4.3 0 1 0-4.3-4.3 4.3 4.3 0 0 0 4.3 4.3Zm0 2c-4 0-7.2 2.2-7.2 5v.6h14.4v-.6c0-2.8-3.2-5-7.2-5Z" /></svg>;
+  if (name === 'open') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 5.5h7v2h-5v9h9v-5h2v7h-13v-13Zm9.1-.2h4.1v4.1h-2V8.7l-5.4 5.4-1.4-1.4 5.4-5.4h-.7v-2Z" /></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.7 4.8 14C2.8 12.1 2.6 9 4.3 7a4.7 4.7 0 0 1 6.8-.2l.9.9.9-.9a4.7 4.7 0 0 1 6.8.2c1.7 2 1.5 5.1-.5 7L12 20.7Z" /></svg>;
 }
 
 function LoginSection({ form, setForm, onLogin, onGoogle, onResetPassword, onShowRegister }) {
@@ -742,40 +790,134 @@ function ProfileEditSection({ form, setForm, user, onSubmit, onCancel }) {
 }
 
 function SignupForm({ form, setForm, onSubmit, onShowLogin, submitLabel = '無料でアカウント作成', cancelLabel = 'ログインに戻る', showAgreement = true }) {
+  const tabs = ['基本情報', 'ランク', 'プレイスタイル', '自己紹介', ...(showAgreement ? ['規約'] : [])];
+  const [activeSetupTab, setActiveSetupTab] = useState(tabs[0]);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const recorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const recordTimerRef = useRef(null);
   const toggleAgent = (agent) => setForm((f) => ({ ...f, agents: f.agents.includes(agent) ? f.agents.filter((a) => a !== agent) : [...f.agents, agent].slice(0, 5) }));
   const toggleTag = (tag) => setForm((f) => ({ ...f, tags: f.tags.includes(tag) ? f.tags.filter((item) => item !== tag) : [...f.tags, tag].slice(0, 4) }));
-  function selectPhoto(event) {
+  useEffect(() => () => {
+    clearTimeout(recordTimerRef.current);
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+  async function startVoiceRecording() {
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return alert('このブラウザは音声録音に対応していません。');
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      return alert('マイクの許可が必要です。ブラウザの権限を確認してください。');
+    }
+    const chunks = [];
+    const recorder = new MediaRecorder(stream);
+    recorderRef.current = recorder;
+    streamRef.current = stream;
+    recorder.ondataavailable = (event) => {
+      if (event.data?.size) chunks.push(event.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+      const reader = new FileReader();
+      reader.onload = () => setForm((current) => ({ ...current, voiceIntro: String(reader.result || '') }));
+      reader.readAsDataURL(blob);
+      stream.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      recorderRef.current = null;
+      setIsRecordingVoice(false);
+      clearTimeout(recordTimerRef.current);
+    };
+    recorder.start();
+    setIsRecordingVoice(true);
+    recordTimerRef.current = setTimeout(() => stopVoiceRecording(), 20000);
+  }
+  function stopVoiceRecording() {
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+  }
+  async function selectPhoto(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setForm((current) => ({ ...current, profilePhoto: String(reader.result || '') }));
-    reader.readAsDataURL(file);
+    try {
+      const photo = await resizePhoto(file);
+      setForm((current) => ({ ...current, profilePhoto: photo }));
+    } catch {
+      alert('写真の読み込みに失敗しました。別の画像を選んでください。');
+    }
   }
   return <form className="signup-card profile-setup-card" onSubmit={onSubmit}>
-    <div className="setup-tabs"><span className="active">基本情報</span><span>ランク</span><span>プレイスタイル</span><span>自己紹介</span><span>規約</span></div>
-    <div className="profile-setup-grid">
-      <label className="photo-uploader">
-        <span>プロフィール写真</span>
-        <input type="file" accept="image/*" onChange={selectPhoto} />
-        <div className="photo-preview">{form.profilePhoto ? <img src={form.profilePhoto} alt="" /> : <b>写真を追加</b>}</div>
-      </label>
-      <div className="setup-fields">
-        <label>表示名<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="yamada" /></label>
-        <label>性別<select required value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}><option value="">選択してください</option><option>女性</option><option>男性</option><option>その他/未設定</option></select></label>
-        <label>RIOT ID<input required value={form.riotId} onChange={(e) => setForm({ ...form, riotId: e.target.value })} placeholder="name#JP1" /></label>
-        <label>年齢<input required inputMode="numeric" maxLength="2" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value.replace(/\D/g, '').slice(0, 2) })} placeholder="20" /></label>
-        <label>地域<select required value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}><option value="">選択してください</option>{regions.map((region) => <option key={region}>{region}</option>)}</select></label>
-        <label>ランク<select value={form.rank} onChange={(e) => setForm({ ...form, rank: e.target.value })}>{ranks.map((r) => <option key={r}>{r}</option>)}</select></label>
-        <label>メインロール<select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>{roles.map((r) => <option key={r}>{r}</option>)}</select></label>
-        <label>X<input value={form.xHandle} onChange={(e) => setForm({ ...form, xHandle: e.target.value })} placeholder="@pairly_user" /></label>
-      </div>
-      <fieldset className="span-all intent-fieldset"><legend>目的タグ（4つまで）</legend><div className="chip-list intent-chip-list">{intentTags.map((tag) => <button type="button" key={tag} className={form.tags.includes(tag) ? 'selected' : ''} onClick={() => toggleTag(tag)}>{tag}</button>)}</div></fieldset>
-      <fieldset className="span-all agent-fieldset"><legend>よく使うキャラクター（5体まで）</legend><div className="chip-list">{agents.map((agent) => <button type="button" key={agent} className={form.agents.includes(agent) ? 'selected' : ''} onClick={() => toggleAgent(agent)}>{agent}</button>)}</div></fieldset>
-      <label className="span-all setup-bio">自己紹介<textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="プレイ時間、VC、雰囲気、NGなことなど" /></label>
-      {showAgreement && <label className="check span-all"><input type="checkbox" checked={form.agreed} onChange={(e) => setForm({ ...form, agreed: e.target.checked })} />本サービスを閲覧・登録・ログイン・いいね・マッチング・メッセージ・通報・課金・外部SNS連携などで使用した時点で利用規約に同意したものとみなします。登録時にも規約へ同意します。</label>}
+    <div className="setup-tabs" role="tablist">{tabs.map((label) => <button type="button" role="tab" key={label} className={activeSetupTab === label ? 'active' : ''} aria-selected={activeSetupTab === label} onClick={() => setActiveSetupTab(label)}>{label}</button>)}</div>
+    <div className="setup-pane">
+      {activeSetupTab === '基本情報' && <div className="profile-setup-grid">
+        <label className="photo-uploader">
+          <span>プロフィール写真</span>
+          <input type="file" accept="image/*" onChange={selectPhoto} />
+          <div className="photo-preview">{form.profilePhoto ? <img src={form.profilePhoto} alt="" /> : <b>写真を追加</b>}</div>
+        </label>
+        <div className="setup-fields basic-fields">
+          <label>表示名<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="yamada" /></label>
+          <label>性別<select required value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}><option value="">選択してください</option><option>女性</option><option>男性</option><option>その他/未設定</option></select></label>
+          <label>RIOT ID<input required value={form.riotId} onChange={(e) => setForm({ ...form, riotId: e.target.value })} placeholder="name#JP1" /></label>
+          <label>年齢<input required inputMode="numeric" maxLength="2" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value.replace(/\D/g, '').slice(0, 2) })} placeholder="20" /></label>
+          <label>地域<select required value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}><option value="">選択してください</option>{regions.map((region) => <option key={region}>{region}</option>)}</select></label>
+          <label>X<input value={form.xHandle} onChange={(e) => setForm({ ...form, xHandle: e.target.value })} placeholder="@pairly_user" /></label>
+        </div>
+      </div>}
+      {activeSetupTab === 'ランク' && <div className="setup-fields setup-tab-grid">
+        <CustomSelect label="ランク" value={form.rank} options={ranks} onChange={(rank) => setForm({ ...form, rank })} />
+        <CustomSelect label="メインロール" value={form.role} options={roles} onChange={(role) => setForm({ ...form, role })} />
+      </div>}
+      {activeSetupTab === 'プレイスタイル' && <>
+        <fieldset className="intent-fieldset"><legend>目的タグ（4つまで）</legend><div className="chip-list intent-chip-list">{intentTags.map((tag) => <button type="button" key={tag} className={form.tags.includes(tag) ? 'selected' : ''} onClick={() => toggleTag(tag)}>{tag}</button>)}</div></fieldset>
+        <fieldset className="agent-fieldset"><legend>よく使うキャラクター（5体まで）</legend><div className="chip-list">{agents.map((agent) => <button type="button" key={agent} className={form.agents.includes(agent) ? 'selected' : ''} onClick={() => toggleAgent(agent)}>{agent}</button>)}</div></fieldset>
+      </>}
+      {activeSetupTab === '自己紹介' && <div className="setup-intro-pane">
+        <label className="setup-bio">自己紹介<textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="プレイ時間、VC、雰囲気、NGなことなど" /></label>
+        <div className="voice-recorder">
+          <div><b>声の自己紹介</b><span>最大20秒。カード上で相手が再生できます。</span></div>
+          <div className="voice-actions">
+            {!isRecordingVoice
+              ? <button type="button" className="secondary" onClick={startVoiceRecording}>{form.voiceIntro ? '録り直す' : '録音する'}</button>
+              : <button type="button" className="primary" onClick={stopVoiceRecording}>録音停止</button>}
+            {form.voiceIntro && <button type="button" className="secondary" onClick={() => setForm((current) => ({ ...current, voiceIntro: '' }))}>削除</button>}
+          </div>
+          {isRecordingVoice && <p className="voice-status">録音中...</p>}
+          {form.voiceIntro && <audio className="voice-player" src={form.voiceIntro} controls />}
+        </div>
+      </div>}
+      {activeSetupTab === '規約' && showAgreement && <label className="check"><input type="checkbox" checked={form.agreed} onChange={(e) => setForm({ ...form, agreed: e.target.checked })} />本サービスを閲覧・登録・ログイン・いいね・マッチング・メッセージ・通報・課金・外部SNS連携などで使用した時点で利用規約に同意したものとみなします。登録時にも規約へ同意します。</label>}
     </div>
     <div className="form-actions"><button className="primary" type="submit">{submitLabel}</button><button type="button" className="secondary" onClick={onShowLogin}>{cancelLabel}</button></div>
   </form>;
+}
+
+function CustomSelect({ label, value, options, onChange }) {
+  const [open, setOpen] = useState(false);
+  return <div className={cx('custom-select-field', open && 'open')} onBlur={(event) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+  }}>
+    <span>{label}</span>
+    <button type="button" className="custom-select-trigger" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+      <b>{value}</b>
+      <i></i>
+    </button>
+    {open && <div className="custom-select-menu" role="listbox" tabIndex={-1}>
+      {options.map((option) => <button
+        type="button"
+        key={option}
+        role="option"
+        aria-selected={option === value}
+        className={option === value ? 'selected' : ''}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => {
+          onChange(option);
+          setOpen(false);
+        }}
+      >
+        {option}
+      </button>)}
+    </div>}
+  </div>;
 }
 
 function ReturnToAppCard({ user, openApp }) {
@@ -785,14 +927,28 @@ function ReturnToAppCard({ user, openApp }) {
 function AppDashboard(props) {
   const { activeTab, setActiveTab, tabs, onBackSite, user, plan, stats, openProfileEditor, logout } = props;
   const [accountOpen, setAccountOpen] = useState(false);
+  function openSiteSection(sectionId) {
+    onBackSite();
+    window.setTimeout(() => {
+      const section = document.getElementById(sectionId);
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.history.replaceState(null, '', `#${sectionId}`);
+    }, 50);
+  }
   return (
     <div className="appv2">
       <header className="appv2-topbar">
-        <button className="appv2-back" onClick={onBackSite}>←</button>
-        <img src="/assets/pairly-logo-wide.png" alt="Pairly" className="appv2-logo" />
+        <button className="appv2-brand" type="button" onClick={onBackSite} aria-label="Pairlyトップへ">
+          <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" className="appv2-logo" />
+        </button>
+        <nav className="appv2-site-nav" aria-label="サイトメニュー">
+          <button type="button" className={activeTab === 'match' ? 'active' : ''} onClick={() => setActiveTab('match')}>マッチング</button>
+          <button type="button" onClick={() => openSiteSection('pricing')}>料金</button>
+          <button type="button" onClick={() => openSiteSection('safety')}>安全・規約</button>
+        </nav>
         <div className="appv2-topbar-right">
-          <span className="appv2-stat">🔥 {stats.matches}</span>
           <span className="appv2-plan">{planLabel(plan)}</span>
+          <button className="primary small" type="button" onClick={() => setActiveTab('match')}>アプリを開く</button>
           <div className="account-menu">
             <button className={cx('appv2-avatar', accountOpen && 'active')} type="button" onClick={() => setAccountOpen((open) => !open)} aria-haspopup="menu" aria-expanded={accountOpen}>
               {user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0,1) || 'P')}
@@ -816,7 +972,7 @@ function AppDashboard(props) {
       <nav className="appv2-bottom-nav">
         {tabs.map((tab) => (
           <button key={tab.id} className={cx('appv2-nav-btn', activeTab === tab.id && 'active')} onClick={() => setActiveTab(tab.id)}>
-            <span className="appv2-nav-icon">{tab.emoji}</span>
+            <span className="appv2-nav-icon">{TAB_ICONS[tab.id]}</span>
             <span className="appv2-nav-label">{tab.label}</span>
           </button>
         ))}
@@ -830,7 +986,7 @@ function ProfileSummary({ user, plan, stats }) {
 }
 
 function GenderFilter({ targetGender, setTargetGender, genderFilterLocked }) {
-  return <div className="side-card"><h3>表示フィルター</h3><label>表示する性別<select disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)}><option value="all">すべて</option><option value="女性">女性だけ</option><option value="男性">男性だけ</option><option value="その他/未設定">その他/未設定</option></select></label>{genderFilterLocked ? <p className="hint">性別指定はPLUS/VIPで解放。FREEはすべて表示です。</p> : <p className="hint">性別指定フィルター使用中。</p>}<p className="hint">男女の特典差はありません。女性プロフィールは人気集中ガードで少しマッチしにくい調整です。</p></div>;
+  return <div className="side-card"><h3>表示フィルター</h3><label>表示する性別<select disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)}><option value="all">すべて</option><option value="女性">女性だけ</option><option value="男性">男性だけ</option><option value="その他/未設定">その他/未設定</option></select></label>{genderFilterLocked ? <p className="hint">性別指定はPLUS/VIPで解放。FREEはすべて表示です。</p> : <p className="hint">性別指定フィルター使用中。</p>}<p className="hint">表示性別による特典差はありません。</p></div>;
 }
 
 function TabPanel(props) {
@@ -844,6 +1000,7 @@ function TabPanel(props) {
 
 function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, profiles, index, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike }) {
   const [swipeDir, setSwipeDir] = React.useState(null);
+  const [detailProfile, setDetailProfile] = useState(null);
 
   async function handleSwipe(type) {
     const dir = type === 'pass' ? 'left' : type === 'super' ? 'up' : 'right';
@@ -858,7 +1015,7 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, 
       {/* 受け取ったいいね */}
       {receivedLikes?.length > 0 && (
         <div className="mp-received-section">
-          <div className="mp-received-header">💌 いいねが届いています <span>{receivedLikes.length}</span></div>
+          <div className="mp-received-header">いいねが届いています <span>{receivedLikes.length}</span></div>
           <div className="mp-received-list">
             {receivedLikes.map((rl) => (
               <div key={rl.id} className="mp-received-card">
@@ -869,7 +1026,7 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, 
                   <b>{rl.fromProfileName}</b>
                   <span>{rl.fromRank} · {rl.fromRole}</span>
                 </div>
-                <button className="mp-accept-btn" onClick={() => acceptLike(rl.id)}>承認 💕</button>
+                <button className="mp-accept-btn" onClick={() => acceptLike(rl.id)}>承認する</button>
               </div>
             ))}
           </div>
@@ -878,26 +1035,24 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, 
 
       {/* フィルター行 */}
       <div className="mp-filter-row">
-        <span className="mp-filter-label">🔍</span>
+        <span className="mp-filter-label">表示</span>
         <select className="mp-filter-select" disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)}>
           <option value="all">すべて</option>
           <option value="女性">女性</option>
           <option value="男性">男性</option>
           <option value="その他/未設定">その他</option>
         </select>
-        {genderFilterLocked && <span className="mp-lock-hint">🔒 PLUS/VIPで解放</span>}
-        <span className="mp-remain">👥 {Math.max(0, profiles.length - index)}</span>
+        {genderFilterLocked && <span className="mp-lock-hint">PLUS/VIPで解放</span>}
       </div>
 
       {/* プロフィールカード */}
       <div className="mp-card-wrap">
         {current ? (
-          <TinderProfileCard key={current.id} profile={current} onReport={reportCurrent} onBlock={blockCurrent} swipeDir={swipeDir} />
+          <TinderProfileCard key={current.id} profile={current} onReport={reportCurrent} onBlock={blockCurrent} swipeDir={swipeDir} onOpenProfile={setDetailProfile} />
         ) : (
           <div className="mp-empty">
-            <div className="mp-empty-icon">🤖</div>
             <h3>候補がなくなりました</h3>
-            <p>AIが新しい候補を探しています…</p>
+            <p>条件を変えるか、時間をおいて再読み込みしてください。</p>
           </div>
         )}
       </div>
@@ -910,49 +1065,59 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, 
         <button className="mp-btn mp-btn-pass mp-btn-lg" onClick={() => handleSwipe('pass')} title="見送る">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
-        <button className="mp-btn mp-btn-like mp-btn-lg" onClick={() => handleSwipe('like')} title="いいね 💖">
+        <button className="mp-btn mp-btn-like mp-btn-lg" onClick={() => handleSwipe('like')} title="いいね">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>
       </div>
+      {detailProfile && <ProfileDetailModal profile={detailProfile} onClose={() => setDetailProfile(null)} />}
     </div>
   );
 }
 
-function TinderProfileCard({ profile, onReport, onBlock, swipeDir }) {
+function TinderProfileCard({ profile, onReport, onBlock, swipeDir, onOpenProfile }) {
   const tags = profile.tags?.length ? profile.tags : profile.modes || [];
-  const hue = (profile.name.charCodeAt(0) * 47) % 360;
+  const roleTone = profile.role === 'デュエリスト' ? 'duelist'
+    : profile.role === 'イニシエーター' ? 'initiator'
+      : profile.role === 'コントローラー' ? 'controller'
+        : profile.role === 'センチネル' ? 'sentinel'
+          : 'default';
   return (
     <article className={cx('mp-card', swipeDir && `mp-swipe-${swipeDir}`)}>
       {profile.profilePhoto
         ? <img className="mp-photo" src={profile.profilePhoto} alt={profile.name} />
-        : <div className="mp-photo-placeholder" style={{ background: `linear-gradient(145deg,hsl(${hue},50%,20%),hsl(${(hue+50)%360},65%,42%))` }}><span>{profile.name.slice(0,1).toUpperCase()}</span></div>
+        : <div className={cx('mp-photo-placeholder', `role-${roleTone}`)}>
+          <div className="mp-placeholder-frame">
+            <span>{profile.name.slice(0,1).toUpperCase()}</span>
+            <b>{profile.role || 'ROLE'}</b>
+          </div>
+        </div>
       }
       <div className="mp-gradient" />
 
-      {swipeDir === 'right' && <div className="mp-stamp mp-stamp-like">LIKE 💖</div>}
-      {swipeDir === 'left'  && <div className="mp-stamp mp-stamp-nope">NOPE 👋</div>}
-      {swipeDir === 'up'    && <div className="mp-stamp mp-stamp-super">SUPER ⭐</div>}
+      {swipeDir === 'right' && <div className="mp-stamp mp-stamp-like">LIKE</div>}
+      {swipeDir === 'left'  && <div className="mp-stamp mp-stamp-nope">NOPE</div>}
+      {swipeDir === 'up'    && <div className="mp-stamp mp-stamp-super">SUPER</div>}
 
       <div className="mp-badges-top">
-        {profile.guarded && <span className="mp-badge mp-badge-guard">🛡 人気集中</span>}
-        <span className="mp-badge mp-badge-score">✨ {profile.matchScore}%</span>
+        <span className="mp-badge mp-badge-score">相性 {profile.matchScore}%</span>
       </div>
 
       <div className="mp-card-info">
-        <div className="mp-active-row"><span className="mp-active-dot"/><span>Recently Active</span></div>
+        <div className="mp-active-row"><span className="mp-active-dot"/><span>最近アクティブ</span></div>
         <div className="mp-name-row">
-          <h3 className="mp-name">{profile.name}</h3>
+          <button type="button" className="mp-name-button" onClick={(event) => { event.stopPropagation(); onOpenProfile?.(profile); }}>{profile.name}</button>
           <span className="mp-age">{profile.ageRange}</span>
         </div>
-        <p className="mp-meta">🎮 {profile.rank} · {profile.role}</p>
-        <p className="mp-meta">📍 {profile.gender}{profile.region ? ` · ${profile.region}` : ''}</p>
+        <p className="mp-meta">{profile.rank} · {profile.role}</p>
+        <p className="mp-meta">{profile.gender}{profile.region ? ` · ${profile.region}` : ''}</p>
         {tags.length > 0 && <div className="mp-tags">{tags.slice(0,4).map((t) => <span className="mp-tag" key={t}>{t}</span>)}</div>}
         {profile.bio && <p className="mp-bio">{profile.bio}</p>}
+        <VoiceIntroPlayer src={profile.voiceIntro} compact />
       </div>
 
       <div className="mp-card-tools">
-        <button className="mp-tool-btn" onClick={onReport}>🚨 通報</button>
-        <button className="mp-tool-btn" onClick={onBlock}>🚫 ブロック</button>
+        <button className="mp-tool-btn" onClick={onReport}>通報</button>
+        <button className="mp-tool-btn" onClick={onBlock}>ブロック</button>
       </div>
     </article>
   );
@@ -960,6 +1125,96 @@ function TinderProfileCard({ profile, onReport, onBlock, swipeDir }) {
 
 function ProfileCard({ profile, onReport, onBlock }) {
   return <TinderProfileCard profile={profile} onReport={onReport} onBlock={onBlock} />;
+}
+
+function ProfileDetailModal({ profile, onClose }) {
+  const tags = Array.isArray(profile.tags) ? profile.tags : [];
+  const modes = Array.isArray(profile.modes) ? profile.modes : [];
+  const agentsList = Array.isArray(profile.agents) ? profile.agents : [];
+  const reasons = Array.isArray(profile.reasons) ? profile.reasons : [];
+  const voiceLabel = profile.voice || (profile.voiceIntro ? '声の自己紹介あり' : '未設定');
+  const detailItems = [
+    ['現在ランク', profile.rank || 'Unranked'],
+    ['最高ランク', profile.peakRank || '未設定'],
+    ['ロール', profile.role || 'ロール未設定'],
+    ['活動時間', profile.activeTime || '未設定'],
+    ['VC', voiceLabel],
+    ['信頼度', profile.trust ? `${profile.trust}%` : profile.verified ? '認証済み' : '未設定']
+  ];
+  return <div className="profile-detail-modal" role="dialog" aria-modal="true">
+    <button className="profile-detail-scrim" type="button" aria-label="閉じる" onClick={onClose}></button>
+    <section className="profile-detail-panel">
+      <button className="profile-detail-close" type="button" onClick={onClose}>×</button>
+      <div className="profile-detail-hero">
+        {profile.profilePhoto
+          ? <img src={profile.profilePhoto} alt={profile.name} />
+          : <div className="profile-detail-fallback">{profile.name?.slice(0, 1) || 'P'}</div>}
+      </div>
+      <div className="profile-detail-body">
+        <div className="profile-detail-head">
+          <div>
+            <h2>{profile.name}</h2>
+            <p>{profile.gender}{profile.ageRange ? ` / ${profile.ageRange}` : ''}{profile.region ? ` / ${profile.region}` : ''}</p>
+          </div>
+          <span>相性 {profile.matchScore}%</span>
+        </div>
+        <div className="profile-detail-kpis">
+          {detailItems.map(([label, value]) => <div key={label}><span>{label}</span><b>{value}</b></div>)}
+        </div>
+        {tags.length > 0 && <div className="profile-detail-block">
+          <strong>目的タグ</strong>
+          <div className="profile-detail-tags">{tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+        </div>}
+        {modes.length > 0 && <div className="profile-detail-block">
+          <strong>プレイスタイル</strong>
+          <div className="profile-detail-tags is-muted">{modes.map((mode) => <span key={mode}>{mode}</span>)}</div>
+        </div>}
+        {agentsList.length > 0 && <div className="profile-detail-block">
+          <strong>よく使うキャラ</strong>
+          <div className="profile-detail-tags is-plain">{agentsList.map((agent) => <span key={agent}>{agent}</span>)}</div>
+        </div>}
+        <div className="profile-detail-block"><strong>自己紹介</strong><p>{profile.bio || '自己紹介は未入力です。'}</p></div>
+        {profile.xHandle && <div className="profile-detail-block"><strong>X</strong><p className="profile-detail-link">@{profile.xHandle.replace(/^@/, '')}</p></div>}
+        {profile.opener && <div className="profile-detail-note"><strong>話しかけるきっかけ</strong><p>{profile.opener}</p></div>}
+        {reasons.length > 0 && <div className="profile-detail-block">
+          <strong>相性が高い理由</strong>
+          <ul className="profile-detail-reasons">{reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+        </div>}
+        <VoiceIntroPlayer src={profile.voiceIntro} />
+      </div>
+    </section>
+  </div>;
+}
+
+function VoiceIntroPlayer({ src, compact = false }) {
+  const audioRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  if (compact) {
+    const toggleAudio = (event) => {
+      event.stopPropagation();
+      if (!src) return;
+      const audio = audioRef.current;
+      if (!audio) return;
+      if (audio.paused) audio.play().then(() => setPlaying(true)).catch(() => null);
+      else {
+        audio.pause();
+        setPlaying(false);
+      }
+    };
+    return <div className="voice-intro-player compact">
+      <button type="button" className={cx('voice-chip', playing && 'playing', !src && 'empty')} onClick={toggleAudio} aria-label={src ? '声の自己紹介を再生' : '声の自己紹介はありません'} disabled={!src}>
+        <span className="voice-chip-icon">{!src ? '-' : playing ? 'Ⅱ' : '▶'}</span>
+        <span className="voice-chip-text">{!src ? '声がない' : playing ? '再生中' : '声を聞く'}</span>
+        <i></i><i></i><i></i>
+      </button>
+      {src && <audio ref={audioRef} src={src} onEnded={() => setPlaying(false)} onPause={() => setPlaying(false)} />}
+    </div>;
+  }
+  if (!src) return null;
+  return <div className={cx('voice-intro-player', compact && 'compact')}>
+    <span>声の自己紹介</span>
+    <audio src={src} controls />
+  </div>;
 }
 
 function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm }) {
@@ -1010,11 +1265,11 @@ function PublicPricing({ plansData, pricingTab, setPricingTab, onSignup, appMode
   return <section id="pricing" className={cx('section pricing-section', appMode && 'inside')}><div className="section-head"><span>料金</span><h2>料金</h2><p>男女で特典差はありません。VIPは全制限解除です。</p></div><div className="price-tabs"><button className={pricingTab === 'monthly' ? 'active' : ''} onClick={() => setPricingTab('monthly')}>月額プラン</button><button className={pricingTab === 'single' ? 'active' : ''} onClick={() => setPricingTab('single')}>単発課金</button><button className={pricingTab === 'compare' ? 'active' : ''} onClick={() => setPricingTab('compare')}>比較表</button></div>{pricingTab === 'monthly' && <div className="price-grid">{monthly.map((p) => <article className={cx('price-card', p.name === 'VIP' && 'featured')} key={p.name}><h3>{planLabel(p.name)}</h3><div className="price">¥{p.price.toLocaleString()}<span>/月</span></div><ul>{p.features?.map((f) => <li key={f}>{f}</li>)}</ul><button className="primary" onClick={buyPlan ? () => buyPlan(p.name) : onSignup}>{p.name === 'FREE' ? '無料で始める' : `${planLabel(p.name)}にする`}</button></article>)}</div>}{pricingTab === 'single' && <div className="single-grid">{(plansData.singleItems || []).map((item) => <article key={item.name} className="single-card"><h3>{item.name}</h3><b>¥{item.price}</b><p>{item.detail}</p></article>)}</div>}{pricingTab === 'compare' && <div className="compare"><table><thead><tr><th>機能</th><th>無料</th><th>プラス</th><th>VIP</th></tr></thead><tbody><tr><td>いいね</td><td>10回/日</td><td>40回/日</td><td>無制限</td></tr><tr><td>スーパーいいね</td><td>1回/日</td><td>5回/日</td><td>無制限</td></tr><tr><td>両いいね</td><td>5回</td><td>10回</td><td>無制限</td></tr><tr><td>性別指定</td><td>×</td><td>○</td><td>○</td></tr><tr><td>制限解除</td><td>×</td><td>一部</td><td>全解除</td></tr></tbody></table></div>}</section>;
 }
 
-function ProfilePanel({ user }) { return <div className="list-panel"><h3>プロフィール</h3><div className="profile-preview expanded"><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0,1) || 'P'}</div><b>{user.name}</b><span>{user.gender} / {user.age ? `${user.age}歳` : '年齢未設定'} / {user.region || '地域未設定'}</span><span>{user.riotId} / {user.rank} / {user.role}</span>{Boolean(user.tags?.length) && <div className="tag-row">{user.tags.map((tag) => <span className="intent-tag" key={tag}>{tag}</span>)}</div>}<p>{user.bio || '自己紹介は未入力です。'}</p></div></div>; }
+function ProfilePanel({ user }) { return <div className="list-panel"><h3>プロフィール</h3><div className="profile-preview expanded"><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0,1) || 'P'}</div><b>{user.name}</b><span>{user.gender} / {user.age ? `${user.age}歳` : '年齢未設定'} / {user.region || '地域未設定'}</span><span>{user.riotId} / {user.rank} / {user.role}</span>{Boolean(user.tags?.length) && <div className="tag-row">{user.tags.map((tag) => <span className="intent-tag" key={tag}>{tag}</span>)}</div>}<p>{user.bio || '自己紹介は未入力です。'}</p><VoiceIntroPlayer src={user.voiceIntro} /></div></div>; }
 function SafetyCompact() { return <div className="list-panel"><h3>安全・規約</h3><TermsList /></div>; }
 function Safety() { return <section id="safety" className="section narrow"><div className="section-head"><span>安全</span><h2>安全・規約</h2></div><TermsList /></section>; }
 function TermsList() { return <div className="terms-list"><article><h3>利用開始による同意</h3><p>本サービスを閲覧、登録、ログイン、いいね、マッチング、メッセージ、通報、課金、外部SNS連携などで使用した時点で、利用規約に同意したものとみなします。</p></article><article><h3>免責</h3><p>ユーザー間のメッセージ、ボイスチャット、ゲームプレイ、外部SNS、金銭・人間関係トラブルは原則ユーザー同士で解決するものとします。ただし法令上免責できない場合、運営の故意または重大な過失は除きます。</p></article><article><h3>禁止事項</h3><p>暴言、脅迫、差別、セクハラ、恋愛/性的関係やオフライン接触の強要、年齢詐称、なりすまし、チート、アカウント売買、晒し、詐欺、外部決済誘導を禁止します。</p></article><article><h3>非公式表記</h3><p>PairlyはRiot Games公式サービスではありません。VALORANTおよび関連商標はRiot Games, Inc.に帰属します。</p></article></div>; }
 function AdminPanel({ reports }) { return <div className="list-panel"><h3>通報管理</h3>{reports.length ? reports.map((r) => <div className="list-row" key={r.id}><b>{r.reason}</b><p>プロフィール: {r.profileId || '-'}</p><span>{r.status}</span></div>) : <p className="empty-text">通報はありません。</p>}</div>; }
-function Footer() { return <footer className="footer"><img src="/assets/pairly-logo-wide.png" alt="Pairly" /><p>使用した時点で利用規約に同意したものとみなします。PairlyはRiot Games公式サービスではありません。</p></footer>; }
+function Footer() { return <footer className="footer"><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" /><p>使用した時点で利用規約に同意したものとみなします。PairlyはRiot Games公式サービスではありません。</p></footer>; }
 
 createRoot(document.getElementById('root')).render(<App />);

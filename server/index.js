@@ -3,7 +3,7 @@ import cors from 'cors';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readJson, writeJson, uid } from './lib/jsonStore.js';
+import { readJson, writeJson, updateJson, uid } from './lib/jsonStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,9 +11,81 @@ loadLocalEnv();
 const app = express();
 const port = Number(process.env.PORT || 3001);
 const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-app.use(express.json({ limit: '5mb' }));
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }));
+function validateProductionConfig() {
+  if (!isProduction) return;
+  const missing = [
+    'CLIENT_ORIGIN',
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_AUTH_DOMAIN',
+    'VITE_FIREBASE_PROJECT_ID',
+    'VITE_FIREBASE_APP_ID'
+  ].filter((key) => !process.env[key]);
+  if (missing.length) {
+    console.warn(`[production config] Missing environment variables: ${missing.join(', ')}`);
+  }
+}
+
+// PaaS / ロードバランサ背後では X-Forwarded-For を信頼して実IPを得る。
+// レート制限を正しくIP単位で効かせるために必要。
+if (isProduction) app.set('trust proxy', 1);
+
+// シンプルなインメモリ・レート制限（固定ウィンドウ）。
+// 注意: 複数インスタンス構成では各インスタンスごとの制限になる。
+// 本格運用では Redis ベース等の共有ストアへ置き換える。
+function rateLimit({ windowMs, max, message }) {
+  const hits = new Map(); // ip -> { count, resetAt }
+  // 期限切れエントリを定期的に掃除してメモリ増加を防ぐ。
+  const cleaner = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of hits) {
+      if (entry.resetAt <= now) hits.delete(ip);
+    }
+  }, windowMs);
+  cleaner.unref?.(); // この timer でプロセスを生かし続けない
+  return (req, res, next) => {
+    const now = Date.now();
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    let entry = hits.get(ip);
+    if (!entry || entry.resetAt <= now) {
+      entry = { count: 0, resetAt: now + windowMs };
+      hits.set(ip, entry);
+    }
+    entry.count += 1;
+    if (entry.count > max) {
+      const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({ message: message || 'リクエストが多すぎます。しばらくしてからお試しください。' });
+    }
+    next();
+  };
+}
+
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '8mb' }));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  }
+}));
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), payment=()');
+  next();
+});
+
+// 全 API への緩めの制限と、認証系エンドポイントへの厳しめの制限。
+const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: Number(process.env.RATE_LIMIT_API_PER_MIN || 120) });
+const authLimiter = rateLimit({ windowMs: 60 * 1000, max: Number(process.env.RATE_LIMIT_AUTH_PER_MIN || 20), message: '認証の試行が多すぎます。しばらくしてからお試しください。' });
+app.use('/api', apiLimiter);
+
+validateProductionConfig();
 
 const plans = {
   FREE: {
@@ -55,6 +127,13 @@ const singleItems = [
   { name: 'プロフィール目立たせ7日', price: 700, detail: '検索・候補カードで視認性を上げます。' }
 ];
 
+const valorantRoles = ['デュエリスト', 'イニシエーター', 'コントローラー', 'センチネル'];
+
+function normalizeRole(role) {
+  const value = cleanText(role, 30);
+  return valorantRoles.includes(value) ? value : 'コントローラー';
+}
+
 function loadLocalEnv() {
   const envPath = path.join(__dirname, '..', '.env');
   if (!fs.existsSync(envPath)) return;
@@ -74,8 +153,7 @@ function sameDay(isoA, isoB = new Date().toISOString()) {
   return isoA?.slice(0, 10) === isoB.slice(0, 10);
 }
 
-async function getUsage(userId, type) {
-  const likes = await readJson('likes.json', []);
+function countTodayUsage(likes, userId, type) {
   return likes.filter((like) => like.userId === userId && like.type === type && sameDay(like.createdAt)).length;
 }
 
@@ -117,14 +195,85 @@ function publicUser(user) {
   return safeUser;
 }
 
+function userToProfile(user) {
+  const hasVoiceIntro = Boolean(user.voiceIntro);
+  return {
+    id: user.id,
+    name: user.name,
+    gender: user.gender,
+    ageRange: user.age ? `${user.age}歳` : '年齢未設定',
+    region: user.region || '',
+    rank: user.rank || 'Gold',
+    peakRank: user.peakRank || user.rank || '',
+    role: normalizeRole(user.role),
+    tags: Array.isArray(user.tags) ? user.tags : [],
+    modes: Array.isArray(user.modes) ? user.modes : [],
+    agents: Array.isArray(user.agents) ? user.agents : [],
+    xHandle: user.xHandle || '',
+    profilePhoto: user.profilePhoto || '',
+    bio: user.bio || '',
+    voiceIntro: user.voiceIntro || '',
+    voice: user.voice || (hasVoiceIntro ? '声の自己紹介あり' : '未設定'),
+    activeTime: user.activeTime || '',
+    trust: user.verified ? 90 : 72,
+    verified: Boolean(user.verified),
+    reasons: Array.isArray(user.reasons) ? user.reasons : [],
+    matchScore: 82,
+    matchChance: 0.3,
+    guarded: false,
+    opener: `${user.name}さんとマッチしました！`
+  };
+}
+
+async function readCandidateProfiles(excludeUserId = '') {
+  const [profiles, users] = await Promise.all([
+    readJson('profiles.json', []),
+    readJson('users.json', [])
+  ]);
+  const userProfiles = users
+    .filter((user) => user.id !== excludeUserId)
+    .map(userToProfile);
+  return [...profiles, ...userProfiles];
+}
+
+// 検証済みトークンの短期キャッシュ。
+// 認証付きリクエストごとに Google Identity Toolkit を呼ぶとレイテンシ・コスト・
+// レート制限の負担が大きいため、トークン単位で短時間キャッシュする。
+// TTL はトークン有効期限（約1時間）より十分短くする。
+const TOKEN_CACHE_TTL_MS = Number(process.env.TOKEN_CACHE_TTL_MS || 5 * 60 * 1000);
+const TOKEN_CACHE_MAX = 5000;
+const tokenCache = new Map(); // token -> { value, expiresAt }
+
+function getCachedIdentity(token) {
+  const hit = tokenCache.get(token);
+  if (!hit) return null;
+  if (hit.expiresAt <= Date.now()) {
+    tokenCache.delete(token);
+    return null;
+  }
+  return hit.value;
+}
+
+function setCachedIdentity(token, value) {
+  // 単純なサイズ上限。超えたら最古を1件捨てる（挿入順 Map）。
+  if (tokenCache.size >= TOKEN_CACHE_MAX) {
+    const oldestKey = tokenCache.keys().next().value;
+    if (oldestKey !== undefined) tokenCache.delete(oldestKey);
+  }
+  tokenCache.set(token, { value, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
+}
+
 async function verifyFirebaseIdentity(idToken) {
   const token = cleanText(idToken, 4096);
-  const apiKey = cleanText(process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY, 200);
   if (!token) {
     const error = new Error('Firebase ID tokenが必要です。');
     error.status = 401;
     throw error;
   }
+  const cached = getCachedIdentity(token);
+  if (cached) return cached;
+
+  const apiKey = cleanText(process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY, 200);
   if (!apiKey) {
     const error = new Error('Firebase Web API Keyがサーバーに設定されていません。');
     error.status = 500;
@@ -142,11 +291,30 @@ async function verifyFirebaseIdentity(idToken) {
     throw error;
   }
   const firebaseUser = payload.users[0];
-  return {
+  const identity = {
     uid: cleanText(firebaseUser.localId, 120),
     email: cleanText(firebaseUser.email, 120),
     emailVerified: Boolean(firebaseUser.emailVerified)
   };
+  setCachedIdentity(token, identity);
+  return identity;
+}
+
+async function requireAuth(req, res, next) {
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!token) return res.status(401).json({ message: '認証が必要です。再ログインしてください。' });
+  let firebaseUser;
+  try {
+    firebaseUser = await verifyFirebaseIdentity(token);
+  } catch (error) {
+    return res.status(error.status || 401).json({ message: error.message || '認証に失敗しました。' });
+  }
+  const users = await readJson('users.json', []);
+  const user = users.find((u) => u.firebaseUid === firebaseUser.uid);
+  if (!user) return res.status(404).json({ message: 'Pairlyプロフィールが見つかりません。' });
+  req.authedUser = user;
+  next();
 }
 
 app.get('/api/health', (req, res) => {
@@ -157,7 +325,7 @@ app.get('/api/plans', (req, res) => {
   res.json({ plans, singleItems });
 });
 
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authLimiter, async (req, res) => {
   const payload = req.body || {};
   let firebaseUser;
   try {
@@ -189,13 +357,14 @@ app.post('/api/register', async (req, res) => {
     riotId: cleanText(payload.riotId, 60),
     age: cleanText(payload.age, 10),
     region: cleanText(payload.region, 40),
-    profilePhoto: cleanText(payload.profilePhoto, 250000),
+    profilePhoto: cleanText(payload.profilePhoto, 2000000),
     rank: cleanText(payload.rank || 'Gold', 30),
-    role: cleanText(payload.role || 'フレックス', 30),
+    role: normalizeRole(payload.role || 'デュエリスト'),
     tags: Array.isArray(payload.tags) ? payload.tags.map((v) => cleanText(v, 30)).slice(0, 4) : [],
     agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
     xHandle: cleanText(payload.xHandle, 40),
     bio: cleanText(payload.bio, 240),
+    voiceIntro: cleanText(payload.voiceIntro, 1500000),
     plan: 'FREE',
     verified: true,
     agreedAt: new Date().toISOString(),
@@ -206,7 +375,7 @@ app.post('/api/register', async (req, res) => {
   res.status(201).json({ user: publicUser(user), message: 'アカウントを作成しました。' });
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authLimiter, async (req, res) => {
   let firebaseUser;
   try {
     firebaseUser = await verifyFirebaseIdentity(req.body?.idToken);
@@ -220,10 +389,9 @@ app.post('/api/login', async (req, res) => {
   res.json({ user: publicUser(found) });
 });
 
-app.put('/api/profile', async (req, res) => {
+app.put('/api/profile', requireAuth, async (req, res) => {
   const payload = req.body || {};
-  const userId = cleanText(payload.userId, 80);
-  if (!userId) return res.status(401).json({ message: 'アカウント作成後に利用できます。' });
+  const userId = req.authedUser.id;
   if (!payload.gender) return res.status(400).json({ message: '性別選択が必要です。' });
   if (!payload.name) return res.status(400).json({ message: '表示名が必要です。' });
   if (!payload.riotId) return res.status(400).json({ message: 'Riot IDが必要です。' });
@@ -246,13 +414,14 @@ app.put('/api/profile', async (req, res) => {
     riotId,
     age: cleanText(payload.age, 10),
     region: cleanText(payload.region, 40),
-    profilePhoto: cleanText(payload.profilePhoto, 250000),
+    profilePhoto: cleanText(payload.profilePhoto, 2000000),
     rank: cleanText(payload.rank || users[index].rank || 'Gold', 30),
-    role: cleanText(payload.role || users[index].role || 'フレックス', 30),
+    role: normalizeRole(payload.role || users[index].role || 'デュエリスト'),
     tags: Array.isArray(payload.tags) ? payload.tags.map((v) => cleanText(v, 30)).slice(0, 4) : [],
     agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
     xHandle: cleanText(payload.xHandle, 40),
     bio: cleanText(payload.bio, 240),
+    voiceIntro: cleanText(payload.voiceIntro, 1500000),
     updatedAt: new Date().toISOString()
   };
   users[index] = updated;
@@ -260,10 +429,11 @@ app.put('/api/profile', async (req, res) => {
   res.json({ user: publicUser(updated), message: 'プロフィールを更新しました。' });
 });
 
-app.get('/api/profiles', async (req, res) => {
+app.get('/api/profiles', requireAuth, async (req, res) => {
   const planName = String(req.query.plan || 'FREE').toUpperCase();
   const targetGender = String(req.query.targetGender || 'all');
-  const profiles = await readJson('profiles.json', []);
+  const userId = req.authedUser.id;
+  const profiles = await readCandidateProfiles(userId);
   const plan = plans[planName] || plans.FREE;
   let results = profiles;
   if (targetGender !== 'all' && plan.genderFilter) {
@@ -272,53 +442,56 @@ app.get('/api/profiles', async (req, res) => {
   res.json({ profiles: weightedShuffle(results, planName), plan, targetGenderApplied: targetGender !== 'all' && plan.genderFilter });
 });
 
-app.post('/api/like', async (req, res) => {
-  const { userId, profileId, type = 'like', plan = 'FREE' } = req.body || {};
-  if (!userId) return res.status(401).json({ message: 'アカウント作成後に利用できます。' });
+app.post('/api/like', requireAuth, async (req, res) => {
+  const { profileId, type = 'like', plan = 'FREE' } = req.body || {};
+  const userId = req.authedUser.id;
   const planName = String(plan || 'FREE').toUpperCase();
   const selectedType = ['like', 'super', 'dual'].includes(type) ? type : 'like';
   const limit = quotaFor(planName, selectedType);
-  const used = await getUsage(userId, selectedType);
-  if (used >= limit) return res.status(402).json({ message: '本日の利用枠を使い切りました。PLUS/VIPで上限を増やせます。' });
 
-  const profiles = await readJson('profiles.json', []);
+  const profiles = await readCandidateProfiles(userId);
   const profile = profiles.find((item) => item.id === profileId);
   if (!profile) return res.status(404).json({ message: 'プロフィールが見つかりません。' });
 
-  const likes = await readJson('likes.json', []);
+  // 利用枠チェックと like 追加を 1ファイルにつき直列・原子的に行い、
+  // 同時リクエストでの枠の二重消費を防ぐ。
   const like = { id: uid('like'), userId, profileId, type: selectedType, plan: planName, createdAt: new Date().toISOString() };
-  likes.push(like);
-  await writeJson('likes.json', likes);
+  const accepted = await updateJson('likes.json', [], (likes) => {
+    const used = countTodayUsage(likes, userId, selectedType);
+    if (used >= limit) return { value: undefined, result: false };
+    return { value: [...likes, like], result: true };
+  });
+  if (!accepted) return res.status(402).json({ message: '本日の利用枠を使い切りました。PLUS/VIPで上限を増やせます。' });
 
   // マッチングは自動ではなく「相手が承認したとき」に確定する。
   // プロフィールが返いいねする確率を計算し、返いいねした場合は received_likes に積む。
   const likedBack = calculateMatch(profile, selectedType, planName);
   if (likedBack) {
-    const received = await readJson('received_likes.json', []);
-    const alreadyPending = received.some((r) => r.forUserId === userId && r.fromProfileId === profileId && r.status === 'pending');
-    if (!alreadyPending) {
-      received.unshift({ id: uid('rl'), forUserId: userId, fromProfileId: profileId, fromProfileName: profile.name, fromPhoto: profile.profilePhoto || '', fromRank: profile.rank || '', fromRole: profile.role || '', fromGender: profile.gender || '', fromAgeRange: profile.ageRange || '', likeType: selectedType, status: 'pending', createdAt: new Date().toISOString() });
-      await writeJson('received_likes.json', received);
-    }
+    await updateJson('received_likes.json', [], (received) => {
+      const alreadyPending = received.some((r) => r.forUserId === userId && r.fromProfileId === profileId && r.status === 'pending');
+      if (alreadyPending) return { value: undefined, result: false };
+      const entry = { id: uid('rl'), forUserId: userId, fromProfileId: profileId, fromProfileName: profile.name, fromPhoto: profile.profilePhoto || '', fromRank: profile.rank || '', fromRole: profile.role || '', fromGender: profile.gender || '', fromAgeRange: profile.ageRange || '', likeType: selectedType, status: 'pending', createdAt: new Date().toISOString() };
+      return { value: [entry, ...received], result: true };
+    });
   }
   res.json({ ok: true, like, liked_back: likedBack });
 });
 
-app.get('/api/received-likes/:userId', async (req, res) => {
+app.get('/api/received-likes/:userId', requireAuth, async (req, res) => {
   const received = await readJson('received_likes.json', []);
-  res.json({ receivedLikes: received.filter((r) => r.forUserId === req.params.userId && r.status === 'pending') });
+  res.json({ receivedLikes: received.filter((r) => r.forUserId === req.authedUser.id && r.status === 'pending') });
 });
 
-app.post('/api/accept-like', async (req, res) => {
-  const { userId, receivedLikeId } = req.body || {};
-  if (!userId) return res.status(401).json({ message: 'アカウント作成後に利用できます。' });
+app.post('/api/accept-like', requireAuth, async (req, res) => {
+  const { receivedLikeId } = req.body || {};
+  const userId = req.authedUser.id;
   const received = await readJson('received_likes.json', []);
   const idx = received.findIndex((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
   if (idx < 0) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
   const rl = received[idx];
   received[idx] = { ...rl, status: 'accepted', acceptedAt: new Date().toISOString() };
   await writeJson('received_likes.json', received);
-  const profiles = await readJson('profiles.json', []);
+  const profiles = await readCandidateProfiles(userId);
   const profile = profiles.find((p) => p.id === rl.fromProfileId);
   const matches = await readJson('matches.json', []);
   const match = { id: uid('match'), userId, profileId: rl.fromProfileId, profileName: rl.fromProfileName, opener: profile?.opener || `${rl.fromProfileName}さんとマッチしました！`, dmUnlocked: true, createdAt: new Date().toISOString() };
@@ -327,15 +500,15 @@ app.post('/api/accept-like', async (req, res) => {
   res.json({ ok: true, match, matched: true });
 });
 
-app.get('/api/matches/:userId', async (req, res) => {
+app.get('/api/matches/:userId', requireAuth, async (req, res) => {
   const matches = await readJson('matches.json', []);
-  res.json({ matches: matches.filter((match) => match.userId === req.params.userId) });
+  res.json({ matches: matches.filter((match) => match.userId === req.authedUser.id) });
 });
 
-app.get('/api/dm/:userId', async (req, res) => {
+app.get('/api/dm/:userId', requireAuth, async (req, res) => {
   const matches = await readJson('matches.json', []);
   const messages = await readJson('messages.json', []);
-  const userMatches = matches.filter((match) => match.userId === req.params.userId && match.dmUnlocked);
+  const userMatches = matches.filter((match) => match.userId === req.authedUser.id && match.dmUnlocked);
   const threads = userMatches.map((match) => {
     const threadMessages = messages
       .filter((message) => message.matchId === match.id)
@@ -362,10 +535,9 @@ app.get('/api/dm/:userId', async (req, res) => {
   res.json({ threads });
 });
 
-app.post('/api/dm/read', async (req, res) => {
-  const userId = cleanText(req.body?.userId, 80);
+app.post('/api/dm/read', requireAuth, async (req, res) => {
+  const userId = req.authedUser.id;
   const matchId = cleanText(req.body?.matchId, 80);
-  if (!userId) return res.status(401).json({ message: 'アカウント作成後に利用できます。' });
   if (!matchId) return res.status(400).json({ message: '既読にする会話が必要です。' });
 
   const matches = await readJson('matches.json', []);
@@ -390,11 +562,10 @@ app.post('/api/dm/read', async (req, res) => {
   res.json({ ok: true, matchId, readAt });
 });
 
-app.post('/api/dm', async (req, res) => {
-  const userId = cleanText(req.body?.userId, 80);
+app.post('/api/dm', requireAuth, async (req, res) => {
+  const userId = req.authedUser.id;
   const matchId = cleanText(req.body?.matchId, 80);
   const body = cleanText(req.body?.body, 500);
-  if (!userId) return res.status(401).json({ message: 'アカウント作成後に利用できます。' });
   if (!matchId || !body) return res.status(400).json({ message: '送信先とメッセージ本文が必要です。' });
 
   const matches = await readJson('matches.json', []);
@@ -409,45 +580,98 @@ app.post('/api/dm', async (req, res) => {
   res.status(201).json({ message });
 });
 
-app.post('/api/report', async (req, res) => {
-  if (!req.body?.userId) return res.status(401).json({ message: 'アカウント作成後に利用できます。' });
+app.post('/api/report', requireAuth, async (req, res) => {
   const reports = await readJson('reports.json', []);
-  const report = { id: uid('report'), userId: req.body.userId, profileId: req.body.profileId, reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
+  const report = { id: uid('report'), userId: req.authedUser.id, profileId: req.body.profileId, reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
   reports.unshift(report);
   await writeJson('reports.json', reports);
   res.status(201).json({ report });
 });
 
-app.post('/api/block', async (req, res) => {
-  if (!req.body?.userId) return res.status(401).json({ message: 'アカウント作成後に利用できます。' });
+app.post('/api/block', requireAuth, async (req, res) => {
   const blocks = await readJson('blocks.json', []);
-  const block = { id: uid('block'), userId: req.body.userId, profileId: req.body.profileId, createdAt: new Date().toISOString() };
+  const block = { id: uid('block'), userId: req.authedUser.id, profileId: req.body.profileId, createdAt: new Date().toISOString() };
   blocks.unshift(block);
   await writeJson('blocks.json', blocks);
   res.status(201).json({ block });
 });
 
-app.get('/api/admin/reports', async (req, res) => {
+app.get('/api/admin/reports', requireAuth, async (req, res) => {
   const reports = await readJson('reports.json', []);
   res.json({ reports });
 });
 
-app.post('/api/purchase', async (req, res) => {
-  if (!req.body?.userId) return res.status(401).json({ message: 'アカウント作成後に利用できます。' });
-  const purchases = await readJson('purchases.json', []);
+app.post('/api/purchase', requireAuth, async (req, res) => {
+  const userId = req.authedUser.id;
   const selected = String(req.body?.plan || 'PLUS').toUpperCase();
-  const purchase = { id: uid('purchase'), userId: req.body.userId, plan: selected, amount: plans[selected]?.price || 0, status: 'demo_paid', createdAt: new Date().toISOString() };
+  const validPlan = plans[selected] ? selected : 'PLUS';
+  const [purchases, users] = await Promise.all([readJson('purchases.json', []), readJson('users.json', [])]);
+  const purchase = { id: uid('purchase'), userId, plan: validPlan, amount: plans[validPlan].price, status: 'demo_paid', createdAt: new Date().toISOString() };
   purchases.unshift(purchase);
-  await writeJson('purchases.json', purchases);
+  const userIdx = users.findIndex((u) => u.id === userId);
+  if (userIdx >= 0) users[userIdx] = { ...users[userIdx], plan: validPlan };
+  await Promise.all([writeJson('purchases.json', purchases), userIdx >= 0 ? writeJson('users.json', users) : Promise.resolve()]);
   res.status(201).json({ purchase });
+});
+
+// 未知の /api ルートは HTML ではなく JSON の 404 を返す
+// （SPA フォールバックに飲み込ませない）。
+app.use('/api', (req, res) => {
+  res.status(404).json({ message: 'APIエンドポイントが見つかりません。' });
 });
 
 if (isProduction) {
   const distPath = path.resolve(__dirname, '../dist');
-  app.use(express.static(distPath));
-  app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
+  app.use(express.static(distPath, { maxAge: '1h', etag: true }));
+  // SPA フォールバック。Express 5 (path-to-regexp v8) では裸の '*' は使えないため
+  // 名前付きワイルドカード '/*splat' を使う。/api は上で処理済み。
+  app.get('/*splat', (req, res, next) => {
+    const indexPath = path.join(distPath, 'index.html');
+    if (!fs.existsSync(indexPath)) return next();
+    return res.sendFile(indexPath);
+  });
 }
 
-app.listen(port, () => {
-  console.log(`Pairly API running on http://localhost:${port}`);
+// 集約エラーハンドラ。CORS 拒否やハンドラ内の例外を JSON で返し、
+// 本番ではスタックトレースを漏らさない。
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (err?.message === 'Not allowed by CORS') {
+    return res.status(403).json({ message: '許可されていないオリジンからのリクエストです。' });
+  }
+  console.error('[unhandled error]', err);
+  if (res.headersSent) return;
+  res.status(err?.status || 500).json({
+    message: isProduction ? 'サーバーエラーが発生しました。' : (err?.message || 'サーバーエラーが発生しました。')
+  });
+});
+
+const server = app.listen(port, () => {
+  console.log(`Pairly API running on http://localhost:${port} (${isProduction ? 'production' : 'development'})`);
+});
+
+// グレースフルシャットダウン。PaaS / コンテナは停止時に SIGTERM を送るため、
+// 進行中のリクエストを捌いてから終了する。
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`${signal} received. Shutting down gracefully...`);
+  server.close(() => {
+    console.log('HTTP server closed.');
+    process.exit(0);
+  });
+  // 一定時間で閉じきれなければ強制終了。
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout.');
+    process.exit(1);
+  }, 10000).unref?.();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (error) => {
+  console.error('[uncaughtException]', error);
 });
