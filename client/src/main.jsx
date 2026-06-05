@@ -740,7 +740,7 @@ function App() {
       {authMode === 'login' && <LoginSection form={form} setForm={setForm} onLogin={loginWithFirebase} onGoogle={continueWithGoogle} onResetPassword={resetPassword} onShowRegister={() => showAuth('register')} />}
     </AuthModal>}
     {view === 'app' && user ? <AppDashboard {...shared} onBackSite={() => setView('site')} /> : <>
-      <SiteHeader isAuthed={isAuthed} plan={plan} onSignup={() => showAuth('register')} onLogin={() => showAuth('login')} onOpenApp={() => openApp('match')} />
+      <SiteHeader isAuthed={isAuthed} user={user} plan={plan} notificationCount={notificationCount} onSignup={() => showAuth('register')} onLogin={() => showAuth('login')} onOpenApp={() => openApp('match')} openProfileEditor={openProfileEditor} logout={logout} onGoApp={() => { openApp('match'); }} onGoNotifications={() => { openApp('notifications'); }} />
       <main>
         <Hero onSignup={() => showAuth('register')} onOpenApp={() => openApp('match')} />
         {isAuthed && <ReturnToAppCard user={user} openApp={openApp} />}
@@ -752,15 +752,45 @@ function App() {
   </>;
 }
 
-function SiteHeader({ isAuthed, plan, onSignup, onLogin, onOpenApp }) {
+function SiteHeader({ isAuthed, user, plan, notificationCount, onSignup, onLogin, onOpenApp, openProfileEditor, logout, onGoApp, onGoNotifications, brandHref, onBrandClick, activeTab, setActiveTab }) {
+  const [accountOpen, setAccountOpen] = useState(false);
+  const brandEl = onBrandClick
+    ? <button className="brand app-brand-button" type="button" onClick={onBrandClick} aria-label="Pairlyトップへ"><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" /></button>
+    : <a className="brand" href={brandHref || '#top'}><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" /></a>;
   return <header className="site-header">
-    <a className="brand" href="#top"><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" /></a>
+    {brandEl}
     <nav className="site-nav">
-      <button className="nav-button" onClick={onOpenApp}>マッチング</button><a href="#pricing">料金</a><a href="#safety">安全・規約</a>
+      {setActiveTab ? <>
+        <button type="button" className={cx('nav-button', activeTab === 'match' && 'active')} onClick={() => setActiveTab('match')}>マッチング</button>
+        <button type="button" className={cx('nav-button', activeTab === 'pricing' && 'active')} onClick={() => setActiveTab('pricing')}>料金</button>
+        <button type="button" className={cx('nav-button', activeTab === 'safety' && 'active')} onClick={() => setActiveTab('safety')}>安全・規約</button>
+      </> : <>
+        <button className="nav-button" onClick={onOpenApp}>マッチング</button><a href="#pricing">料金</a><a href="#safety">安全・規約</a>
+      </>}
     </nav>
     <div className="header-actions">
       {isAuthed ? <span className="plan-pill">{planLabel(plan)}</span> : <button className="plain" onClick={onLogin}>ログイン</button>}
-      <button className="primary small" onClick={isAuthed ? onOpenApp : onSignup}>{isAuthed ? 'アプリを開く' : '無料登録'}</button>
+      <button className="primary small" onClick={isAuthed ? (onGoApp || onOpenApp) : onSignup}>{isAuthed ? 'アプリを開く' : '無料登録'}</button>
+      {isAuthed && user && <>
+        <button className={cx('appv2-notification-btn', activeTab === 'notifications' && 'active')} type="button" onClick={onGoNotifications || (() => setActiveTab?.('notifications'))} aria-label="通知">
+          <span>{TAB_ICONS.notifications}</span>
+          {notificationCount > 0 && <em>{notificationCount}</em>}
+        </button>
+        <div className="account-menu">
+          <button className={cx('appv2-avatar', accountOpen && 'active')} type="button" onClick={() => setAccountOpen(o => !o)} aria-haspopup="menu" aria-expanded={accountOpen}>
+            {user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0,1) || 'P')}
+          </button>
+          {accountOpen && <div className="account-dropdown" role="menu">
+            <div className="account-dropdown-head">
+              <div className="account-dropdown-avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0,1) || 'P')}</div>
+              <div><b>{user.name}</b><span>{user.email || user.riotId}</span></div>
+            </div>
+            <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); openProfileEditor?.(); }}>プロフィール編集</button>
+            <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); (onGoApp || onOpenApp)?.(); }}>マッチングへ</button>
+            <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); logout?.(); }}>ログアウト</button>
+          </div>}
+        </div>
+      </>}
     </div>
   </header>;
 }
@@ -1038,44 +1068,19 @@ function ReturnToAppCard({ user, openApp }) {
 
 function AppDashboard(props) {
   const { activeTab, setActiveTab, onBackSite, user, plan, notificationCount, openProfileEditor, logout } = props;
-  const [accountOpen, setAccountOpen] = useState(false);
   return (
     <div className="appv2">
-      <header className="site-header">
-        <button className="brand app-brand-button" type="button" onClick={onBackSite} aria-label="Pairlyトップへ">
-          <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" />
-        </button>
-        <nav className="site-nav" aria-label="サイトメニュー">
-          <button type="button" className={cx('nav-button', activeTab === 'match' && 'active')} onClick={() => setActiveTab('match')}>マッチング</button>
-          <button type="button" className={cx('nav-button', activeTab === 'pricing' && 'active')} onClick={() => setActiveTab('pricing')}>料金</button>
-          <button type="button" className={cx('nav-button', activeTab === 'safety' && 'active')} onClick={() => setActiveTab('safety')}>安全・規約</button>
-        </nav>
-        <div className="header-actions">
-          <span className="plan-pill">{planLabel(plan)}</span>
-          <button className="primary small" type="button" onClick={() => setActiveTab('match')}>アプリを開く</button>
-          <button className={cx('appv2-notification-btn', activeTab === 'notifications' && 'active')} type="button" onClick={() => setActiveTab('notifications')} aria-label="通知">
-            <span>{TAB_ICONS.notifications}</span>
-            {notificationCount > 0 && <em>{notificationCount}</em>}
-          </button>
-          <div className="account-menu">
-            <button className={cx('appv2-avatar', accountOpen && 'active')} type="button" onClick={() => setAccountOpen((open) => !open)} aria-haspopup="menu" aria-expanded={accountOpen}>
-              {user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0,1) || 'P')}
-            </button>
-            {accountOpen && <div className="account-dropdown" role="menu">
-              <div className="account-dropdown-head">
-                <div className="account-dropdown-avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0,1) || 'P')}</div>
-                <div><b>{user.name}</b><span>{user.email || user.riotId}</span></div>
-              </div>
-              <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); openProfileEditor(); }}>プロフィール編集</button>
-              <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); setActiveTab('match'); }}>マッチングへ</button>
-              <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); setActiveTab('dm'); }}>DM</button>
-              <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); setActiveTab('notifications'); }}>通知</button>
-              <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); onBackSite(); }}>サイトへ戻る</button>
-              <button type="button" role="menuitem" className="danger" onClick={() => { setAccountOpen(false); logout(); }}>ログアウト</button>
-            </div>}
-          </div>
-        </div>
-      </header>
+      <SiteHeader
+        isAuthed={true}
+        user={user}
+        plan={plan}
+        notificationCount={notificationCount}
+        onBrandClick={onBackSite}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        openProfileEditor={openProfileEditor}
+        logout={logout}
+      />
       <main className={cx('appv2-content', activeTab === 'dm' && 'appv2-content--dm')} key={activeTab}>
         <TabPanel {...props} />
       </main>
