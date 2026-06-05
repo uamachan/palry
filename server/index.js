@@ -72,11 +72,32 @@ app.use(cors({
     return callback(new Error('Not allowed by CORS'));
   }
 }));
+// Content-Security-Policy（本番のみ）。XSS 時の被害を抑える。
+// Firebase 認証（Google ログインの iframe/gapi）と data URL の写真/音声を
+// 壊さないよう必要な origin だけ許可する。開発は Vite の HMR/inline を壊すため付与しない。
+const firebaseAuthDomain = cleanText(process.env.VITE_FIREBASE_AUTH_DOMAIN, 200);
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self' https://apis.google.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "media-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.googleapis.com",
+  `frame-src 'self' ${firebaseAuthDomain ? `https://${firebaseAuthDomain} ` : ''}https://*.firebaseapp.com https://accounts.google.com https://apis.google.com`,
+  "worker-src 'self' blob:"
+].join('; ');
+
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), payment=()');
+  if (isProduction) res.setHeader('Content-Security-Policy', contentSecurityPolicy);
   next();
 });
 
