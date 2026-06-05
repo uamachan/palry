@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
+import { browserLocalPersistence, createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, sendEmailVerification, sendPasswordResetEmail, setPersistence, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
 import { api } from './api.js';
 import { firebaseAuth, firebaseReady } from './firebase.js';
 import './styles.css';
@@ -28,14 +28,11 @@ const agents = [
 const regions = ['北海道', '東北', '関東', '中部', '関西', '中国・四国', '九州・沖縄', '海外'];
 const intentTags = ['気軽に遊ぶ友達', 'ランクガチ', '恋人探し', 'まずはデュオ', '固定相方', 'VCで話したい', '聞き専OK', '初心者歓迎', '夜メイン', '休日メイン'];
 const appTabs = [
-  { id: 'match', label: 'マッチング' },
-  { id: 'dm', label: 'メッセージ' },
-  { id: 'footprints', label: '足あと' },
-  { id: 'pricing', label: '料金' },
-  { id: 'profile', label: 'プロフィール' },
-  { id: 'safety', label: '安全・規約' },
-  { id: 'admin', label: '管理' }
+  { id: 'match', label: 'マッチング', emoji: '🎯' },
+  { id: 'dm', label: 'メッセージ', emoji: '💬' },
+  { id: 'footprints', label: '足あと', emoji: '👣' },
 ];
+const googleProvider = new GoogleAuthProvider();
 
 function cx(...v) { return v.filter(Boolean).join(' '); }
 function planLabel(name) {
@@ -54,13 +51,18 @@ function authErrorMessage(error) {
   if (code === 'auth/operation-not-allowed') return 'Firebaseでメール/パスワードログインが有効になっていません。Authenticationのログイン方法を確認してください。';
   if (code === 'auth/network-request-failed') return 'Firebaseに接続できません。ネットワークを確認してください。';
   if (code === 'auth/invalid-email') return 'メールアドレスの形式を確認してください。';
+  if (code === 'auth/popup-closed-by-user') return 'Googleログインのポップアップが閉じられました。もう一度お試しください。';
+  if (code === 'auth/popup-blocked') return 'Googleログインのポップアップがブロックされました。ブラウザ設定を確認してください。';
+  if (code === 'auth/account-exists-with-different-credential') return '同じメールアドレスの別ログイン方法が存在します。メール/パスワードでログインしてください。';
   return message || 'ログイン処理に失敗しました。';
 }
 
 function App() {
   const [user, setUser] = useState(null);
+  const [authBooting, setAuthBooting] = useState(true);
   const [view, setView] = useState('site');
   const [authMode, setAuthMode] = useState(null);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [pendingFirebaseUser, setPendingFirebaseUser] = useState(null);
   const [activeTab, setActiveTab] = useState('match');
   const [pricingTab, setPricingTab] = useState('monthly');
@@ -71,6 +73,7 @@ function App() {
   const [index, setIndex] = useState(0);
   const [stats, setStats] = useState({ likes: 0, passes: 0, super: 0, dual: 5, matches: 0 });
   const [matches, setMatches] = useState([]);
+  const [receivedLikes, setReceivedLikes] = useState([]);
   const [dmThreads, setDmThreads] = useState([]);
   const [activeThreadId, setActiveThreadId] = useState('');
   const [dmDraft, setDmDraft] = useState('');
@@ -78,7 +81,8 @@ function App() {
   const [reports, setReports] = useState([]);
   const [toast, setToast] = useState('');
   const toastTimer = useRef(null);
-  const [form, setForm] = useState({ name: '', gender: '', riotId: '', email: '', emailConfirm: '', password: '', authCode: '', age: '', region: '', profilePhoto: '', rank: 'Gold 1', role: 'フレックス', tags: [], agents: [], xHandle: '', bio: '', agreed: false });
+  const [form, setForm] = useState({ name: '', gender: '', riotId: '', email: '', emailConfirm: '', password: '', age: '', region: '', profilePhoto: '', rank: 'Gold 1', role: 'フレックス', tags: [], agents: [], xHandle: '', bio: '', agreed: false });
+  const [editForm, setEditForm] = useState({ name: '', gender: '', riotId: '', age: '', region: '', profilePhoto: '', rank: 'Gold 1', role: 'フレックス', tags: [], agents: [], xHandle: '', bio: '', agreed: true });
 
   const isAuthed = Boolean(user);
   const current = profiles[index] || null;
@@ -86,6 +90,64 @@ function App() {
   const genderFilterLocked = !activePlan?.genderFilter;
 
   useEffect(() => { api.plans().then(setPlansData).catch(() => showToast('料金データの取得に失敗しました')); }, []);
+
+  useEffect(() => {
+    if (!firebaseReady || !firebaseAuth) {
+      setAuthBooting(false);
+      return;
+    }
+
+    let canceled = false;
+    let unsubscribe = () => {};
+
+    setPersistence(firebaseAuth, browserLocalPersistence).catch(() => null).finally(() => {
+      if (canceled) return;
+      unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
+        if (!firebaseUser) {
+          setUser(null);
+          setPendingFirebaseUser(null);
+          setAuthBooting(false);
+          return;
+        }
+
+        setForm((currentForm) => ({ ...currentForm, email: firebaseUser.email || currentForm.email }));
+        await firebaseUser.reload().catch(() => null);
+        const currentFirebaseUser = firebaseAuth.currentUser || firebaseUser;
+
+        if (!currentFirebaseUser.emailVerified) {
+          setPendingUser(currentFirebaseUser.uid, currentFirebaseUser.email);
+          setAuthMode('emailVerification');
+          setView('site');
+          setAuthBooting(false);
+          return;
+        }
+
+        try {
+          const idToken = await currentFirebaseUser.getIdToken();
+          const payload = await api.login({ idToken });
+          setUser(payload.user);
+          setPlan(payload.user.plan || 'FREE');
+          setPendingFirebaseUser(null);
+          setAuthMode(null);
+          setView('app');
+        } catch (error) {
+          if (error?.message?.includes('Pairlyプロフィール')) {
+            setPendingUser(currentFirebaseUser.uid, currentFirebaseUser.email);
+            setAuthMode('profileSetup');
+          } else {
+            setUser(null);
+          }
+        } finally {
+          setAuthBooting(false);
+        }
+      });
+    });
+
+    return () => {
+      canceled = true;
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (!isAuthed) return;
@@ -103,6 +165,7 @@ function App() {
     if (!user) return;
     refreshMatches();
     refreshDmThreads();
+    refreshReceivedLikes();
   }, [user]);
 
   useEffect(() => {
@@ -110,9 +173,9 @@ function App() {
   }, [activeTab]);
 
   useEffect(() => {
-    document.body.classList.toggle('modal-open', Boolean(authMode));
+    document.body.classList.toggle('modal-open', Boolean(authMode || profileEditorOpen));
     return () => document.body.classList.remove('modal-open');
-  }, [authMode]);
+  }, [authMode, profileEditorOpen]);
 
   function showToast(message) {
     setToast(message);
@@ -126,7 +189,60 @@ function App() {
     setView('site');
   }
 
+  function openProfileEditor() {
+    if (!user) return;
+    setEditForm({
+      name: user.name || '',
+      gender: user.gender || '',
+      riotId: user.riotId || '',
+      age: user.age || '',
+      region: user.region || '',
+      profilePhoto: user.profilePhoto || '',
+      rank: user.rank || 'Gold 1',
+      role: user.role || 'フレックス',
+      tags: Array.isArray(user.tags) ? user.tags : [],
+      agents: Array.isArray(user.agents) ? user.agents : [],
+      xHandle: user.xHandle || '',
+      bio: user.bio || '',
+      agreed: true
+    });
+    setProfileEditorOpen(true);
+  }
+
+  async function saveProfileEdit(event) {
+    event.preventDefault();
+    if (!user) return;
+    if (!editForm.gender) return showToast('性別選択は必須です');
+    if (!editForm.name || !editForm.riotId) return showToast('表示名とRiot IDを入力してください');
+    if (!editForm.age || !editForm.region) return showToast('年齢と地域を入力してください');
+    try {
+      const payload = await api.updateProfile({ ...editForm, userId: user.id });
+      setUser(payload.user);
+      setProfileEditorOpen(false);
+      showToast('プロフィールを更新しました');
+    } catch (e) {
+      showToast(e.message || 'プロフィール更新に失敗しました');
+    }
+  }
+
+  async function logout() {
+    if (firebaseAuth) await signOut(firebaseAuth).catch(() => null);
+    setUser(null);
+    setAuthMode(null);
+    setProfileEditorOpen(false);
+    setPendingFirebaseUser(null);
+    setMatches([]);
+    setDmThreads([]);
+    setActiveThreadId('');
+    setView('site');
+    showToast('ログアウトしました');
+  }
+
   function openApp(tab = 'match') {
+    if (authBooting) {
+      showToast('ログイン状態を確認中です');
+      return;
+    }
     if (!user) {
       showToast('ログインしてください');
       showAuth('login');
@@ -150,7 +266,27 @@ function App() {
   async function advanceToEmailVerification(firebaseUser, message) {
     setPendingUser(firebaseUser.uid, firebaseUser.email);
     setAuthMode('emailVerification');
+    setView('site');
     showToast(message);
+  }
+
+  async function openEmailVerificationFromLegacyCodeError(firebaseUser) {
+    if (!firebaseUser) {
+      showAuth('login');
+      showToast('Firebaseのメール認証が必要です。先にログインしてください');
+      return;
+    }
+    await firebaseUser.reload().catch(() => null);
+    const currentFirebaseUser = firebaseAuth.currentUser || firebaseUser;
+    setPendingUser(currentFirebaseUser.uid, currentFirebaseUser.email);
+    setAuthMode('emailVerification');
+    setView('site');
+    if (!currentFirebaseUser.emailVerified) {
+      await sendEmailVerification(currentFirebaseUser).catch(() => null);
+      showToast('認証コードではなく、Firebaseの確認メールを送信しました');
+    } else {
+      showToast('認証コードは不要です。ページを更新してもう一度ログインしてください');
+    }
   }
 
   async function resendVerificationEmail() {
@@ -173,19 +309,10 @@ function App() {
         showToast('メール確認がまだ完了していません。メール内のリンクを開いてからもう一度押してください');
         return;
       }
-      setPendingUser(firebaseAuth.currentUser.uid, firebaseAuth.currentUser.email);
-      setAuthMode('authCodeSetup');
-      showToast('メール確認が完了しました。ログイン用の認証コードを設定してください');
+      await advanceToProfileSetup(firebaseAuth.currentUser.uid, firebaseAuth.currentUser.email, 'メール認証が完了しました。プロフィールを設定してください');
     } catch (e) {
       showToast(authErrorMessage(e));
     }
-  }
-
-  function saveAuthCode(event) {
-    event.preventDefault();
-    if (!/^\d{4,8}$/.test(form.authCode)) return showToast('ログイン用の認証コードを4〜8桁の数字で設定してください');
-    setAuthMode('profileSetup');
-    showToast('認証コードを設定しました。プロフィールを入力してください');
   }
 
   async function createAccount(event) {
@@ -205,9 +332,7 @@ function App() {
             await sendEmailVerification(credential.user);
             await advanceToEmailVerification(credential.user, '確認メールを送信しました。メール認証後に次へ進めます');
           } else {
-            setPendingUser(credential.user.uid, credential.user.email);
-            setAuthMode('authCodeSetup');
-            showToast('メール確認済みです。ログイン用の認証コードを設定してください');
+            await advanceToProfileSetup(credential.user.uid, credential.user.email, 'メール確認済みです。プロフィールを設定してください');
           }
           return;
         } catch (retryError) {
@@ -225,14 +350,15 @@ function App() {
     event.preventDefault();
     if (!firebaseReady || !firebaseAuth) return showToast('Firebase設定が未設定です。.envを確認してください');
     if (!pendingFirebaseUser) return showToast('先にメールアドレスを登録してください');
-    if (!firebaseAuth.currentUser?.emailVerified) return showToast('プロフィール作成前にメール認証を完了してください');
+    const firebaseUser = firebaseAuth.currentUser;
+    if (!firebaseUser?.emailVerified) return showToast('プロフィール作成前にメール認証を完了してください');
     if (!form.gender) return showToast('性別選択は必須です');
     if (!form.name || !form.riotId) return showToast('表示名とRiot IDを入力してください');
-    if (!/^\d{4,8}$/.test(form.authCode)) return showToast('ログイン用の認証コードを4〜8桁の数字で設定してください');
     if (!form.age || !form.region) return showToast('年齢と地域を入力してください');
     if (!form.agreed) return showToast('利用規約への同意が必要です');
     try {
-      const payload = await api.register({ ...form, firebaseUid: pendingFirebaseUser.uid, email: pendingFirebaseUser.email, emailVerified: true });
+      const idToken = await firebaseUser.getIdToken(true);
+      const payload = await api.register({ ...form, idToken });
       setPendingFirebaseUser(null);
       completeAuth(payload.user, 'アカウント作成とログインが完了しました');
     } catch (e) { showToast(e.message || 'プロフィール作成に失敗しました'); }
@@ -251,16 +377,15 @@ function App() {
   async function loginWithFirebase() {
     if (!firebaseReady || !firebaseAuth) return showToast('Firebase設定が未設定です。.envを確認してください');
     if (!form.email || !form.password) return showToast('メールアドレスとパスワードを入力してください');
-    if (!form.authCode) return showToast('認証コードを入力してください');
     try {
       const credential = await signInWithEmailAndPassword(firebaseAuth, form.email, form.password);
       if (!credential.user.emailVerified) {
-        await sendEmailVerification(credential.user);
-        await advanceToEmailVerification(credential.user, 'メール認証が必要です。確認メールを送信しました');
+        await advanceToEmailVerification(credential.user, 'メール認証が必要です。メール内のリンクを確認してください');
         return;
       }
       try {
-        const payload = await api.login({ firebaseUid: credential.user.uid, email: credential.user.email, authCode: form.authCode });
+        const idToken = await credential.user.getIdToken(true);
+        const payload = await api.login({ idToken });
         completeAuth(payload.user, 'ログインしました');
       } catch (profileError) {
         if (profileError?.message?.includes('Pairlyプロフィール')) {
@@ -268,15 +393,50 @@ function App() {
             await sendEmailVerification(credential.user);
             await advanceToEmailVerification(credential.user, '確認メールを送信しました。メール認証後にプロフィール設定へ進めます');
           } else {
-            setPendingUser(credential.user.uid, credential.user.email);
-            setAuthMode('authCodeSetup');
-            showToast('ログイン用の認証コードを設定してください');
+            await advanceToProfileSetup(credential.user.uid, credential.user.email, 'プロフィールを設定してください');
           }
+          return;
+        }
+        if (profileError?.message?.includes('認証コード')) {
+          await openEmailVerificationFromLegacyCodeError(credential.user);
           return;
         }
         showToast(profileError.message || 'ログインに失敗しました');
       }
-    } catch (e) { showToast(authErrorMessage(e)); }
+    } catch (e) {
+      if (authErrorMessage(e).includes('認証コード')) {
+        await openEmailVerificationFromLegacyCodeError(firebaseAuth?.currentUser);
+        return;
+      }
+      showToast(authErrorMessage(e));
+    }
+  }
+
+  async function continueWithGoogle() {
+    if (!firebaseReady || !firebaseAuth) return showToast('Firebase設定が未設定です。.envを確認してください');
+    try {
+      const credential = await signInWithPopup(firebaseAuth, googleProvider);
+      if (!credential.user.emailVerified) {
+        await advanceToEmailVerification(credential.user, 'Googleアカウントのメール確認が必要です。メール内のリンクを確認してください');
+        return;
+      }
+      try {
+        const idToken = await credential.user.getIdToken(true);
+        const payload = await api.login({ idToken });
+        completeAuth(payload.user, 'Googleでログインしました');
+      } catch (profileError) {
+        if (profileError?.message?.includes('Pairlyプロフィール')) {
+          setPendingUser(credential.user.uid, credential.user.email);
+          setForm((current) => ({ ...current, email: credential.user.email || current.email }));
+          setAuthMode('profileSetup');
+          showToast('Googleアカウントで認証しました。プロフィールを設定してください');
+          return;
+        }
+        showToast(profileError.message || 'Googleログインに失敗しました');
+      }
+    } catch (e) {
+      showToast(authErrorMessage(e));
+    }
   }
 
   async function resetPassword() {
@@ -294,6 +454,24 @@ function App() {
     setMatches(payload.matches || []);
   }
 
+  async function refreshReceivedLikes() {
+    if (!user) return;
+    const payload = await api.receivedLikes(user.id).catch(() => ({ receivedLikes: [] }));
+    setReceivedLikes(payload.receivedLikes || []);
+  }
+
+  async function acceptLike(receivedLikeId) {
+    if (!user) return;
+    try {
+      const payload = await api.acceptLike({ userId: user.id, receivedLikeId });
+      setReceivedLikes((list) => list.filter((r) => r.id !== receivedLikeId));
+      setStats((s) => ({ ...s, matches: s.matches + 1 }));
+      showToast('🎉 マッチしました！メッセージを送れます');
+      await refreshMatches();
+      await refreshDmThreads(payload.match?.id);
+    } catch (e) { showToast(e.message); }
+  }
+
   async function refreshDmThreads(selectMatchId) {
     if (!user) return;
     const payload = await api.dmThreads(user.id).catch(() => ({ threads: [] }));
@@ -304,6 +482,26 @@ function App() {
       if (currentId && threads.some((thread) => thread.match.id === currentId)) return currentId;
       return threads[0]?.match.id || '';
     });
+  }
+
+  async function markDmRead(matchId) {
+    if (!user || !matchId) return;
+    const readAt = new Date().toISOString();
+    setDmThreads((threads) => threads.map((thread) => (
+      thread.match.id === matchId
+        ? {
+          ...thread,
+          unreadCount: 0,
+          messages: thread.messages.map((message) => message.sender !== 'user' && !message.readAt ? { ...message, readAt } : message)
+        }
+        : thread
+    )));
+    await api.markDmRead({ userId: user.id, matchId }).catch(() => null);
+  }
+
+  function selectDmThread(matchId) {
+    setActiveThreadId(matchId);
+    markDmRead(matchId);
   }
 
   function track(profile, action) {
@@ -324,20 +522,20 @@ function App() {
     }
     try {
       const payload = await api.like({ userId: user.id, profileId: current.id, type, plan });
-      const label = type === 'dual' ? '両いいね' : type === 'super' ? 'スーパーいいね' : 'いいね';
+      const label = type === 'super' ? 'スーパーいいね ⭐' : type === 'dual' ? '両いいね ⚡' : 'いいね 💖';
       setStats((s) => ({
         ...s,
         likes: type === 'like' ? s.likes + 1 : s.likes,
         super: type === 'super' ? s.super + 1 : s.super,
         dual: type === 'dual' && plan !== 'VIP' ? Math.max(0, s.dual - 1) : s.dual,
-        matches: payload.matched ? s.matches + 1 : s.matches
       }));
       track(current, label);
-      if (payload.matched) {
-        showToast(`${current.name} とマッチ。メッセージが解放されました`);
-        await refreshMatches();
-        await refreshDmThreads(payload.match?.id);
-      } else showToast(`${label}を送りました`);
+      if (payload.liked_back) {
+        showToast(`💌 ${current.name}さんからいいねが届きました！承認するとマッチします`);
+        await refreshReceivedLikes();
+      } else {
+        showToast(`${label}を送りました`);
+      }
       nextCard();
     } catch (e) { showToast(e.message); }
   }
@@ -384,16 +582,18 @@ function App() {
       showToast(`${planLabel(nextPlan)} に切り替えました（デモ）`);
   }
 
-  const shared = { user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, pricingTab, setPricingTab, buyPlan, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, stats, matches, dmThreads, activeThreadId, setActiveThreadId, dmDraft, setDmDraft, sendDm, footprints, reports, profiles, index, form, setForm, openApp };
+  const shared = { user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, pricingTab, setPricingTab, buyPlan, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, stats, matches, receivedLikes, acceptLike, dmThreads, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout };
 
   return <>
     {toast && <div className="toast">{toast}</div>}
-    {!isAuthed && authMode && <AuthModal onClose={() => setAuthMode(null)} size={['register', 'login', 'emailVerification', 'authCodeSetup'].includes(authMode) ? 'narrow' : undefined}>
-      {authMode === 'register' && <AccountSignupSection form={form} setForm={setForm} onSubmit={createAccount} onShowLogin={() => showAuth('login')} />}
+    {isAuthed && profileEditorOpen && <AuthModal onClose={() => setProfileEditorOpen(false)}>
+      <ProfileEditSection form={editForm} setForm={setEditForm} user={user} onSubmit={saveProfileEdit} onCancel={() => setProfileEditorOpen(false)} />
+    </AuthModal>}
+    {!isAuthed && authMode && <AuthModal onClose={() => setAuthMode(null)} size={['register', 'login', 'emailVerification'].includes(authMode) ? 'narrow' : undefined}>
+      {authMode === 'register' && <AccountSignupSection form={form} setForm={setForm} onSubmit={createAccount} onGoogle={continueWithGoogle} onShowLogin={() => showAuth('login')} />}
       {authMode === 'emailVerification' && <EmailVerificationSection pendingEmail={pendingFirebaseUser?.email} onCheck={confirmEmailVerified} onResend={resendVerificationEmail} onShowLogin={() => showAuth('login')} />}
-      {authMode === 'authCodeSetup' && <AuthCodeSetupSection form={form} setForm={setForm} pendingEmail={pendingFirebaseUser?.email} onSubmit={saveAuthCode} onShowLogin={() => showAuth('login')} />}
       {authMode === 'profileSetup' && <SignupSection form={form} setForm={setForm} pendingEmail={pendingFirebaseUser?.email} onSubmit={register} onShowLogin={() => showAuth('login')} />}
-      {authMode === 'login' && <LoginSection form={form} setForm={setForm} onLogin={loginWithFirebase} onResetPassword={resetPassword} onShowRegister={() => showAuth('register')} />}
+      {authMode === 'login' && <LoginSection form={form} setForm={setForm} onLogin={loginWithFirebase} onGoogle={continueWithGoogle} onResetPassword={resetPassword} onShowRegister={() => showAuth('register')} />}
     </AuthModal>}
     {view === 'app' && user ? <AppDashboard {...shared} onBackSite={() => setView('site')} /> : <>
       <SiteHeader isAuthed={isAuthed} plan={plan} onSignup={() => showAuth('register')} onLogin={() => showAuth('login')} onOpenApp={() => openApp('match')} />
@@ -448,12 +648,12 @@ function Hero({ onSignup, onOpenApp }) {
   </section>;
 }
 
-function LoginSection({ form, setForm, onLogin, onResetPassword, onShowRegister }) {
+function LoginSection({ form, setForm, onLogin, onGoogle, onResetPassword, onShowRegister }) {
   return <section className="email-signup-panel">
     <div className="email-signup-header">
       <span className="eyebrow">ログイン</span>
       <h2>ログイン</h2>
-      <p>メールアドレス、パスワード、認証コードでログインします。</p>
+      <p>メールアドレスとパスワードでログインします。メール未確認の場合はFirebaseの確認メールが必要です。</p>
     </div>
     <form className="email-signup-form signup-card" autoComplete="on" onSubmit={(event) => { event.preventDefault(); onLogin(); }}>
       <label className="email-field-label">
@@ -464,12 +664,9 @@ function LoginSection({ form, setForm, onLogin, onResetPassword, onShowRegister 
         <span>パスワード</span>
         <input required id="login-password" name="password" type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="6文字以上" />
       </label>
-      <label className="email-field-label">
-        <span>認証コード</span>
-        <input required id="login-auth-code" name="one-time-code" type="text" inputMode="numeric" autoComplete="one-time-code" value={form.authCode} onChange={(e) => setForm({ ...form, authCode: e.target.value.replace(/\D/g, '').slice(0, 8) })} placeholder="登録時に設定したコード" />
-      </label>
       <div className="email-signup-actions">
         <button type="submit" className="primary">ログイン</button>
+        <button type="button" className="secondary google-button" onClick={onGoogle}>Googleでログイン</button>
         <button type="button" className="secondary" onClick={onShowRegister}>アカウント作成はこちら</button>
         <button type="button" className="plain reset-password-link" onClick={onResetPassword}>パスワードを忘れた方</button>
       </div>
@@ -477,7 +674,7 @@ function LoginSection({ form, setForm, onLogin, onResetPassword, onShowRegister 
   </section>;
 }
 
-function AccountSignupSection({ form, setForm, onSubmit, onShowLogin }) {
+function AccountSignupSection({ form, setForm, onSubmit, onGoogle, onShowLogin }) {
   return <section className="email-signup-panel">
     <div className="email-signup-header">
       <span className="eyebrow">アカウント作成</span>
@@ -499,6 +696,7 @@ function AccountSignupSection({ form, setForm, onSubmit, onShowLogin }) {
       </label>
       <div className="email-signup-actions">
         <button type="submit" className="primary">次のステップへ</button>
+        <button type="button" className="secondary google-button" onClick={onGoogle}>Googleで続ける</button>
         <button type="button" className="plain reset-password-link" onClick={onShowLogin}>すでにアカウントがある方はこちら</button>
       </div>
     </form>
@@ -510,7 +708,7 @@ function EmailVerificationSection({ pendingEmail, onCheck, onResend, onShowLogin
     <div className="email-signup-header">
       <span className="eyebrow">メール認証</span>
       <h2>メールを確認してください</h2>
-      <p>{pendingEmail || '登録メールアドレス'} に確認メールを送信しました。メール内のリンクを開くと、次のステップへ進めます。</p>
+      <p>{pendingEmail || '登録メールアドレス'} にFirebaseの確認メールを送信しました。メール内のリンクを開くと、次のステップへ進めます。</p>
     </div>
     <div className="signup-card email-confirm-card">
       <div className="mail-check-icon">@</div>
@@ -528,32 +726,22 @@ function EmailVerificationSection({ pendingEmail, onCheck, onResend, onShowLogin
   </section>;
 }
 
-function AuthCodeSetupSection({ form, setForm, pendingEmail, onSubmit, onShowLogin }) {
-  return <section className="email-signup-panel">
-    <div className="email-signup-header">
-      <span className="eyebrow">認証コード設定</span>
-      <h2>ログイン用コードを設定</h2>
-      <p>{pendingEmail && `${pendingEmail} の`}ログイン時に使う4〜8桁の数字を設定します。</p>
-    </div>
-    <form className="email-signup-form signup-card" autoComplete="off" onSubmit={onSubmit}>
-      <label className="email-field-label">
-        <span>認証コード</span>
-        <input required id="setup-auth-code" name="authCode" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength="8" value={form.authCode} onChange={(e) => setForm({ ...form, authCode: e.target.value.replace(/\D/g, '').slice(0, 8) })} placeholder="4〜8桁の数字" />
-      </label>
-      <p className="auth-code-note">このコードは次回以降のログインで、メールアドレスとパスワードに加えて必要になります。</p>
-      <div className="email-signup-actions">
-        <button type="submit" className="primary">プロフィール設定へ進む</button>
-        <button type="button" className="plain reset-password-link" onClick={onShowLogin}>ログインに戻る</button>
-      </div>
-    </form>
-  </section>;
-}
-
 function SignupSection({ form, setForm, pendingEmail, onSubmit, onShowLogin }) {
   return <section className="setup-profile-section"><div className="setup-title"><span>プロフィール設定</span><h2>プロフィール設定</h2>{pendingEmail && <p className="registered-email">登録メール: {pendingEmail}</p>}</div><SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onShowLogin} /></section>;
 }
 
-function SignupForm({ form, setForm, onSubmit, onShowLogin }) {
+function ProfileEditSection({ form, setForm, user, onSubmit, onCancel }) {
+  return <section className="setup-profile-section profile-edit-section">
+    <div className="setup-title">
+      <span>アカウント</span>
+      <h2>プロフィール編集</h2>
+      <p className="registered-email">ログイン中: {user.email || user.name}</p>
+    </div>
+    <SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onCancel} submitLabel="変更を保存" cancelLabel="キャンセル" showAgreement={false} />
+  </section>;
+}
+
+function SignupForm({ form, setForm, onSubmit, onShowLogin, submitLabel = '無料でアカウント作成', cancelLabel = 'ログインに戻る', showAgreement = true }) {
   const toggleAgent = (agent) => setForm((f) => ({ ...f, agents: f.agents.includes(agent) ? f.agents.filter((a) => a !== agent) : [...f.agents, agent].slice(0, 5) }));
   const toggleTag = (tag) => setForm((f) => ({ ...f, tags: f.tags.includes(tag) ? f.tags.filter((item) => item !== tag) : [...f.tags, tag].slice(0, 4) }));
   function selectPhoto(event) {
@@ -584,9 +772,9 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin }) {
       <fieldset className="span-all intent-fieldset"><legend>目的タグ（4つまで）</legend><div className="chip-list intent-chip-list">{intentTags.map((tag) => <button type="button" key={tag} className={form.tags.includes(tag) ? 'selected' : ''} onClick={() => toggleTag(tag)}>{tag}</button>)}</div></fieldset>
       <fieldset className="span-all agent-fieldset"><legend>よく使うキャラクター（5体まで）</legend><div className="chip-list">{agents.map((agent) => <button type="button" key={agent} className={form.agents.includes(agent) ? 'selected' : ''} onClick={() => toggleAgent(agent)}>{agent}</button>)}</div></fieldset>
       <label className="span-all setup-bio">自己紹介<textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="プレイ時間、VC、雰囲気、NGなことなど" /></label>
-      <label className="check span-all"><input type="checkbox" checked={form.agreed} onChange={(e) => setForm({ ...form, agreed: e.target.checked })} />本サービスを閲覧・登録・ログイン・いいね・マッチング・メッセージ・通報・課金・外部SNS連携などで使用した時点で利用規約に同意したものとみなします。登録時にも規約へ同意します。</label>
+      {showAgreement && <label className="check span-all"><input type="checkbox" checked={form.agreed} onChange={(e) => setForm({ ...form, agreed: e.target.checked })} />本サービスを閲覧・登録・ログイン・いいね・マッチング・メッセージ・通報・課金・外部SNS連携などで使用した時点で利用規約に同意したものとみなします。登録時にも規約へ同意します。</label>}
     </div>
-    <div className="form-actions"><button className="primary" type="submit">無料でアカウント作成</button><button type="button" className="secondary" onClick={onShowLogin}>ログインに戻る</button></div>
+    <div className="form-actions"><button className="primary" type="submit">{submitLabel}</button><button type="button" className="secondary" onClick={onShowLogin}>{cancelLabel}</button></div>
   </form>;
 }
 
@@ -595,17 +783,46 @@ function ReturnToAppCard({ user, openApp }) {
 }
 
 function AppDashboard(props) {
-  const { activeTab, setActiveTab, tabs, onBackSite } = props;
-  return <main className="app-view">
-    <header className="app-topbar"><button className="back-link" onClick={onBackSite}>← サイトに戻る</button><img src="/assets/pairly-logo-wide.png" alt="Pairly" /><span className="app-label">マッチング画面</span></header>
-    <div className="app-layout">
-      <aside className="app-sidebar"><ProfileSummary {...props} /><GenderFilter {...props} /></aside>
-      <section className="app-main-panel">
-        <div className="app-tabs" role="tablist">{tabs.map((tab) => <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)}>{tab.label}</button>)}</div>
+  const { activeTab, setActiveTab, tabs, onBackSite, user, plan, stats, openProfileEditor, logout } = props;
+  const [accountOpen, setAccountOpen] = useState(false);
+  return (
+    <div className="appv2">
+      <header className="appv2-topbar">
+        <button className="appv2-back" onClick={onBackSite}>←</button>
+        <img src="/assets/pairly-logo-wide.png" alt="Pairly" className="appv2-logo" />
+        <div className="appv2-topbar-right">
+          <span className="appv2-stat">🔥 {stats.matches}</span>
+          <span className="appv2-plan">{planLabel(plan)}</span>
+          <div className="account-menu">
+            <button className={cx('appv2-avatar', accountOpen && 'active')} type="button" onClick={() => setAccountOpen((open) => !open)} aria-haspopup="menu" aria-expanded={accountOpen}>
+              {user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0,1) || 'P')}
+            </button>
+            {accountOpen && <div className="account-dropdown" role="menu">
+              <div className="account-dropdown-head">
+                <div className="account-dropdown-avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0,1) || 'P')}</div>
+                <div><b>{user.name}</b><span>{user.email || user.riotId}</span></div>
+              </div>
+              <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); openProfileEditor(); }}>プロフィール編集</button>
+              <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); setActiveTab('match'); }}>マッチングへ</button>
+              <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); onBackSite(); }}>サイトへ戻る</button>
+              <button type="button" role="menuitem" className="danger" onClick={() => { setAccountOpen(false); logout(); }}>ログアウト</button>
+            </div>}
+          </div>
+        </div>
+      </header>
+      <main className="appv2-content" key={activeTab}>
         <TabPanel {...props} />
-      </section>
+      </main>
+      <nav className="appv2-bottom-nav">
+        {tabs.map((tab) => (
+          <button key={tab.id} className={cx('appv2-nav-btn', activeTab === tab.id && 'active')} onClick={() => setActiveTab(tab.id)}>
+            <span className="appv2-nav-icon">{tab.emoji}</span>
+            <span className="appv2-nav-label">{tab.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
-  </main>;
+  );
 }
 
 function ProfileSummary({ user, plan, stats }) {
@@ -621,89 +838,121 @@ function TabPanel(props) {
     case 'match': return <MatchPanel {...props} />;
     case 'dm': return <DmPanel {...props} />;
     case 'footprints': return <FootprintsPanel {...props} />;
-    case 'pricing': return <PricingPanel {...props} />;
-    case 'profile': return <ProfilePanel {...props} />;
-    case 'safety': return <SafetyCompact />;
-    case 'admin': return <AdminPanel {...props} />;
     default: return <MatchPanel {...props} />;
   }
 }
 
-function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, profiles, index }) {
+function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, profiles, index, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike }) {
+  const [swipeDir, setSwipeDir] = React.useState(null);
+
+  async function handleSwipe(type) {
+    const dir = type === 'pass' ? 'left' : type === 'super' ? 'up' : 'right';
+    setSwipeDir(dir);
+    await new Promise((r) => setTimeout(r, 300));
+    setSwipeDir(null);
+    swipe(type);
+  }
+
   return (
-    <div className="tinder-match-panel">
-      <div className="tinder-card-area">
+    <div className="mp-wrap">
+      {/* 受け取ったいいね */}
+      {receivedLikes?.length > 0 && (
+        <div className="mp-received-section">
+          <div className="mp-received-header">💌 いいねが届いています <span>{receivedLikes.length}</span></div>
+          <div className="mp-received-list">
+            {receivedLikes.map((rl) => (
+              <div key={rl.id} className="mp-received-card">
+                <div className="mp-received-avatar">
+                  {rl.fromPhoto ? <img src={rl.fromPhoto} alt={rl.fromProfileName} /> : rl.fromProfileName?.slice(0,1) || '?'}
+                </div>
+                <div className="mp-received-info">
+                  <b>{rl.fromProfileName}</b>
+                  <span>{rl.fromRank} · {rl.fromRole}</span>
+                </div>
+                <button className="mp-accept-btn" onClick={() => acceptLike(rl.id)}>承認 💕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* フィルター行 */}
+      <div className="mp-filter-row">
+        <span className="mp-filter-label">🔍</span>
+        <select className="mp-filter-select" disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)}>
+          <option value="all">すべて</option>
+          <option value="女性">女性</option>
+          <option value="男性">男性</option>
+          <option value="その他/未設定">その他</option>
+        </select>
+        {genderFilterLocked && <span className="mp-lock-hint">🔒 PLUS/VIPで解放</span>}
+        <span className="mp-remain">👥 {Math.max(0, profiles.length - index)}</span>
+      </div>
+
+      {/* プロフィールカード */}
+      <div className="mp-card-wrap">
         {current ? (
-          <TinderProfileCard profile={current} onReport={reportCurrent} onBlock={blockCurrent} />
+          <TinderProfileCard key={current.id} profile={current} onReport={reportCurrent} onBlock={blockCurrent} swipeDir={swipeDir} />
         ) : (
-          <div className="tinder-empty-card">
-            <div className="tinder-empty-icon">🎮</div>
+          <div className="mp-empty">
+            <div className="mp-empty-icon">🤖</div>
             <h3>候補がなくなりました</h3>
-            <p>条件を変えるか、しばらくしてから再読み込みしてください。</p>
+            <p>AIが新しい候補を探しています…</p>
           </div>
         )}
       </div>
-      <div className="tinder-actions">
-        <button className="tinder-btn tinder-btn-undo" title="元に戻す" onClick={() => {}}>
+
+      {/* アクションボタン */}
+      <div className="mp-actions">
+        <button className="mp-btn mp-btn-undo" title="元に戻す" onClick={() => {}}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
         </button>
-        <button className="tinder-btn tinder-btn-pass" onClick={() => swipe('pass')} title="見送る">
+        <button className="mp-btn mp-btn-pass mp-btn-lg" onClick={() => handleSwipe('pass')} title="見送る">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
-        <button className="tinder-btn tinder-btn-super" onClick={() => swipe('super')} title="スーパーいいね">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-        </button>
-        <button className="tinder-btn tinder-btn-like" onClick={() => swipe('like')} title="いいね">
+        <button className="mp-btn mp-btn-like mp-btn-lg" onClick={() => handleSwipe('like')} title="いいね 💖">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>
-        <button className="tinder-btn tinder-btn-dual" onClick={() => swipe('dual')} disabled={plan !== 'VIP' && stats.dual === 0} title={`両いいね (残り${plan === 'VIP' ? '∞' : stats.dual})`}>
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        </button>
-      </div>
-      <div className="tinder-stats">
-        <span>残り <b>{Math.max(0, profiles.length - index)}</b> 人</span>
-        <span>マッチ <b>{stats.matches}</b></span>
-        <span>両いいね <b>{plan === 'VIP' ? '∞' : stats.dual}</b></span>
       </div>
     </div>
   );
 }
 
-function TinderProfileCard({ profile, onReport, onBlock }) {
+function TinderProfileCard({ profile, onReport, onBlock, swipeDir }) {
   const tags = profile.tags?.length ? profile.tags : profile.modes || [];
+  const hue = (profile.name.charCodeAt(0) * 47) % 360;
   return (
-    <article className="tinder-profile-card">
-      {profile.profilePhoto ? (
-        <img className="tinder-photo" src={profile.profilePhoto} alt={profile.name} />
-      ) : (
-        <div className="tinder-photo-placeholder"
-          style={{ background: `linear-gradient(135deg, hsl(${(profile.name.charCodeAt(0) * 47) % 360},55%,28%), var(--pink))` }}>
-          {profile.name.slice(0, 1).toUpperCase()}
-        </div>
-      )}
-      <div className="tinder-card-gradient" />
-      {profile.guarded && <div className="tinder-guard-badge">人気集中ガード</div>}
-      <div className="tinder-score-badge">相性 {profile.matchScore}%</div>
-      <div className="tinder-active-badge">
-        <span className="tinder-active-dot" />
-        Recently Active
+    <article className={cx('mp-card', swipeDir && `mp-swipe-${swipeDir}`)}>
+      {profile.profilePhoto
+        ? <img className="mp-photo" src={profile.profilePhoto} alt={profile.name} />
+        : <div className="mp-photo-placeholder" style={{ background: `linear-gradient(145deg,hsl(${hue},50%,20%),hsl(${(hue+50)%360},65%,42%))` }}><span>{profile.name.slice(0,1).toUpperCase()}</span></div>
+      }
+      <div className="mp-gradient" />
+
+      {swipeDir === 'right' && <div className="mp-stamp mp-stamp-like">LIKE 💖</div>}
+      {swipeDir === 'left'  && <div className="mp-stamp mp-stamp-nope">NOPE 👋</div>}
+      {swipeDir === 'up'    && <div className="mp-stamp mp-stamp-super">SUPER ⭐</div>}
+
+      <div className="mp-badges-top">
+        {profile.guarded && <span className="mp-badge mp-badge-guard">🛡 人気集中</span>}
+        <span className="mp-badge mp-badge-score">✨ {profile.matchScore}%</span>
       </div>
-      <div className="tinder-card-info">
-        <div className="tinder-card-name-row">
-          <h3 className="tinder-card-name">{profile.name}</h3>
-          <span className="tinder-card-age">{profile.ageRange}</span>
+
+      <div className="mp-card-info">
+        <div className="mp-active-row"><span className="mp-active-dot"/><span>Recently Active</span></div>
+        <div className="mp-name-row">
+          <h3 className="mp-name">{profile.name}</h3>
+          <span className="mp-age">{profile.ageRange}</span>
         </div>
-        <p className="tinder-card-meta">{profile.gender} · {profile.rank} · {profile.role}</p>
-        {tags.length > 0 && (
-          <div className="tinder-card-tags">
-            {tags.slice(0, 4).map((tag) => <span className="tinder-card-tag" key={tag}>{tag}</span>)}
-          </div>
-        )}
-        {profile.bio && <p className="tinder-card-bio">{profile.bio}</p>}
+        <p className="mp-meta">🎮 {profile.rank} · {profile.role}</p>
+        <p className="mp-meta">📍 {profile.gender}{profile.region ? ` · ${profile.region}` : ''}</p>
+        {tags.length > 0 && <div className="mp-tags">{tags.slice(0,4).map((t) => <span className="mp-tag" key={t}>{t}</span>)}</div>}
+        {profile.bio && <p className="mp-bio">{profile.bio}</p>}
       </div>
-      <div className="tinder-card-tools">
-        <button className="tinder-tool-btn" onClick={onReport}>通報</button>
-        <button className="tinder-tool-btn" onClick={onBlock}>ブロック</button>
+
+      <div className="mp-card-tools">
+        <button className="mp-tool-btn" onClick={onReport}>🚨 通報</button>
+        <button className="mp-tool-btn" onClick={onBlock}>🚫 ブロック</button>
       </div>
     </article>
   );
@@ -713,15 +962,18 @@ function ProfileCard({ profile, onReport, onBlock }) {
   return <TinderProfileCard profile={profile} onReport={onReport} onBlock={onBlock} />;
 }
 
-function DmPanel({ dmThreads, activeThreadId, setActiveThreadId, dmDraft, setDmDraft, sendDm }) {
+function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm }) {
   const activeThread = dmThreads.find((thread) => thread.match.id === activeThreadId) || dmThreads[0];
+  useEffect(() => {
+    if (activeThread?.match.id) markDmRead(activeThread.match.id);
+  }, [activeThread?.match.id]);
   return <div className="dm-panel">
     <aside className="dm-thread-list">
       <div className="dm-head"><h3>マッチ後メッセージ</h3><span>{dmThreads.length}件</span></div>
       {dmThreads.length ? dmThreads.map((thread) => {
         const lastMessage = thread.messages.at(-1);
-        return <button className={cx('dm-thread', activeThread?.match.id === thread.match.id && 'active')} key={thread.match.id} onClick={() => setActiveThreadId(thread.match.id)}>
-          <b>{thread.match.profileName}</b>
+        return <button className={cx('dm-thread', activeThread?.match.id === thread.match.id && 'active', thread.unreadCount > 0 && 'unread')} key={thread.match.id} onClick={() => selectDmThread(thread.match.id)}>
+          <b>{thread.match.profileName}{thread.unreadCount > 0 && <em>{thread.unreadCount}</em>}</b>
           <span>{lastMessage?.body || thread.match.opener}</span>
         </button>;
       }) : <p className="empty-text">まだマッチしていません。マッチ後だけメッセージが使えます。</p>}
@@ -735,7 +987,10 @@ function DmPanel({ dmThreads, activeThreadId, setActiveThreadId, dmDraft, setDmD
         <div className="dm-messages">
           {activeThread.messages.map((message) => <div className={cx('dm-bubble', message.sender === 'user' && 'mine')} key={message.id}>
             <p>{message.body}</p>
-            <time>{new Date(message.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time>
+            <div className="dm-message-meta">
+              {message.sender === 'user' && <span className={cx('dm-read-state', message.readAt && 'read')}>{message.readAt ? '既読' : '未読'}</span>}
+              <time>{new Date(message.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time>
+            </div>
           </div>)}
         </div>
         <form className="dm-form" onSubmit={sendDm}>

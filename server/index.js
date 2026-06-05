@@ -112,13 +112,41 @@ function cleanText(value, max = 160) {
   return String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
 }
 
-function cleanAuthCode(value) {
-  return String(value || '').replace(/\D/g, '').slice(0, 8);
+function publicUser(user) {
+  const { authCode, authCodeHash, authCodeSalt, otpSecret, ...safeUser } = user;
+  return safeUser;
 }
 
-function publicUser(user) {
-  const { authCode, otpSecret, ...safeUser } = user;
-  return safeUser;
+async function verifyFirebaseIdentity(idToken) {
+  const token = cleanText(idToken, 4096);
+  const apiKey = cleanText(process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY, 200);
+  if (!token) {
+    const error = new Error('Firebase ID tokenが必要です。');
+    error.status = 401;
+    throw error;
+  }
+  if (!apiKey) {
+    const error = new Error('Firebase Web API Keyがサーバーに設定されていません。');
+    error.status = 500;
+    throw error;
+  }
+  const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken: token })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.users?.length) {
+    const error = new Error('Firebase認証の確認に失敗しました。再ログインしてください。');
+    error.status = 401;
+    throw error;
+  }
+  const firebaseUser = payload.users[0];
+  return {
+    uid: cleanText(firebaseUser.localId, 120),
+    email: cleanText(firebaseUser.email, 120),
+    emailVerified: Boolean(firebaseUser.emailVerified)
+  };
 }
 
 app.get('/api/health', (req, res) => {
@@ -131,25 +159,31 @@ app.get('/api/plans', (req, res) => {
 
 app.post('/api/register', async (req, res) => {
   const payload = req.body || {};
+  let firebaseUser;
+  try {
+    firebaseUser = await verifyFirebaseIdentity(payload.idToken);
+  } catch (error) {
+    return res.status(error.status || 500).json({ message: error.message || 'Firebase認証の確認に失敗しました。' });
+  }
+  if (!firebaseUser.emailVerified) return res.status(403).json({ message: 'メール認証を完了してからプロフィールを作成してください。' });
   if (!payload.gender) return res.status(400).json({ message: '性別選択が必要です。' });
   if (!payload.name) return res.status(400).json({ message: '表示名が必要です。' });
   if (!payload.riotId) return res.status(400).json({ message: 'Riot IDが必要です。' });
-  const authCode = cleanAuthCode(payload.authCode);
-  if (!/^\d{4,8}$/.test(authCode)) return res.status(400).json({ message: 'ログイン用の認証コードを4〜8桁の数字で設定してください。' });
   if (!payload.age) return res.status(400).json({ message: '年齢が必要です。' });
   if (!payload.region) return res.status(400).json({ message: '地域が必要です。' });
   if (!payload.agreed) return res.status(400).json({ message: '利用規約への同意が必要です。' });
-  if (!payload.emailVerified) return res.status(403).json({ message: 'メール認証を完了してからプロフィールを作成してください。' });
 
   const users = await readJson('users.json', []);
+  if (users.some((user) => user.firebaseUid === firebaseUser.uid || user.email === firebaseUser.email)) {
+    return res.status(409).json({ message: 'このメールアドレスは登録済みです。ログインしてください。' });
+  }
   if (users.some((user) => user.riotId === cleanText(payload.riotId, 60))) {
     return res.status(409).json({ message: 'このRiot IDは登録済みです。Firebaseログインしてください。' });
   }
-  if (!payload.firebaseUid) return res.status(400).json({ message: 'Firebase認証が必要です。' });
   const user = {
     id: uid('user'),
-    firebaseUid: cleanText(payload.firebaseUid, 120),
-    email: cleanText(payload.email, 120),
+    firebaseUid: firebaseUser.uid,
+    email: firebaseUser.email,
     name: cleanText(payload.name, 40),
     gender: cleanText(payload.gender, 20),
     riotId: cleanText(payload.riotId, 60),
@@ -162,9 +196,8 @@ app.post('/api/register', async (req, res) => {
     agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
     xHandle: cleanText(payload.xHandle, 40),
     bio: cleanText(payload.bio, 240),
-    authCode,
     plan: 'FREE',
-    verified: false,
+    verified: true,
     agreedAt: new Date().toISOString(),
     createdAt: new Date().toISOString()
   };
@@ -174,15 +207,57 @@ app.post('/api/register', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
+  let firebaseUser;
+  try {
+    firebaseUser = await verifyFirebaseIdentity(req.body?.idToken);
+  } catch (error) {
+    return res.status(error.status || 500).json({ message: error.message || 'Firebase認証の確認に失敗しました。' });
+  }
+  if (!firebaseUser.emailVerified) return res.status(403).json({ message: 'メール認証を完了してください。' });
   const users = await readJson('users.json', []);
-  const firebaseUid = cleanText(req.body?.firebaseUid, 120);
-  const authCode = cleanAuthCode(req.body?.authCode);
-  const found = users.find((user) => user.firebaseUid === firebaseUid);
+  const found = users.find((user) => user.firebaseUid === firebaseUser.uid);
   if (!found) return res.status(404).json({ message: 'Pairlyプロフィールが見つかりません。先にアカウント作成してください。' });
-  if (!authCode) return res.status(400).json({ message: '認証コードを入力してください。' });
-  if (!found.authCode) return res.status(403).json({ message: 'このアカウントには認証コードが未設定です。アカウントを作成し直してください。' });
-  if (found.authCode !== authCode) return res.status(403).json({ message: '認証コードが違います。' });
   res.json({ user: publicUser(found) });
+});
+
+app.put('/api/profile', async (req, res) => {
+  const payload = req.body || {};
+  const userId = cleanText(payload.userId, 80);
+  if (!userId) return res.status(401).json({ message: 'アカウント作成後に利用できます。' });
+  if (!payload.gender) return res.status(400).json({ message: '性別選択が必要です。' });
+  if (!payload.name) return res.status(400).json({ message: '表示名が必要です。' });
+  if (!payload.riotId) return res.status(400).json({ message: 'Riot IDが必要です。' });
+  if (!payload.age) return res.status(400).json({ message: '年齢が必要です。' });
+  if (!payload.region) return res.status(400).json({ message: '地域が必要です。' });
+
+  const users = await readJson('users.json', []);
+  const index = users.findIndex((user) => user.id === userId);
+  if (index < 0) return res.status(404).json({ message: 'プロフィールが見つかりません。' });
+
+  const riotId = cleanText(payload.riotId, 60);
+  if (users.some((user) => user.id !== userId && user.riotId === riotId)) {
+    return res.status(409).json({ message: 'このRiot IDは別のアカウントで使用されています。' });
+  }
+
+  const updated = {
+    ...users[index],
+    name: cleanText(payload.name, 40),
+    gender: cleanText(payload.gender, 20),
+    riotId,
+    age: cleanText(payload.age, 10),
+    region: cleanText(payload.region, 40),
+    profilePhoto: cleanText(payload.profilePhoto, 250000),
+    rank: cleanText(payload.rank || users[index].rank || 'Gold', 30),
+    role: cleanText(payload.role || users[index].role || 'フレックス', 30),
+    tags: Array.isArray(payload.tags) ? payload.tags.map((v) => cleanText(v, 30)).slice(0, 4) : [],
+    agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
+    xHandle: cleanText(payload.xHandle, 40),
+    bio: cleanText(payload.bio, 240),
+    updatedAt: new Date().toISOString()
+  };
+  users[index] = updated;
+  await writeJson('users.json', users);
+  res.json({ user: publicUser(updated), message: 'プロフィールを更新しました。' });
 });
 
 app.get('/api/profiles', async (req, res) => {
@@ -215,15 +290,41 @@ app.post('/api/like', async (req, res) => {
   likes.push(like);
   await writeJson('likes.json', likes);
 
-  const matched = calculateMatch(profile, selectedType, planName);
-  let match = null;
-  if (matched) {
-    const matches = await readJson('matches.json', []);
-    match = { id: uid('match'), userId, profileId, profileName: profile.name, opener: profile.opener, dmUnlocked: true, createdAt: new Date().toISOString() };
-    matches.unshift(match);
-    await writeJson('matches.json', matches);
+  // マッチングは自動ではなく「相手が承認したとき」に確定する。
+  // プロフィールが返いいねする確率を計算し、返いいねした場合は received_likes に積む。
+  const likedBack = calculateMatch(profile, selectedType, planName);
+  if (likedBack) {
+    const received = await readJson('received_likes.json', []);
+    const alreadyPending = received.some((r) => r.forUserId === userId && r.fromProfileId === profileId && r.status === 'pending');
+    if (!alreadyPending) {
+      received.unshift({ id: uid('rl'), forUserId: userId, fromProfileId: profileId, fromProfileName: profile.name, fromPhoto: profile.profilePhoto || '', fromRank: profile.rank || '', fromRole: profile.role || '', fromGender: profile.gender || '', fromAgeRange: profile.ageRange || '', likeType: selectedType, status: 'pending', createdAt: new Date().toISOString() });
+      await writeJson('received_likes.json', received);
+    }
   }
-  res.json({ ok: true, like, matched, match });
+  res.json({ ok: true, like, liked_back: likedBack });
+});
+
+app.get('/api/received-likes/:userId', async (req, res) => {
+  const received = await readJson('received_likes.json', []);
+  res.json({ receivedLikes: received.filter((r) => r.forUserId === req.params.userId && r.status === 'pending') });
+});
+
+app.post('/api/accept-like', async (req, res) => {
+  const { userId, receivedLikeId } = req.body || {};
+  if (!userId) return res.status(401).json({ message: 'アカウント作成後に利用できます。' });
+  const received = await readJson('received_likes.json', []);
+  const idx = received.findIndex((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
+  if (idx < 0) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
+  const rl = received[idx];
+  received[idx] = { ...rl, status: 'accepted', acceptedAt: new Date().toISOString() };
+  await writeJson('received_likes.json', received);
+  const profiles = await readJson('profiles.json', []);
+  const profile = profiles.find((p) => p.id === rl.fromProfileId);
+  const matches = await readJson('matches.json', []);
+  const match = { id: uid('match'), userId, profileId: rl.fromProfileId, profileName: rl.fromProfileName, opener: profile?.opener || `${rl.fromProfileName}さんとマッチしました！`, dmUnlocked: true, createdAt: new Date().toISOString() };
+  matches.unshift(match);
+  await writeJson('matches.json', matches);
+  res.json({ ok: true, match, matched: true });
 });
 
 app.get('/api/matches/:userId', async (req, res) => {
@@ -239,20 +340,54 @@ app.get('/api/dm/:userId', async (req, res) => {
     const threadMessages = messages
       .filter((message) => message.matchId === match.id)
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const openerMessage = {
+      id: `opener_${match.id}`,
+      matchId: match.id,
+      sender: 'match',
+      body: match.opener || `${match.profileName}さんとマッチしました。最初のメッセージを送ってみましょう。`,
+      createdAt: match.createdAt,
+      readAt: match.readAt || null,
+      system: true
+    };
+    const normalizedMessages = threadMessages.map((message) => (
+      message.sender === 'user' && !message.readAt ? { ...message, readAt: message.createdAt } : message
+    ));
     return {
       match,
-      messages: threadMessages.length ? threadMessages : [{
-        id: `opener_${match.id}`,
-        matchId: match.id,
-        sender: 'match',
-        body: match.opener || `${match.profileName}さんとマッチしました。最初のメッセージを送ってみましょう。`,
-        createdAt: match.createdAt,
-        system: true
-      }],
+      messages: [openerMessage, ...normalizedMessages],
+      unreadCount: (openerMessage.readAt ? 0 : 1) + normalizedMessages.filter((message) => message.sender !== 'user' && !message.readAt).length,
       updatedAt: threadMessages.at(-1)?.createdAt || match.createdAt
     };
   }).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   res.json({ threads });
+});
+
+app.post('/api/dm/read', async (req, res) => {
+  const userId = cleanText(req.body?.userId, 80);
+  const matchId = cleanText(req.body?.matchId, 80);
+  if (!userId) return res.status(401).json({ message: 'アカウント作成後に利用できます。' });
+  if (!matchId) return res.status(400).json({ message: '既読にする会話が必要です。' });
+
+  const matches = await readJson('matches.json', []);
+  const matchIndex = matches.findIndex((item) => item.id === matchId && item.userId === userId && item.dmUnlocked);
+  if (matchIndex < 0) return res.status(403).json({ message: 'マッチ後だけ既読にできます。' });
+
+  const readAt = new Date().toISOString();
+  matches[matchIndex] = { ...matches[matchIndex], readAt };
+  await writeJson('matches.json', matches);
+
+  const messages = await readJson('messages.json', []);
+  let changed = false;
+  const nextMessages = messages.map((message) => {
+    if (message.matchId === matchId && message.sender !== 'user' && !message.readAt) {
+      changed = true;
+      return { ...message, readAt };
+    }
+    return message;
+  });
+  if (changed) await writeJson('messages.json', nextMessages);
+
+  res.json({ ok: true, matchId, readAt });
 });
 
 app.post('/api/dm', async (req, res) => {
@@ -267,7 +402,8 @@ app.post('/api/dm', async (req, res) => {
   if (!match) return res.status(403).json({ message: 'マッチ後だけDMを送信できます。' });
 
   const messages = await readJson('messages.json', []);
-  const message = { id: uid('msg'), matchId, userId, profileId: match.profileId, sender: 'user', body, createdAt: new Date().toISOString() };
+  const createdAt = new Date().toISOString();
+  const message = { id: uid('msg'), matchId, userId, profileId: match.profileId, sender: 'user', body, createdAt, readAt: createdAt };
   messages.push(message);
   await writeJson('messages.json', messages);
   res.status(201).json({ message });
