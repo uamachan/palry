@@ -19,12 +19,11 @@
 .auth-modal{padding:12px}.auth-modal-panel{width:min(1180px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;padding:18px;border-radius:24px}.auth-close{position:absolute;top:12px;right:12px;width:34px;height:34px;font-size:20px}.auth-modal-panel .section-head{margin-bottom:14px;padding-right:42px}.auth-modal-panel .section-head h2{font-size:32px}.setup-profile-section{max-width:none}.setup-title{padding:0 44px 10px 0}.setup-title h2{font-size:34px;margin-top:4px}.profile-setup-card{padding:16px;border-radius:22px;box-shadow:0 10px 30px rgba(31,25,20,.08)}.setup-tabs{gap:6px;margin:0 0 12px;padding-bottom:10px}.setup-tabs button{font-size:10px;padding:7px 10px}.profile-setup-grid{grid-template-columns:150px minmax(0,1fr);gap:14px}.photo-uploader{gap:7px;font-size:11px}.photo-preview{border-radius:18px}.setup-fields{grid-template-columns:repeat(4,1fr);gap:8px}.setup-fields label,.setup-bio{gap:5px;font-size:11px}.setup-fields input,.setup-fields select,.setup-bio textarea{min-height:38px;padding:9px 11px;border-radius:12px;font-size:13px}.agent-fieldset{margin-top:0;padding:9px}.agent-fieldset legend{font-size:11px}.profile-setup-card .chip-list{gap:5px}.profile-setup-card .chip-list button{padding:6px 8px;font-size:11px}.setup-bio textarea{min-height:50px;max-height:50px;resize:none}.profile-setup-card .check{font-size:11px;line-height:1.55}.profile-setup-card .form-actions{margin-top:10px}.auth-setup{margin-top:10px;padding:10px;grid-template-columns:1fr}.auth-setup b{font-size:18px;margin:3px 0}.auth-setup p{font-size:12px;line-height:1.45}.auth-setup code{display:none}.login-card{padding:18px}.login-fields{gap:10px}.login-fields input{min-height:40px;padding:10px 12px}.login-card .form-actions{margin-top:12px}
 .hero h1 span{display:block;white-space:nowrap}.hero-copy{min-width:0}.hero h1{font-size:clamp(38px,5.2vw,64px);letter-spacing:-.04em;word-break:keep-all;overflow-wrap:normal}
 @media(max-width:1040px){.app-layout{grid-template-columns:1fr}.return-card{display:grid}.app-view{padding:10px}.app-topbar{top:8px;border-radius:18px}.app-sidebar{grid-template-columns:1fr 1fr}}
-@media(max-width:760px){.app-sidebar,.dm-panel,.login-box,.login-fields,.profile-setup-grid,.setup-fields{grid-template-columns:1fr}.app-topbar{height:auto;flex-wrap:wrap;padding:12px}.app-label{margin-left:0}.return-card h2{font-size:28px}.dm-form{grid-template-columns:1fr}.dm-bubble{max-width:88%}.setup-tabs{grid-template-columns:1fr 1fr;overflow:hidden;height:auto}.setup-title h2{font-size:34px}}
-@media(max-height:760px){.auth-modal-panel{padding:14px}.setup-title{padding-bottom:6px}.setup-title h2{font-size:28px}.setup-tabs{display:none}.profile-setup-card{padding:12px}.profile-setup-grid{grid-template-columns:120px minmax(0,1fr);gap:10px}.setup-fields{gap:6px}.setup-fields input,.setup-fields select,.setup-bio textarea{min-height:34px;padding:7px 9px;font-size:12px}.agent-fieldset{padding:7px}.profile-setup-card .chip-list button{padding:4px 7px;font-size:10px}.setup-bio textarea{min-height:40px;max-height:40px}.profile-setup-card .check{font-size:10px}.profile-setup-card .form-actions{margin-top:8px}.primary,.secondary{padding:10px 15px}.photo-uploader{font-size:10px}.auth-setup{display:none}}
+@media(max-width:760px){.app-sidebar,.dm-panel,.login-box,.login-fields,.profile-setup-grid,.setup-fields{grid-template-columns:1fr}.app-topbar{height:auto;flex-wrap:wrap;padding:12px}.app-label{margin-left:0}.return-card h2{font-size:28px}.dm-form{grid-template-columns:1fr}.dm-bubble{max-width:88%}.setup-title h2{font-size:34px}}
+@media(max-height:760px){.auth-modal-panel{padding:14px}.setup-title{padding-bottom:6px}.setup-title h2{font-size:28px}.profile-setup-card{padding:12px}.profile-setup-grid{grid-template-columns:120px minmax(0,1fr);gap:10px}.setup-fields{gap:6px}.setup-fields input,.setup-fields select,.setup-bio textarea{min-height:34px;padding:7px 9px;font-size:12px}.agent-fieldset{padding:7px}.profile-setup-card .chip-list button{padding:4px 7px;font-size:10px}.setup-bio textarea{min-height:40px;max-height:40px}.profile-setup-card .check{font-size:10px}.profile-setup-card .form-actions{margin-top:8px}.primary,.secondary{padding:10px 15px}.photo-uploader{font-size:10px}.auth-setup{display:none}}
 .intent-fieldset{border-color:#ffc3d4;background:#fff8fb}.intent-fieldset legend{color:var(--pink2);font-size:13px;font-weight:900}.intent-chip-list button,.tag-row .intent-tag{border-color:#ffc3d4;background:#fff1f6;color:var(--pink2)}.tag-row .intent-tag{font-weight:900}@media(max-height:760px){.intent-fieldset{padding:7px}.intent-fieldset legend{font-size:11px}}
 .reset-password-link{color:var(--pink2);padding-inline:8px}.reset-password-link:hover{background:#fff1f6}
 .auth-modal-panel--narrow{max-width:480px}
-.auth-modal-panel--profile{width:min(420px,calc(100vw - 24px));max-height:calc(100svh - 24px);overflow:visible}
 .email-signup-panel{width:100%}
 .email-signup-header{text-align:center;margin-bottom:28px;padding:0 8px}
 .email-signup-header .eyebrow{display:block;margin-bottom:6px}
@@ -136,8 +135,6 @@
 .account-dropdown button:hover{background:#f9f5f0}
 .account-dropdown button.danger{color:#cf244d}
 .account-dropdown button.danger:hover{background:#fff1f6}
-.profile-edit-section{max-width:360px;margin:0 auto}
-.profile-edit-section .profile-setup-card{box-shadow:none}
 .setup-pane{min-height:0;display:grid;align-content:start;gap:10px;animation:setupPaneIn .16s ease-out both}
 @keyframes setupPaneIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .setup-pane .profile-setup-grid{align-items:start}
@@ -145,36 +142,8 @@
 .setup-tab-grid{grid-template-columns:repeat(2,minmax(180px,1fr))}
 .setup-pane .setup-bio textarea{min-height:120px;max-height:none;resize:vertical}
 .setup-pane .check{background:#fff8e9;border:1px solid #efd28c;border-radius:16px;padding:12px;color:#74520d}
-@media(max-width:760px){.setup-tab-grid{grid-template-columns:1fr}.setup-pane{min-height:0}.setup-tabs{overflow:auto;flex-wrap:nowrap}}
-@media(max-height:760px){.setup-tabs{display:flex;overflow:auto;flex-wrap:nowrap}.setup-pane{min-height:0}.setup-pane .setup-bio textarea{min-height:96px}}
-.profile-edit-section .setup-title{padding:0 34px 6px 0}
-.profile-edit-section .setup-title span{font-size:10px}
-.profile-edit-section .setup-title h2{font-size:24px;margin-top:2px}
-.profile-edit-section .registered-email{margin:2px 0 0;font-size:11px;line-height:1.35}
-.profile-edit-section .profile-setup-card{padding:10px;border-radius:18px}
-.profile-edit-section .setup-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:0 0 8px;padding-bottom:8px;overflow:visible}
-.profile-edit-section .setup-tabs button{min-width:0;padding:6px 3px;font-size:9px;letter-spacing:0;border-radius:10px;white-space:nowrap}
-.profile-edit-section .form-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
-.profile-edit-section .form-actions .primary,.profile-edit-section .form-actions .secondary{width:100%;min-height:38px;padding:9px 10px;font-size:12px}
-.profile-edit-section .profile-setup-grid{grid-template-columns:1fr;gap:8px}
-.profile-edit-section .photo-uploader{max-width:116px;width:100%;justify-self:center;gap:4px;text-align:center;font-size:10px}
-.profile-edit-section .photo-preview{border-radius:16px}
-.profile-edit-section .setup-fields,.profile-edit-section .setup-tab-grid{grid-template-columns:1fr}
-.profile-edit-section .setup-fields{gap:6px}
-.profile-edit-section .setup-fields label,.profile-edit-section .setup-bio,.profile-edit-section .custom-select-field{gap:4px;font-size:10px}
-.profile-edit-section .setup-fields input,.profile-edit-section .setup-fields select,.profile-edit-section .setup-bio textarea{width:100%;min-height:34px;padding:7px 9px;border-radius:10px;font-size:12px}
-.profile-edit-section .setup-pane{gap:7px}
-.profile-edit-section .setup-pane .setup-bio textarea{min-height:70px;max-height:70px;resize:none}
-.profile-edit-section .agent-fieldset{padding:8px;border-radius:12px}
-.profile-edit-section .agent-fieldset legend,.profile-edit-section .intent-fieldset legend{font-size:10px}
-.profile-edit-section .profile-setup-card .chip-list{gap:4px}
-.profile-edit-section .profile-setup-card .chip-list button{padding:5px 7px;border-radius:10px;font-size:10px;line-height:1.1}
-.profile-edit-section .voice-recorder{gap:6px;padding:9px;border-radius:12px}
-.profile-edit-section .voice-actions{gap:6px}
-.profile-edit-section .voice-actions .secondary,.profile-edit-section .voice-actions .primary{min-height:34px;padding:7px 10px;font-size:11px}
-.profile-edit-section .voice-player{height:32px}
-.profile-edit-section .custom-select-trigger{min-height:34px;padding:7px 9px;border-radius:10px}
-.profile-edit-section .custom-select-trigger b{font-size:12px}
+@media(max-width:760px){.setup-tab-grid{grid-template-columns:1fr}.setup-pane{min-height:0}}
+@media(max-height:760px){.setup-pane{min-height:0}.setup-pane .setup-bio textarea{min-height:96px}}
 .setup-intro-pane{display:grid;gap:10px}
 .voice-recorder{display:grid;gap:9px;background:#f9f5f0;border:1px solid var(--line);border-radius:16px;padding:12px}
 .voice-recorder b{display:block;color:var(--ink);font-size:13px}
@@ -345,8 +314,7 @@
 .mp-empty h3{margin:0;font-size:22px;letter-spacing:-.03em}
 .mp-empty p{color:var(--muted);line-height:1.8;margin:0;font-size:14px}
 
-/* DM panel inside appv2 */
-.appv2-content .dm-panel{min-height:calc(100dvh - 58px - 64px);height:calc(100vh - 58px - 64px)}
+/* Tab panels inside appv2 */
 .appv2-content .list-panel{min-height:calc(100dvh - 58px - 64px);padding:18px}
 
 /* 受け取ったいいね */
@@ -380,7 +348,7 @@
 :root{--app-surface-w:400px;--app-gap:14px;--app-control-h:40px;--app-topbar-h:72px;--app-bottombar-h:64px}
 .appv2-topbar{height:var(--app-topbar-h);padding:0 18px}
 .appv2-bottom-nav{height:var(--app-bottombar-h)}
-.appv2-content .dm-panel,.appv2-content .list-panel{min-height:calc(100dvh - var(--app-topbar-h) - var(--app-bottombar-h));height:calc(100dvh - var(--app-topbar-h) - var(--app-bottombar-h))}
+.appv2-content .list-panel{min-height:calc(100dvh - var(--app-topbar-h) - var(--app-bottombar-h));height:calc(100dvh - var(--app-topbar-h) - var(--app-bottombar-h))}
 .mp-wrap{width:100%;max-width:calc(var(--app-surface-w) + 32px);gap:var(--app-gap);padding:16px}
 .mp-filter-row,.mp-card-wrap,.mp-actions,.mp-action-labels,.mp-empty,.mp-received-section{width:100%;max-width:var(--app-surface-w)}
 .mp-filter-row{min-height:var(--app-control-h);gap:10px}
@@ -394,8 +362,6 @@
 .profile-detail-panel{width:min(var(--app-surface-w),calc(100vw - 28px))}
 .profile-detail-hero{height:240px}
 .profile-detail-body{padding:16px;gap:12px}
-.auth-modal-panel--profile{width:min(520px,calc(100vw - 24px))}
-.profile-edit-section{max-width:480px}
 .account-dropdown{width:260px}
 @media(max-width:760px){
   :root{--app-surface-w:min(400px,calc(100vw - 32px))}
@@ -408,30 +374,7 @@
   .appv2-plan{padding:5px 8px}
 }
 
-/* Profile edit/detail alignment */
-.auth-modal-panel--profile{padding:16px}
-.auth-modal-panel--profile .auth-close{top:10px;right:10px}
-.profile-edit-section{width:100%;max-width:460px}
-.profile-edit-section .setup-title{padding:0 42px 10px 0}
-.profile-edit-section .setup-title span{font-size:11px}
-.profile-edit-section .setup-title h2{font-size:28px;line-height:1.15;margin-top:4px}
-.profile-edit-section .registered-email{margin:6px 0 0;color:var(--muted);font-size:12px;font-weight:800;line-height:1.5}
-.profile-edit-section .profile-setup-card{padding:14px;border-radius:20px}
-.profile-edit-section .setup-tabs{display:flex;gap:6px;margin:0 0 12px;padding:0 0 10px;overflow:auto;flex-wrap:nowrap}
-.profile-edit-section .setup-tabs button{flex:0 0 auto;min-height:32px;padding:7px 10px;font-size:10px;letter-spacing:0}
-.profile-edit-section .setup-pane{gap:12px}
-.profile-edit-section .photo-uploader{max-width:160px;gap:7px}
-.profile-edit-section .photo-preview{border-radius:20px}
-.profile-edit-section .setup-fields{gap:10px}
-.profile-edit-section .setup-fields label,.profile-edit-section .setup-bio,.profile-edit-section .custom-select-field{font-size:11px;gap:6px}
-.profile-edit-section .setup-fields input,.profile-edit-section .setup-fields select,.profile-edit-section .setup-bio textarea,.profile-edit-section .custom-select-trigger{min-height:42px;border-radius:12px;padding:10px 12px}
-.profile-edit-section .custom-select-menu{max-height:210px;border-radius:14px}
-.profile-edit-section .agent-fieldset,.profile-edit-section .intent-fieldset,.profile-edit-section .voice-recorder{border-radius:14px;padding:10px}
-.profile-edit-section .chip-list{gap:6px}
-.profile-edit-section .chip-list button{min-height:30px;padding:6px 9px}
-.profile-edit-section .form-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-.profile-edit-section .form-actions .primary,.profile-edit-section .form-actions .secondary{width:100%;min-height:42px;padding:10px 12px}
-
+/* Profile detail alignment */
 .profile-detail-modal{padding:16px}
 .profile-detail-panel{width:min(420px,calc(100vw - 32px));border-radius:22px}
 .profile-detail-close{right:12px;top:12px;width:34px;height:34px}
@@ -452,7 +395,6 @@
 .profile-detail-reasons{gap:6px}
 .profile-detail-body .voice-intro-player{margin-top:0}
 @media(max-width:420px){
-  .profile-edit-section .form-actions{grid-template-columns:1fr}
   .profile-detail-kpis{grid-template-columns:1fr}
   .profile-detail-head{grid-template-columns:1fr}
   .profile-detail-head span{justify-self:start}
@@ -516,4 +458,55 @@
   .notification-card{grid-template-columns:38px minmax(0,1fr);align-items:start}
   .notification-card button{grid-column:2;width:100%}
   .notification-icon{width:38px;height:38px;border-radius:13px}
+}
+
+/* Profile setup/edit compact modal */
+.auth-modal--profile{padding:8px}
+.auth-modal--profile .auth-modal-panel{max-height:calc(100svh - 16px);overflow:visible;padding:10px;border-radius:20px}
+.auth-modal--profile .auth-close{top:8px;right:8px;width:32px;height:32px;font-size:18px}
+.auth-modal-panel--profile{width:min(430px,calc(100vw - 16px))}
+.setup-profile-section,.profile-edit-section{width:100%;max-width:390px;margin:0 auto}
+.setup-profile-section .setup-title,.profile-edit-section .setup-title{padding:0 36px 5px 0}
+.setup-profile-section .setup-title span,.profile-edit-section .setup-title span{font-size:9px;letter-spacing:.08em}
+.setup-profile-section .setup-title h2,.profile-edit-section .setup-title h2{font-size:22px;line-height:1.12;margin:1px 0 0}
+.setup-profile-section .registered-email,.profile-edit-section .registered-email{margin:2px 0 0;font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setup-profile-section .profile-setup-card,.profile-edit-section .profile-setup-card{padding:9px;border-radius:16px;box-shadow:none}
+.setup-profile-section .setup-tabs,.profile-edit-section .setup-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin:0 0 7px;padding:0 0 7px;overflow:visible;flex-wrap:nowrap}
+.setup-profile-section .setup-tabs button,.profile-edit-section .setup-tabs button{min-width:0;min-height:28px;padding:5px 2px;border-radius:9px;font-size:9px;letter-spacing:0;white-space:nowrap}
+.setup-profile-section .setup-pane,.profile-edit-section .setup-pane{gap:6px}
+.setup-profile-section .profile-setup-grid,.profile-edit-section .profile-setup-grid{grid-template-columns:1fr;gap:6px}
+.setup-profile-section .photo-uploader,.profile-edit-section .photo-uploader{max-width:104px;gap:3px;justify-self:center;text-align:center;font-size:9px}
+.setup-profile-section .photo-preview,.profile-edit-section .photo-preview{border-radius:14px}
+.setup-profile-section .setup-fields,.setup-profile-section .setup-tab-grid,.profile-edit-section .setup-fields,.profile-edit-section .setup-tab-grid{grid-template-columns:1fr;gap:5px}
+.setup-profile-section .setup-fields label,.setup-profile-section .setup-bio,.setup-profile-section .custom-select-field,.profile-edit-section .setup-fields label,.profile-edit-section .setup-bio,.profile-edit-section .custom-select-field{gap:3px;font-size:9px}
+.setup-profile-section .setup-fields input,.setup-profile-section .setup-fields select,.setup-profile-section .setup-bio textarea,.setup-profile-section .custom-select-trigger,.profile-edit-section .setup-fields input,.profile-edit-section .setup-fields select,.profile-edit-section .setup-bio textarea,.profile-edit-section .custom-select-trigger{min-height:32px;padding:6px 8px;border-radius:9px;font-size:11px}
+.setup-profile-section .setup-pane .setup-bio textarea,.profile-edit-section .setup-pane .setup-bio textarea{min-height:56px;max-height:56px;resize:none}
+.setup-profile-section .agent-fieldset,.setup-profile-section .intent-fieldset,.setup-profile-section .voice-recorder,.profile-edit-section .agent-fieldset,.profile-edit-section .intent-fieldset,.profile-edit-section .voice-recorder{padding:7px;border-radius:11px}
+.setup-profile-section .agent-fieldset legend,.setup-profile-section .intent-fieldset legend,.profile-edit-section .agent-fieldset legend,.profile-edit-section .intent-fieldset legend{font-size:9px}
+.setup-profile-section .chip-list,.profile-edit-section .chip-list{gap:3px}
+.setup-profile-section .chip-list button,.profile-edit-section .chip-list button{min-height:23px;padding:4px 5px;border-radius:8px;font-size:9px;line-height:1.1}
+.setup-profile-section .voice-recorder,.profile-edit-section .voice-recorder{gap:5px}
+.setup-profile-section .voice-recorder b,.profile-edit-section .voice-recorder b{font-size:11px}
+.setup-profile-section .voice-recorder span,.profile-edit-section .voice-recorder span{font-size:9px;line-height:1.35}
+.setup-profile-section .voice-actions .secondary,.setup-profile-section .voice-actions .primary,.profile-edit-section .voice-actions .secondary,.profile-edit-section .voice-actions .primary{min-height:30px;padding:6px 8px;font-size:10px}
+.setup-profile-section .voice-player,.profile-edit-section .voice-player{height:28px}
+.setup-profile-section .form-actions,.profile-edit-section .form-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+.setup-profile-section .form-actions .primary,.setup-profile-section .form-actions .secondary,.profile-edit-section .form-actions .primary,.profile-edit-section .form-actions .secondary{width:100%;min-height:34px;padding:7px 8px;font-size:11px}
+
+/* DM app-fit layout */
+.appv2-content--dm{overflow:hidden}
+.appv2-content .dm-panel{height:100%;min-height:0;padding:10px;gap:10px}
+.appv2-content .dm-thread-list,.appv2-content .dm-conversation{min-height:0;height:100%;padding:10px;border-radius:18px}
+.appv2-content .dm-thread-list{overflow:hidden}
+.appv2-content .dm-conversation{grid-template-rows:auto minmax(0,1fr) auto auto}
+.appv2-content .dm-messages{min-height:0;max-height:none;height:100%;padding:10px 2px;overflow-y:auto}
+.appv2-content .dm-conversation-head{padding-bottom:8px}
+.appv2-content .dm-form{padding-top:8px}
+.appv2-content .dm-form input{min-height:40px;padding:10px 13px}
+.appv2-content .dm-form button{min-height:40px;padding:9px 14px}
+.appv2-content .dm-starters{padding-top:7px}
+@media(max-width:760px){
+  .auth-modal-panel--profile{width:min(390px,calc(100vw - 16px))}
+  .appv2-content .dm-panel{grid-template-rows:auto minmax(0,1fr);grid-template-columns:1fr}
+  .appv2-content .dm-thread-list{max-height:112px}
 }

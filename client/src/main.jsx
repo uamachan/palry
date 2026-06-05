@@ -109,6 +109,7 @@ function App() {
   const [dmThreads, setDmThreads] = useState([]);
   const [activeThreadId, setActiveThreadId] = useState('');
   const [dmDraft, setDmDraft] = useState('');
+  const [dmSending, setDmSending] = useState(false);
   const [footprints, setFootprints] = useState([]);
   const [reports, setReports] = useState([]);
   const [toast, setToast] = useState('');
@@ -644,15 +645,38 @@ function App() {
 
   async function sendDm(event) {
     event.preventDefault();
+    if (dmSending) return;
     const body = dmDraft.trim();
     if (!body) return;
-    if (!activeThreadId) return showToast('先にメッセージ相手を選択してください');
+    const matchId = activeThreadId;
+    if (!matchId) return showToast('先にメッセージ相手を選択してください');
     try {
-      await api.sendDm({ userId: user.id, matchId: activeThreadId, body });
+      setDmSending(true);
+      const payload = await api.sendDm({ userId: user.id, matchId, body });
+      const sentMessage = payload.message || {
+        id: `local_${Date.now()}`,
+        matchId,
+        sender: 'user',
+        body,
+        createdAt: new Date().toISOString(),
+        readAt: null
+      };
       setDmDraft('');
-      await refreshDmThreads(activeThreadId);
-      showToast('メッセージを送信しました');
-    } catch (e) { showToast(e.message); }
+      setDmThreads((threads) => threads
+        .map((thread) => thread.match.id === matchId
+          ? {
+            ...thread,
+            messages: [...thread.messages, { ...sentMessage, sender: 'user' }],
+            updatedAt: sentMessage.createdAt
+          }
+          : thread)
+        .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)));
+      refreshDmThreads(matchId);
+    } catch (e) {
+      showToast(e.message);
+    } finally {
+      setDmSending(false);
+    }
   }
 
   async function reportCurrent() {
@@ -702,14 +726,14 @@ function App() {
       showToast(`${planLabel(nextPlan)} に切り替えました（デモ）`);
   }
 
-  const shared = { user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, pricingTab, setPricingTab, buyPlan, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout };
+  const shared = { user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, pricingTab, setPricingTab, buyPlan, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout };
 
   return <>
     {toast && <div className="toast">{toast}</div>}
     {isAuthed && profileEditorOpen && <AuthModal onClose={() => setProfileEditorOpen(false)} size="profile">
       <ProfileEditSection form={editForm} setForm={setEditForm} user={user} onSubmit={saveProfileEdit} onCancel={() => setProfileEditorOpen(false)} />
     </AuthModal>}
-    {!isAuthed && authMode && <AuthModal onClose={() => setAuthMode(null)} size={['register', 'login', 'emailVerification'].includes(authMode) ? 'narrow' : undefined}>
+    {!isAuthed && authMode && <AuthModal onClose={() => setAuthMode(null)} size={authMode === 'profileSetup' ? 'profile' : ['register', 'login', 'emailVerification'].includes(authMode) ? 'narrow' : undefined}>
       {authMode === 'register' && <AccountSignupSection form={form} setForm={setForm} onSubmit={createAccount} onGoogle={continueWithGoogle} onShowLogin={() => showAuth('login')} />}
       {authMode === 'emailVerification' && <EmailVerificationSection pendingEmail={pendingFirebaseUser?.email} onCheck={confirmEmailVerified} onResend={resendVerificationEmail} onShowLogin={() => showAuth('login')} />}
       {authMode === 'profileSetup' && <SignupSection form={form} setForm={setForm} pendingEmail={pendingFirebaseUser?.email} onSubmit={register} onShowLogin={() => showAuth('login')} />}
@@ -742,7 +766,7 @@ function SiteHeader({ isAuthed, plan, onSignup, onLogin, onOpenApp }) {
 }
 
 function AuthModal({ children, onClose, size }) {
-  return <div className="auth-modal" role="dialog" aria-modal="true">
+  return <div className={cx('auth-modal', size === 'profile' && 'auth-modal--profile')} role="dialog" aria-modal="true">
     <button className="auth-scrim" type="button" aria-label="閉じる" onClick={onClose}></button>
     <div className={cx('auth-modal-panel', size === 'narrow' && 'auth-modal-panel--narrow', size === 'profile' && 'auth-modal-panel--profile')}>
       <button className="auth-close" type="button" onClick={onClose}>×</button>
@@ -1055,7 +1079,7 @@ function AppDashboard(props) {
           </div>
         </div>
       </header>
-      <main className="appv2-content" key={activeTab}>
+      <main className={cx('appv2-content', activeTab === 'dm' && 'appv2-content--dm')} key={activeTab}>
         <TabPanel {...props} />
       </main>
       <nav className="appv2-bottom-nav">
@@ -1375,7 +1399,7 @@ function profileFromMatch(match) {
   };
 }
 
-function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, reportProfile, blockProfile }) {
+function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, reportProfile, blockProfile }) {
   const activeThread = dmThreads.find((thread) => thread.match.id === activeThreadId) || dmThreads[0];
   const [detailProfile, setDetailProfile] = useState(null);
   useEffect(() => {
@@ -1418,7 +1442,7 @@ function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraf
         </div>}
         <form className="dm-form" onSubmit={sendDm}>
           <input value={dmDraft} maxLength="500" onChange={(e) => setDmDraft(e.target.value)} placeholder="メッセージを入力" />
-          <button className="primary" type="submit">送信</button>
+          <button className="primary" type="submit" disabled={dmSending || !dmDraft.trim()}>{dmSending ? '送信中' : '送信'}</button>
         </form>
         {detailProfile && <ProfileDetailModal profile={detailProfile} onClose={() => setDetailProfile(null)} />}
       </> : <div className="locked-panel"><h3>メッセージはマッチ後に解放</h3><p>お互いにいいねすると、ここに1対1の会話が表示されます。</p></div>}
