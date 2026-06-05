@@ -225,15 +225,14 @@ function userToProfile(user) {
   };
 }
 
+// 候補はログイン可能な実アカウントのみ（firebaseUid あり、自分を除く）。
+// ダミー profiles.json や firebaseUid を持たない旧テストユーザーは、
+// いいねを受け取って返せないため候補から除外する。
 async function readCandidateProfiles(excludeUserId = '') {
-  const [profiles, users] = await Promise.all([
-    readJson('profiles.json', []),
-    readJson('users.json', [])
-  ]);
-  const userProfiles = users
-    .filter((user) => user.id !== excludeUserId)
+  const users = await readJson('users.json', []);
+  return users
+    .filter((user) => user.firebaseUid && user.id !== excludeUserId)
     .map((user) => ({ ...userToProfile(user), isRealUser: true }));
-  return [...profiles, ...userProfiles];
 }
 
 // --- 実プレイヤー同士の接続（双方向マッチング）ヘルパー ---
@@ -267,6 +266,10 @@ function pairAlreadyMatched(matches, aId, bId) {
     (m.userId === bId && m.profileId === aId));
 }
 
+function userHasLiked(likes, userId, profileId) {
+  return likes.some((like) => like.userId === userId && like.profileId === profileId);
+}
+
 function makeMatchRow(ownerUserId, otherProfile, conversationId, isRealUser) {
   return {
     id: uid('match'),
@@ -274,6 +277,12 @@ function makeMatchRow(ownerUserId, otherProfile, conversationId, isRealUser) {
     profileId: otherProfile.id,
     profileName: otherProfile.name,
     profilePhoto: otherProfile.profilePhoto || '',
+    profileRank: otherProfile.rank || '',
+    profileRole: otherProfile.role || '',
+    profileGender: otherProfile.gender || '',
+    profileAgeRange: otherProfile.ageRange || '',
+    profileRegion: otherProfile.region || '',
+    profileBio: otherProfile.bio || '',
     opener: `${otherProfile.name}さんとマッチしました！`,
     dmUnlocked: true,
     conversationId,
@@ -282,13 +291,20 @@ function makeMatchRow(ownerUserId, otherProfile, conversationId, isRealUser) {
   };
 }
 
-// 2人の実ユーザー間に双方向のマッチ行を作る（冪等）。
-// 既にマッチ済みなら新規作成せず、対象ペアの両側のマッチ行を返す。
-async function ensureMutualMatch(userA, userB) {
-  await updateJson('matches.json', [], (matches) => {
+// 相互いいねが成立している場合だけ、2人の実ユーザー間に双方向のマッチ行を作る。
+// 相互判定（likes.json 読み取り）とマッチ作成を matches.json の updateJson 内で
+// 行うことで直列化し、A→B と B→A の同時いいねで二重 pending になる競合を防ぐ。
+// 既にマッチ済み or 新規作成後、対象ペア両側のマッチ行を返す（未成立なら空配列）。
+async function tryCreateMutualMatch(userA, userB) {
+  await updateJson('matches.json', [], async (matches) => {
     if (pairAlreadyMatched(matches, userA.id, userB.id)) {
       return { value: undefined, result: false };
     }
+    const likes = await readJson('likes.json', []);
+    const reciprocal =
+      likes.some((l) => l.userId === userA.id && l.profileId === userB.id) &&
+      likes.some((l) => l.userId === userB.id && l.profileId === userA.id);
+    if (!reciprocal) return { value: undefined, result: false };
     const conversationId = uid('conv');
     const rowForA = makeMatchRow(userA.id, userToProfile(userB), conversationId, true);
     const rowForB = makeMatchRow(userB.id, userToProfile(userA), conversationId, true);
@@ -525,12 +541,22 @@ app.put('/api/profile', requireAuth, async (req, res) => {
 });
 
 app.get('/api/profiles', requireAuth, async (req, res) => {
-  const planName = String(req.query.plan || 'FREE').toUpperCase();
+  const planName = String(req.authedUser.plan || 'FREE').toUpperCase();
   const targetGender = String(req.query.targetGender || 'all');
   const userId = req.authedUser.id;
-  const profiles = await readCandidateProfiles(userId);
+  const [profiles, likes, blocks, matches] = await Promise.all([
+    readCandidateProfiles(userId),
+    readJson('likes.json', []),
+    readJson('blocks.json', []),
+    readJson('matches.json', [])
+  ]);
   const plan = plans[planName] || plans.FREE;
-  let results = profiles;
+  const hiddenIds = new Set([
+    ...likes.filter((like) => like.userId === userId).map((like) => like.profileId),
+    ...blocks.filter((block) => block.userId === userId || block.profileId === userId).map((block) => block.userId === userId ? block.profileId : block.userId),
+    ...matches.filter((match) => match.userId === userId).map((match) => match.profileId)
+  ]);
+  let results = profiles.filter((profile) => !hiddenIds.has(profile.id));
   if (targetGender !== 'all' && plan.genderFilter) {
     results = results.filter((profile) => profile.gender === targetGender);
   }
@@ -538,71 +564,79 @@ app.get('/api/profiles', requireAuth, async (req, res) => {
 });
 
 app.post('/api/like', requireAuth, async (req, res) => {
-  const { profileId, type = 'like', plan = 'FREE' } = req.body || {};
+  const { profileId, type = 'like' } = req.body || {};
   const userId = req.authedUser.id;
-  const planName = String(plan || 'FREE').toUpperCase();
+  const planName = String(req.authedUser.plan || 'FREE').toUpperCase();
   const selectedType = ['like', 'super', 'dual'].includes(type) ? type : 'like';
   const limit = quotaFor(planName, selectedType);
 
-  const [profiles, users] = await Promise.all([
+  const [profiles, users, matches, blocks] = await Promise.all([
     readCandidateProfiles(userId),
-    readJson('users.json', [])
+    readJson('users.json', []),
+    readJson('matches.json', []),
+    readJson('blocks.json', [])
   ]);
   const profile = profiles.find((item) => item.id === profileId);
   if (!profile) return res.status(404).json({ message: 'プロフィールが見つかりません。' });
+  if (blocks.some((block) =>
+    (block.userId === userId && block.profileId === profileId) ||
+    (block.userId === profileId && block.profileId === userId))) {
+    return res.status(403).json({ message: 'ブロック済みの相手にはいいねできません。' });
+  }
+  if (pairAlreadyMatched(matches, userId, profileId)) {
+    const match = matches.find((item) => item.userId === userId && item.profileId === profileId) || null;
+    return res.json({ ok: true, already_matched: true, matched: true, match });
+  }
 
   // 利用枠チェックと like 追加を 1ファイルにつき直列・原子的に行い、
   // 同時リクエストでの枠の二重消費を防ぐ。
   const like = { id: uid('like'), userId, profileId, type: selectedType, plan: planName, createdAt: new Date().toISOString() };
-  const accepted = await updateJson('likes.json', [], (likes) => {
+  const likeResult = await updateJson('likes.json', [], (likes) => {
+    if (userHasLiked(likes, userId, profileId)) return { value: undefined, result: 'duplicate' };
     const used = countTodayUsage(likes, userId, selectedType);
-    if (used >= limit) return { value: undefined, result: false };
-    return { value: [...likes, like], result: true };
+    if (used >= limit) return { value: undefined, result: 'quota' };
+    return { value: [...likes, like], result: 'created' };
   });
-  if (!accepted) return res.status(402).json({ message: '本日の利用枠を使い切りました。PLUS/VIPで上限を増やせます。' });
+  if (likeResult === 'quota') return res.status(402).json({ message: '本日の利用枠を使い切りました。PLUS/VIPで上限を増やせます。' });
 
-  // === 相手が実プレイヤーの場合: 本物の双方向マッチング ===
-  if (isRealUserId(profileId, users)) {
-    const me = req.authedUser;
-    const targetUser = users.find((u) => u.id === profileId);
-
-    // 相手が既に自分をいいね済みか？（相互いいね → 即マッチ）
-    const likes = await readJson('likes.json', []);
-    const targetLikedMe = likes.some((l) => l.userId === profileId && l.profileId === userId);
-
-    if (targetLikedMe) {
-      const created = await ensureMutualMatch(me, targetUser);
-      await resolvePendingBetween(userId, profileId);
-      const myMatch = created.find((m) => m.userId === userId) || null;
-      return res.json({ ok: true, like, matched: true, match: myMatch, liked_back: false });
-    }
-
-    // まだ片想い → 相手に pending の「いいねが届いた」を1件積む（重複は作らない）。
-    const myProfile = userToProfile(me);
-    await updateJson('received_likes.json', [], (received) => {
-      const exists = received.some((r) => r.forUserId === profileId && r.fromProfileId === userId && r.status === 'pending');
-      if (exists) return { value: undefined, result: false };
-      return { value: [buildReceivedLikeEntry(myProfile, profileId, selectedType), ...received], result: true };
-    });
-    return res.json({ ok: true, like, matched: false, pending_sent: true, liked_back: false });
+  // 候補は実ユーザー限定。念のため非実ユーザーは安全に返す。
+  if (!isRealUserId(profileId, users)) {
+    return res.json({ ok: true, like: likeResult === 'created' ? like : null, already_liked: likeResult === 'duplicate', matched: false });
   }
 
-  // === 相手がダミー（シードプロフィール）の場合: 従来のシミュレーション ===
-  // 乱数で「返いいね」を判定し、返いいねした場合は自分の received_likes に積む。
-  const likedBack = calculateMatch(profile, selectedType, planName);
-  if (likedBack) {
-    await updateJson('received_likes.json', [], (received) => {
-      const alreadyPending = received.some((r) => r.forUserId === userId && r.fromProfileId === profileId && r.status === 'pending');
-      if (alreadyPending) return { value: undefined, result: false };
-      return { value: [buildReceivedLikeEntry(profile, userId, selectedType), ...received], result: true };
-    });
+  const me = req.authedUser;
+  const targetUser = users.find((u) => u.id === profileId);
+
+  // 相互いいねが成立していれば、その場で双方向マッチ（競合に強い直列化版）。
+  const matchRows = await tryCreateMutualMatch(me, targetUser);
+  const myMatch = matchRows.find((m) => m.userId === userId) || null;
+  if (myMatch) {
+    await resolvePendingBetween(userId, profileId);
+    return res.json({ ok: true, like: likeResult === 'created' ? like : null, already_liked: likeResult === 'duplicate', matched: true, match: myMatch });
   }
-  res.json({ ok: true, like, liked_back: likedBack, matched: false });
+
+  // 既にいいね済みでまだ相互でない → 何もせず終了（pending は初回に作成済み）。
+  if (likeResult === 'duplicate') {
+    return res.json({ ok: true, like: null, already_liked: true, matched: false });
+  }
+
+  // 初回いいねでまだ片方だけ → 相手に「いいねが届いた」状態を1件積む。
+  const myProfile = userToProfile(me);
+  await updateJson('received_likes.json', [], (received) => {
+    const exists = received.some((r) => r.forUserId === profileId && r.fromProfileId === userId && r.status === 'pending');
+    if (exists) return { value: undefined, result: false };
+    return { value: [buildReceivedLikeEntry(myProfile, profileId, selectedType), ...received], result: true };
+  });
+  return res.json({ ok: true, like, matched: false, pending_sent: true });
 });
 
 app.get('/api/received-likes/:userId', requireAuth, async (req, res) => {
-  const received = await readJson('received_likes.json', []);
-  res.json({ receivedLikes: received.filter((r) => r.forUserId === req.authedUser.id && r.status === 'pending') });
+  const [received, users] = await Promise.all([
+    readJson('received_likes.json', []),
+    readJson('users.json', [])
+  ]);
+  const realUserIds = new Set(users.map((user) => user.id));
+  res.json({ receivedLikes: received.filter((r) => r.forUserId === req.authedUser.id && r.status === 'pending' && realUserIds.has(r.fromProfileId)) });
 });
 
 app.post('/api/accept-like', requireAuth, async (req, res) => {
@@ -610,19 +644,23 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
   const userId = req.authedUser.id;
   const me = req.authedUser;
 
-  const received = await readJson('received_likes.json', []);
-  const idx = received.findIndex((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
-  if (idx < 0) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
-  const rl = received[idx];
-  received[idx] = { ...rl, status: 'accepted', acceptedAt: new Date().toISOString() };
-  await writeJson('received_likes.json', received);
+  let rl = null;
+  const accepted = await updateJson('received_likes.json', [], (received) => {
+    const idx = received.findIndex((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
+    if (idx < 0) return { value: undefined, result: false };
+    rl = received[idx];
+    const next = [...received];
+    next[idx] = { ...rl, status: 'accepted', acceptedAt: new Date().toISOString() };
+    return { value: next, result: true };
+  });
+  if (!accepted || !rl) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
 
   const users = await readJson('users.json', []);
   const fromUser = users.find((u) => u.id === rl.fromProfileId);
 
   // === 相手が実プレイヤー: 双方向マッチを作成し、両者の会話を同期 ===
   if (fromUser) {
-    // 承認＝自分も相手をいいねしたとみなし、likes.json にも記録（真の相互いいね）。
+    // いいねを返す＝自分も相手をいいねしたとみなし、likes.json にも記録（真の相互いいね）。
     await updateJson('likes.json', [], (likes) => {
       const exists = likes.some((l) => l.userId === userId && l.profileId === rl.fromProfileId);
       if (exists) return { value: undefined, result: false };
@@ -634,16 +672,11 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
     return res.json({ ok: true, match: myMatch, matched: true });
   }
 
-  // === 相手がダミー: 片側のみのマッチ（従来動作） ===
-  const profiles = await readCandidateProfiles(userId);
-  const profile = profiles.find((p) => p.id === rl.fromProfileId);
-  const conversationId = uid('conv');
-  let match;
-  await updateJson('matches.json', [], (matches) => {
-    match = { id: uid('match'), userId, profileId: rl.fromProfileId, profileName: rl.fromProfileName, profilePhoto: rl.fromPhoto || '', opener: profile?.opener || `${rl.fromProfileName}さんとマッチしました！`, dmUnlocked: true, conversationId, isRealUser: false, createdAt: new Date().toISOString() };
-    return { value: [match, ...matches], result: true };
+  await updateJson('received_likes.json', [], (received) => {
+    const next = received.map((item) => item.id === receivedLikeId ? { ...item, status: 'invalid', invalidAt: new Date().toISOString() } : item);
+    return { value: next, result: true };
   });
-  res.json({ ok: true, match, matched: true });
+  res.status(410).json({ message: 'このいいねは実プレイヤーからのものではないため返せません。' });
 });
 
 app.get('/api/matches/:userId', requireAuth, async (req, res) => {
@@ -746,10 +779,44 @@ app.post('/api/report', requireAuth, async (req, res) => {
 });
 
 app.post('/api/block', requireAuth, async (req, res) => {
-  const blocks = await readJson('blocks.json', []);
-  const block = { id: uid('block'), userId: req.authedUser.id, profileId: req.body.profileId, createdAt: new Date().toISOString() };
-  blocks.unshift(block);
-  await writeJson('blocks.json', blocks);
+  const userId = req.authedUser.id;
+  const profileId = cleanText(req.body.profileId, 80);
+  if (!profileId) return res.status(400).json({ message: 'ブロックする相手が必要です。' });
+  let block = null;
+  await updateJson('blocks.json', [], (blocks) => {
+    const existing = blocks.find((item) => item.userId === userId && item.profileId === profileId);
+    if (existing) {
+      block = existing;
+      return { value: undefined, result: false };
+    }
+    block = { id: uid('block'), userId, profileId, createdAt: new Date().toISOString() };
+    return { value: [block, ...blocks], result: true };
+  });
+  await updateJson('received_likes.json', [], (received) => {
+    let changed = false;
+    const next = received.map((item) => {
+      const related =
+        (item.forUserId === userId && item.fromProfileId === profileId) ||
+        (item.forUserId === profileId && item.fromProfileId === userId);
+      if (related && item.status === 'pending') {
+        changed = true;
+        return { ...item, status: 'blocked', blockedAt: new Date().toISOString() };
+      }
+      return item;
+    });
+    return { value: changed ? next : undefined, result: changed };
+  });
+  await updateJson('matches.json', [], (matches) => {
+    let changed = false;
+    const next = matches.map((match) => {
+      if (match.userId === userId && match.profileId === profileId && match.dmUnlocked) {
+        changed = true;
+        return { ...match, dmUnlocked: false, blockedAt: new Date().toISOString() };
+      }
+      return match;
+    });
+    return { value: changed ? next : undefined, result: changed };
+  });
   res.status(201).json({ block });
 });
 
