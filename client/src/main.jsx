@@ -1041,7 +1041,7 @@ function AppDashboard(props) {
   const [accountOpen, setAccountOpen] = useState(false);
   return (
     <div className="appv2">
-      <header className="site-header app-shared-header">
+      <header className="site-header">
         <button className="brand app-brand-button" type="button" onClick={onBackSite} aria-label="Pairlyトップへ">
           <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" />
         </button>
