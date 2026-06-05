@@ -772,8 +772,8 @@ function SiteHeader({ isAuthed, user, plan, notificationCount, onSignup, onLogin
       {isAuthed ? <span className="plan-pill">{planLabel(plan)}</span> : <button className="plain" onClick={onLogin}>ログイン</button>}
       <button className="primary small" onClick={isAuthed ? (onGoApp || onOpenApp) : onSignup}>{isAuthed ? 'アプリを開く' : '無料登録'}</button>
       {isAuthed && user && <>
-        <button className={cx('appv2-notification-btn', activeTab === 'notifications' && 'active')} type="button" onClick={onGoNotifications || (() => setActiveTab?.('notifications'))} aria-label="通知">
-          <span>{TAB_ICONS.notifications}</span>
+        <button className={cx('appv2-notification-btn', activeTab === 'notifications' && 'active', notificationCount > 0 && 'has-unread')} type="button" onClick={onGoNotifications || (() => setActiveTab?.('notifications'))} aria-label="通知">
+          {TAB_ICONS.notifications}
           {notificationCount > 0 && <em>{notificationCount}</em>}
         </button>
         <div className="account-menu">

@@ -116,6 +116,8 @@
 .appv2{display:flex;flex-direction:column;height:100dvh;height:100vh;background:var(--bg);overflow:hidden}
 .appv2-notification-btn{position:relative;width:38px;height:38px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);display:grid;place-items:center;font-size:17px;font-weight:900;box-shadow:0 8px 18px rgba(31,25,20,.08)}
 .appv2-notification-btn:hover,.appv2-notification-btn.active{border-color:var(--ink);background:var(--soft)}
+.appv2-notification-btn.has-unread{border-color:#f5a623;background:#fff8ec;color:#c47d00;box-shadow:0 0 0 3px rgba(245,166,35,.18),0 8px 18px rgba(245,166,35,.14)}
+.appv2-notification-btn.has-unread:hover{border-color:#e09000;background:#fff0d0}
 .appv2-notification-btn em{position:absolute;right:-5px;top:-6px;min-width:18px;height:18px;border-radius:999px;background:var(--pink);color:#fff;display:grid;place-items:center;border:2px solid #fff;font-style:normal;font-size:10px;font-weight:900;line-height:1}
 .appv2-avatar{width:34px;height:34px;border:0;border-radius:12px;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:Outfit;font-size:16px;font-weight:900;overflow:hidden;flex-shrink:0;padding:0;box-shadow:0 8px 18px rgba(31,25,20,.14);transition:transform .15s,box-shadow .15s}
 .appv2-avatar:hover,.appv2-avatar.active{transform:translateY(-1px);box-shadow:0 0 0 4px rgba(255,79,131,.12),0 10px 22px rgba(31,25,20,.16)}
