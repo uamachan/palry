@@ -8,6 +8,9 @@
 @media(max-width:1040px){.hero,.app-frame,.panel-grid{grid-template-columns:1fr}.app-sidebar{grid-template-columns:1fr 1fr}.price-grid,.steps{grid-template-columns:1fr}.single-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.site-header{height:auto;padding:12px;flex-wrap:wrap}.site-nav{order:3;width:100%;overflow:auto;margin-left:0}.hero{min-height:auto;padding-top:42px}.form-grid,.app-sidebar,.terms-list,.single-grid{grid-template-columns:1fr}.profile-photo{height:230px}.swipe-actions{grid-template-columns:repeat(2,1fr)}.section{padding:50px 14px}.section-head.inline{display:grid}.footer{display:grid}.hero h1{font-size:38px}}
 .nav-button{border:0;background:transparent;color:var(--muted);font-weight:800;padding:10px 12px;border-radius:999px}.nav-button:hover{background:var(--soft);color:var(--ink)}
+.nav-button.active{background:var(--soft);color:var(--ink)}
+.app-shared-header{flex-shrink:0}
+.app-brand-button{border:0;background:transparent;cursor:pointer}
 .return-card{background:var(--paper);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);padding:28px;display:flex;align-items:center;justify-content:space-between;gap:22px}.return-card h2{font-size:34px;letter-spacing:-.04em;margin:8px 0}.return-card p{color:var(--muted);line-height:1.8;margin:0;max-width:640px}
 .app-view{min-height:100vh;background:#f2eee8;padding:18px}.app-topbar{height:64px;background:rgba(255,253,249,.94);border:1px solid var(--line);border-radius:22px;display:flex;align-items:center;gap:18px;padding:0 18px;margin:0 auto 14px;max-width:1260px;position:sticky;top:14px;z-index:50;backdrop-filter:blur(14px);box-shadow:0 10px 30px rgba(31,25,20,.06)}.app-topbar img{width:118px}.back-link{border:1px solid var(--line);background:white;border-radius:999px;padding:9px 12px;font-weight:900;color:var(--muted)}.back-link:hover{color:var(--ink);border-color:var(--ink)}.app-label{margin-left:auto;font-family:Outfit;font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--pink)}.app-layout{max-width:1260px;margin:0 auto;display:grid;grid-template-columns:286px minmax(0,1fr);gap:14px}.app-main-panel{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:26px;box-shadow:0 10px 30px rgba(31,25,20,.06);padding:14px}.app-view .app-tabs{padding:0 0 14px}.app-view .pricing-section.inside{background:transparent;border:0;box-shadow:none}.empty-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 30px rgba(31,25,20,.06)}
 .dm-panel{min-height:520px;display:grid;grid-template-columns:290px minmax(0,1fr);gap:14px}.dm-thread-list,.dm-conversation{background:#f9f5f0;border:1px solid var(--line);border-radius:22px;padding:14px;min-width:0}.dm-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.dm-head h3,.dm-conversation-head h3{margin:0}.dm-head span,.dm-conversation-head span{color:var(--muted);font-size:12px;font-weight:900}.dm-thread{width:100%;border:1px solid var(--line);background:white;border-radius:16px;padding:13px;text-align:left;display:grid;gap:5px;margin-bottom:9px}.dm-thread b{font-size:15px}.dm-thread span{color:var(--muted);font-size:12px;line-height:1.55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dm-thread.active{border-color:var(--pink);box-shadow:0 0 0 4px rgba(255,79,131,.1)}.dm-conversation{display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:var(--paper)}.dm-conversation-head{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding-bottom:12px}.avatar.small{width:42px;height:42px;border-radius:14px;font-size:20px;margin:0}.dm-messages{display:flex;flex-direction:column;gap:10px;overflow:auto;padding:16px 4px;min-height:280px;max-height:440px}.dm-bubble{align-self:flex-start;max-width:min(72%,520px);background:#fff;border:1px solid var(--line);border-radius:18px 18px 18px 6px;padding:11px 13px}.dm-bubble.mine{align-self:flex-end;background:#1f1c1b;color:#fff;border-color:#1f1c1b;border-radius:18px 18px 6px 18px}.dm-bubble p{margin:0;line-height:1.7;word-break:break-word}.dm-bubble time{display:block;margin-top:5px;color:var(--muted);font-size:11px;font-weight:800}.dm-bubble.mine time{color:rgba(255,255,255,.68)}.dm-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;border-top:1px solid var(--line);padding-top:12px}.dm-form input{border:1px solid var(--line2);border-radius:999px;background:white;padding:13px 15px;outline:none}.dm-form input:focus{border-color:var(--pink);box-shadow:0 0 0 4px rgba(255,79,131,.12)}
@@ -108,17 +111,12 @@
 @media(max-width:760px){.tinder-card-area{max-width:100%}.tinder-btn-pass,.tinder-btn-like{width:58px;height:58px}.tinder-btn-undo,.tinder-btn-super,.tinder-btn-dual{width:46px;height:46px}.tinder-actions{gap:10px}}
 
 /* ══════════════════════════════════════════════════
-   App v2 — full-screen app shell with bottom nav
+   App v2 — full-screen app shell with shared top nav
 ══════════════════════════════════════════════════ */
 .appv2{display:flex;flex-direction:column;height:100dvh;height:100vh;background:var(--bg);overflow:hidden}
-.appv2-topbar{flex-shrink:0;height:72px;display:flex;align-items:center;gap:22px;padding:0 clamp(18px,4vw,54px);background:rgba(255,253,249,.95);border-bottom:1px solid var(--line);backdrop-filter:blur(14px);position:relative;z-index:10}
-.appv2-brand{border:0;background:transparent;padding:0;display:flex;align-items:center;flex-shrink:0}
-.appv2-logo{width:132px;height:auto;display:block}
-.appv2-site-nav{display:flex;align-items:center;gap:8px;margin-left:auto}
-.appv2-site-nav button{border:0;background:transparent;color:var(--muted);font-weight:900;padding:10px 12px;border-radius:999px;white-space:nowrap}
-.appv2-site-nav button:hover,.appv2-site-nav button.active{background:var(--soft);color:var(--ink)}
-.appv2-topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-.appv2-plan{border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900;background:#fff;color:var(--muted)}
+.appv2-notification-btn{position:relative;width:38px;height:38px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);display:grid;place-items:center;font-size:17px;font-weight:900;box-shadow:0 8px 18px rgba(31,25,20,.08)}
+.appv2-notification-btn:hover,.appv2-notification-btn.active{border-color:var(--ink);background:var(--soft)}
+.appv2-notification-btn em{position:absolute;right:-5px;top:-6px;min-width:18px;height:18px;border-radius:999px;background:var(--pink);color:#fff;display:grid;place-items:center;border:2px solid #fff;font-style:normal;font-size:10px;font-weight:900;line-height:1}
 .appv2-avatar{width:34px;height:34px;border:0;border-radius:12px;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:Outfit;font-size:16px;font-weight:900;overflow:hidden;flex-shrink:0;padding:0;box-shadow:0 8px 18px rgba(31,25,20,.14);transition:transform .15s,box-shadow .15s}
 .appv2-avatar:hover,.appv2-avatar.active{transform:translateY(-1px);box-shadow:0 0 0 4px rgba(255,79,131,.12),0 10px 22px rgba(31,25,20,.16)}
 .appv2-avatar img{width:100%;height:100%;object-fit:cover}
@@ -183,14 +181,6 @@
 .appv2-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:0}
 @keyframes tabFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .appv2-content>*{animation:tabFadeIn .22s ease-out both}
-
-.appv2-bottom-nav{flex-shrink:0;height:64px;display:flex;align-items:stretch;background:rgba(255,253,249,.97);border-top:1px solid var(--line);backdrop-filter:blur(14px)}
-.appv2-nav-btn{flex:1;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--muted);transition:color .15s}
-.appv2-nav-btn:hover{color:var(--ink)}
-.appv2-nav-btn.active{color:var(--pink)}
-.appv2-nav-icon{font-size:22px;line-height:1;transition:transform .15s}
-.appv2-nav-btn.active .appv2-nav-icon{transform:scale(1.15)}
-.appv2-nav-label{font-size:10px;font-weight:900;letter-spacing:.04em}
 
 /* ══════════════════════════════════════════════════
    Match Panel (mp-*)
@@ -338,17 +328,11 @@
 /* PC wide layout */
 @media(min-width:761px){
   .mp-wrap{padding:20px 20px 14px}
-  .appv2-topbar{height:62px;padding:0 24px}
-  .appv2-bottom-nav{height:68px}
-  .appv2-nav-icon{font-size:24px}
-  .appv2-nav-label{font-size:11px}
 }
 
 /* Layout alignment pass */
-:root{--app-surface-w:400px;--app-gap:14px;--app-control-h:40px;--app-topbar-h:72px;--app-bottombar-h:64px}
-.appv2-topbar{height:var(--app-topbar-h);padding:0 18px}
-.appv2-bottom-nav{height:var(--app-bottombar-h)}
-.appv2-content .list-panel{min-height:calc(100dvh - var(--app-topbar-h) - var(--app-bottombar-h));height:calc(100dvh - var(--app-topbar-h) - var(--app-bottombar-h))}
+:root{--app-surface-w:400px;--app-gap:14px;--app-control-h:40px;--app-topbar-h:72px}
+.appv2-content .list-panel{min-height:calc(100dvh - var(--app-topbar-h));height:calc(100dvh - var(--app-topbar-h))}
 .mp-wrap{width:100%;max-width:calc(var(--app-surface-w) + 32px);gap:var(--app-gap);padding:16px}
 .mp-filter-row,.mp-card-wrap,.mp-actions,.mp-action-labels,.mp-empty,.mp-received-section{width:100%;max-width:var(--app-surface-w)}
 .mp-filter-row{min-height:var(--app-control-h);gap:10px}
@@ -358,7 +342,6 @@
 .mp-actions{min-height:66px;padding:4px 0 0}
 .mp-btn{width:58px;height:58px;flex-basis:58px}
 .mp-btn svg{width:25px;height:25px}
-.appv2-nav-btn{min-height:var(--app-bottombar-h)}
 .profile-detail-panel{width:min(var(--app-surface-w),calc(100vw - 28px))}
 .profile-detail-hero{height:240px}
 .profile-detail-body{padding:16px;gap:12px}
@@ -366,12 +349,8 @@
 @media(max-width:760px){
   :root{--app-surface-w:min(400px,calc(100vw - 32px))}
   .mp-wrap{padding:14px 16px}
-  .appv2-topbar{padding:0 14px}
-  .appv2-logo{width:104px}
-  .appv2-site-nav{gap:2px;margin-left:0}
-  .appv2-site-nav button{padding:8px 7px;font-size:12px}
-  .appv2-topbar-right .primary.small{display:none}
-  .appv2-plan{padding:5px 8px}
+  .app-shared-header .primary.small{display:none}
+  .appv2-notification-btn{width:34px;height:34px;font-size:15px}
 }
 
 /* Profile detail alignment */
@@ -416,8 +395,6 @@
 .mock-photo{background:rgba(255,255,255,.38);border:1px solid rgba(255,79,131,.18);color:rgba(255,79,131,.42);box-shadow:inset 0 0 0 1px rgba(255,255,255,.62),0 12px 26px rgba(31,25,20,.06);backdrop-filter:blur(8px)}
 
 /* DM improvements */
-.appv2-nav-icon{position:relative;display:grid;place-items:center}
-.appv2-nav-badge{position:absolute;right:-10px;top:-8px;min-width:18px;height:18px;border-radius:999px;background:var(--pink);color:#fff;display:grid;place-items:center;border:2px solid #fff;font-style:normal;font-size:10px;font-weight:900;line-height:1}
 .dm-conversation-head{grid-template-columns:42px minmax(0,1fr) auto}
 .dm-conversation-head>div:nth-child(2){min-width:0}
 .dm-conversation-head h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -464,34 +441,34 @@
 .auth-modal--profile{padding:8px}
 .auth-modal--profile .auth-modal-panel{max-height:calc(100svh - 16px);overflow:visible;padding:10px;border-radius:20px}
 .auth-modal--profile .auth-close{top:8px;right:8px;width:32px;height:32px;font-size:18px}
-.auth-modal-panel--profile{width:min(430px,calc(100vw - 16px))}
-.setup-profile-section,.profile-edit-section{width:100%;max-width:390px;margin:0 auto}
-.setup-profile-section .setup-title,.profile-edit-section .setup-title{padding:0 36px 5px 0}
-.setup-profile-section .setup-title span,.profile-edit-section .setup-title span{font-size:9px;letter-spacing:.08em}
-.setup-profile-section .setup-title h2,.profile-edit-section .setup-title h2{font-size:22px;line-height:1.12;margin:1px 0 0}
-.setup-profile-section .registered-email,.profile-edit-section .registered-email{margin:2px 0 0;font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.setup-profile-section .profile-setup-card,.profile-edit-section .profile-setup-card{padding:9px;border-radius:16px;box-shadow:none}
-.setup-profile-section .setup-tabs,.profile-edit-section .setup-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin:0 0 7px;padding:0 0 7px;overflow:visible;flex-wrap:nowrap}
-.setup-profile-section .setup-tabs button,.profile-edit-section .setup-tabs button{min-width:0;min-height:28px;padding:5px 2px;border-radius:9px;font-size:9px;letter-spacing:0;white-space:nowrap}
-.setup-profile-section .setup-pane,.profile-edit-section .setup-pane{gap:6px}
-.setup-profile-section .profile-setup-grid,.profile-edit-section .profile-setup-grid{grid-template-columns:1fr;gap:6px}
-.setup-profile-section .photo-uploader,.profile-edit-section .photo-uploader{max-width:104px;gap:3px;justify-self:center;text-align:center;font-size:9px}
-.setup-profile-section .photo-preview,.profile-edit-section .photo-preview{border-radius:14px}
-.setup-profile-section .setup-fields,.setup-profile-section .setup-tab-grid,.profile-edit-section .setup-fields,.profile-edit-section .setup-tab-grid{grid-template-columns:1fr;gap:5px}
-.setup-profile-section .setup-fields label,.setup-profile-section .setup-bio,.setup-profile-section .custom-select-field,.profile-edit-section .setup-fields label,.profile-edit-section .setup-bio,.profile-edit-section .custom-select-field{gap:3px;font-size:9px}
-.setup-profile-section .setup-fields input,.setup-profile-section .setup-fields select,.setup-profile-section .setup-bio textarea,.setup-profile-section .custom-select-trigger,.profile-edit-section .setup-fields input,.profile-edit-section .setup-fields select,.profile-edit-section .setup-bio textarea,.profile-edit-section .custom-select-trigger{min-height:32px;padding:6px 8px;border-radius:9px;font-size:11px}
-.setup-profile-section .setup-pane .setup-bio textarea,.profile-edit-section .setup-pane .setup-bio textarea{min-height:56px;max-height:56px;resize:none}
-.setup-profile-section .agent-fieldset,.setup-profile-section .intent-fieldset,.setup-profile-section .voice-recorder,.profile-edit-section .agent-fieldset,.profile-edit-section .intent-fieldset,.profile-edit-section .voice-recorder{padding:7px;border-radius:11px}
-.setup-profile-section .agent-fieldset legend,.setup-profile-section .intent-fieldset legend,.profile-edit-section .agent-fieldset legend,.profile-edit-section .intent-fieldset legend{font-size:9px}
-.setup-profile-section .chip-list,.profile-edit-section .chip-list{gap:3px}
-.setup-profile-section .chip-list button,.profile-edit-section .chip-list button{min-height:23px;padding:4px 5px;border-radius:8px;font-size:9px;line-height:1.1}
-.setup-profile-section .voice-recorder,.profile-edit-section .voice-recorder{gap:5px}
-.setup-profile-section .voice-recorder b,.profile-edit-section .voice-recorder b{font-size:11px}
-.setup-profile-section .voice-recorder span,.profile-edit-section .voice-recorder span{font-size:9px;line-height:1.35}
-.setup-profile-section .voice-actions .secondary,.setup-profile-section .voice-actions .primary,.profile-edit-section .voice-actions .secondary,.profile-edit-section .voice-actions .primary{min-height:30px;padding:6px 8px;font-size:10px}
-.setup-profile-section .voice-player,.profile-edit-section .voice-player{height:28px}
-.setup-profile-section .form-actions,.profile-edit-section .form-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
-.setup-profile-section .form-actions .primary,.setup-profile-section .form-actions .secondary,.profile-edit-section .form-actions .primary,.profile-edit-section .form-actions .secondary{width:100%;min-height:34px;padding:7px 8px;font-size:11px}
+.auth-modal-panel--profile{width:min(540px,calc(100vw - 16px))}
+.setup-profile-section,.profile-edit-section{width:100%;max-width:500px;margin:0 auto}
+.setup-profile-section .setup-title,.profile-edit-section .setup-title{padding:0 42px 10px 0}
+.setup-profile-section .setup-title span,.profile-edit-section .setup-title span{font-size:12px;letter-spacing:.08em}
+.setup-profile-section .setup-title h2,.profile-edit-section .setup-title h2{font-size:32px;line-height:1.12;margin:3px 0 0}
+.setup-profile-section .registered-email,.profile-edit-section .registered-email{margin:5px 0 0;font-size:13px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setup-profile-section .profile-setup-card,.profile-edit-section .profile-setup-card{padding:16px;border-radius:20px;box-shadow:none}
+.setup-profile-section .setup-tabs,.profile-edit-section .setup-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:0 0 12px;padding:0 0 11px;overflow:visible;flex-wrap:nowrap}
+.setup-profile-section .setup-tabs button,.profile-edit-section .setup-tabs button{min-width:0;min-height:38px;padding:8px 4px;border-radius:12px;font-size:12px;letter-spacing:0;white-space:nowrap}
+.setup-profile-section .setup-pane,.profile-edit-section .setup-pane{gap:11px}
+.setup-profile-section .profile-setup-grid,.profile-edit-section .profile-setup-grid{grid-template-columns:1fr;gap:11px}
+.setup-profile-section .photo-uploader,.profile-edit-section .photo-uploader{max-width:160px;gap:7px;justify-self:center;text-align:center;font-size:13px}
+.setup-profile-section .photo-preview,.profile-edit-section .photo-preview{border-radius:18px}
+.setup-profile-section .setup-fields,.setup-profile-section .setup-tab-grid,.profile-edit-section .setup-fields,.profile-edit-section .setup-tab-grid{grid-template-columns:1fr;gap:10px}
+.setup-profile-section .setup-fields label,.setup-profile-section .setup-bio,.setup-profile-section .custom-select-field,.profile-edit-section .setup-fields label,.profile-edit-section .setup-bio,.profile-edit-section .custom-select-field{gap:7px;font-size:13px}
+.setup-profile-section .setup-fields input,.setup-profile-section .setup-fields select,.setup-profile-section .setup-bio textarea,.setup-profile-section .custom-select-trigger,.profile-edit-section .setup-fields input,.profile-edit-section .setup-fields select,.profile-edit-section .setup-bio textarea,.profile-edit-section .custom-select-trigger{min-height:44px;padding:10px 13px;border-radius:13px;font-size:15px}
+.setup-profile-section .setup-pane .setup-bio textarea,.profile-edit-section .setup-pane .setup-bio textarea{min-height:90px;max-height:90px;resize:none}
+.setup-profile-section .agent-fieldset,.setup-profile-section .intent-fieldset,.setup-profile-section .voice-recorder,.profile-edit-section .agent-fieldset,.profile-edit-section .intent-fieldset,.profile-edit-section .voice-recorder{padding:12px;border-radius:15px}
+.setup-profile-section .agent-fieldset legend,.setup-profile-section .intent-fieldset legend,.profile-edit-section .agent-fieldset legend,.profile-edit-section .intent-fieldset legend{font-size:13px}
+.setup-profile-section .chip-list,.profile-edit-section .chip-list{gap:7px}
+.setup-profile-section .chip-list button,.profile-edit-section .chip-list button{min-height:34px;padding:7px 10px;border-radius:11px;font-size:13px;line-height:1.2}
+.setup-profile-section .voice-recorder,.profile-edit-section .voice-recorder{gap:9px}
+.setup-profile-section .voice-recorder b,.profile-edit-section .voice-recorder b{font-size:15px}
+.setup-profile-section .voice-recorder span,.profile-edit-section .voice-recorder span{font-size:12px;line-height:1.5}
+.setup-profile-section .voice-actions .secondary,.setup-profile-section .voice-actions .primary,.profile-edit-section .voice-actions .secondary,.profile-edit-section .voice-actions .primary{min-height:42px;padding:9px 13px;font-size:14px}
+.setup-profile-section .voice-player,.profile-edit-section .voice-player{height:36px}
+.setup-profile-section .form-actions,.profile-edit-section .form-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.setup-profile-section .form-actions .primary,.setup-profile-section .form-actions .secondary,.profile-edit-section .form-actions .primary,.profile-edit-section .form-actions .secondary{width:100%;min-height:46px;padding:10px 13px;font-size:15px}
 
 /* DM app-fit layout */
 .appv2-content--dm{overflow:hidden}
@@ -506,7 +483,7 @@
 .appv2-content .dm-form button{min-height:40px;padding:9px 14px}
 .appv2-content .dm-starters{padding-top:7px}
 @media(max-width:760px){
-  .auth-modal-panel--profile{width:min(390px,calc(100vw - 16px))}
+  .auth-modal-panel--profile{width:min(500px,calc(100vw - 16px))}
   .appv2-content .dm-panel{grid-template-rows:auto minmax(0,1fr);grid-template-columns:1fr}
   .appv2-content .dm-thread-list{max-height:112px}
 }
