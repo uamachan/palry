@@ -1037,31 +1037,26 @@ function ReturnToAppCard({ user, openApp }) {
 }
 
 function AppDashboard(props) {
-  const { activeTab, setActiveTab, tabs, onBackSite, user, plan, dmThreads, notificationCount, openProfileEditor, logout } = props;
+  const { activeTab, setActiveTab, onBackSite, user, plan, notificationCount, openProfileEditor, logout } = props;
   const [accountOpen, setAccountOpen] = useState(false);
-  const totalUnread = dmThreads.reduce((sum, thread) => sum + Number(thread.unreadCount || 0), 0);
-  function openSiteSection(sectionId) {
-    onBackSite();
-    window.setTimeout(() => {
-      const section = document.getElementById(sectionId);
-      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      window.history.replaceState(null, '', `#${sectionId}`);
-    }, 50);
-  }
   return (
     <div className="appv2">
-      <header className="appv2-topbar">
-        <button className="appv2-brand" type="button" onClick={onBackSite} aria-label="Pairlyトップへ">
-          <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" className="appv2-logo" />
+      <header className="site-header app-shared-header">
+        <button className="brand app-brand-button" type="button" onClick={onBackSite} aria-label="Pairlyトップへ">
+          <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" />
         </button>
-        <nav className="appv2-site-nav" aria-label="サイトメニュー">
-          <button type="button" className={activeTab === 'match' ? 'active' : ''} onClick={() => setActiveTab('match')}>マッチング</button>
-          <button type="button" onClick={() => openSiteSection('pricing')}>料金</button>
-          <button type="button" onClick={() => openSiteSection('safety')}>安全・規約</button>
+        <nav className="site-nav" aria-label="サイトメニュー">
+          <button type="button" className={cx('nav-button', activeTab === 'match' && 'active')} onClick={() => setActiveTab('match')}>マッチング</button>
+          <button type="button" className={cx('nav-button', activeTab === 'pricing' && 'active')} onClick={() => setActiveTab('pricing')}>料金</button>
+          <button type="button" className={cx('nav-button', activeTab === 'safety' && 'active')} onClick={() => setActiveTab('safety')}>安全・規約</button>
         </nav>
-        <div className="appv2-topbar-right">
-          <span className="appv2-plan">{planLabel(plan)}</span>
+        <div className="header-actions">
+          <span className="plan-pill">{planLabel(plan)}</span>
           <button className="primary small" type="button" onClick={() => setActiveTab('match')}>アプリを開く</button>
+          <button className={cx('appv2-notification-btn', activeTab === 'notifications' && 'active')} type="button" onClick={() => setActiveTab('notifications')} aria-label="通知">
+            <span>{TAB_ICONS.notifications}</span>
+            {notificationCount > 0 && <em>{notificationCount}</em>}
+          </button>
           <div className="account-menu">
             <button className={cx('appv2-avatar', accountOpen && 'active')} type="button" onClick={() => setAccountOpen((open) => !open)} aria-haspopup="menu" aria-expanded={accountOpen}>
               {user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0,1) || 'P')}
@@ -1073,6 +1068,8 @@ function AppDashboard(props) {
               </div>
               <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); openProfileEditor(); }}>プロフィール編集</button>
               <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); setActiveTab('match'); }}>マッチングへ</button>
+              <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); setActiveTab('dm'); }}>DM</button>
+              <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); setActiveTab('notifications'); }}>通知</button>
               <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); onBackSite(); }}>サイトへ戻る</button>
               <button type="button" role="menuitem" className="danger" onClick={() => { setAccountOpen(false); logout(); }}>ログアウト</button>
             </div>}
@@ -1082,14 +1079,6 @@ function AppDashboard(props) {
       <main className={cx('appv2-content', activeTab === 'dm' && 'appv2-content--dm')} key={activeTab}>
         <TabPanel {...props} />
       </main>
-      <nav className="appv2-bottom-nav">
-        {tabs.map((tab) => (
-          <button key={tab.id} className={cx('appv2-nav-btn', activeTab === tab.id && 'active')} onClick={() => setActiveTab(tab.id)}>
-            <span className="appv2-nav-icon">{TAB_ICONS[tab.id]}{tab.id === 'notifications' && notificationCount > 0 && <em className="appv2-nav-badge">{notificationCount}</em>}{tab.id === 'dm' && totalUnread > 0 && <em className="appv2-nav-badge">{totalUnread}</em>}</span>
-            <span className="appv2-nav-label">{tab.label}</span>
-          </button>
-        ))}
-      </nav>
     </div>
   );
 }
@@ -1138,6 +1127,8 @@ function NotificationsPanel({ receivedLikes, dmThreads, setActiveTab, selectDmTh
 function TabPanel(props) {
   switch (props.activeTab) {
     case 'match': return <MatchPanel {...props} />;
+    case 'pricing': return <PricingPanel {...props} />;
+    case 'safety': return <SafetyCompact />;
     case 'notifications': return <NotificationsPanel {...props} />;
     case 'dm': return <DmPanel {...props} />;
     case 'footprints': return <FootprintsPanel {...props} />;
