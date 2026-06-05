@@ -9,7 +9,7 @@
 @media(max-width:760px){.site-header{height:auto;padding:12px;flex-wrap:wrap}.site-nav{order:3;width:100%;overflow:auto;margin-left:0}.hero{min-height:auto;padding-top:42px}.form-grid,.app-sidebar,.terms-list,.single-grid{grid-template-columns:1fr}.profile-photo{height:230px}.swipe-actions{grid-template-columns:repeat(2,1fr)}.section{padding:50px 14px}.section-head.inline{display:grid}.footer{display:grid}.hero h1{font-size:38px}}
 .nav-button{border:0;background:transparent;color:var(--muted);font-weight:800;padding:10px 12px;border-radius:999px}.nav-button:hover{background:var(--soft);color:var(--ink)}
 .nav-button.active{background:var(--soft);color:var(--ink)}
-.app-shared-header{flex-shrink:0}
+.appv2>.site-header{flex-shrink:0}
 .app-brand-button{border:0;background:transparent;cursor:pointer}
 .return-card{background:var(--paper);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);padding:28px;display:flex;align-items:center;justify-content:space-between;gap:22px}.return-card h2{font-size:34px;letter-spacing:-.04em;margin:8px 0}.return-card p{color:var(--muted);line-height:1.8;margin:0;max-width:640px}
 .app-view{min-height:100vh;background:#f2eee8;padding:18px}.app-topbar{height:64px;background:rgba(255,253,249,.94);border:1px solid var(--line);border-radius:22px;display:flex;align-items:center;gap:18px;padding:0 18px;margin:0 auto 14px;max-width:1260px;position:sticky;top:14px;z-index:50;backdrop-filter:blur(14px);box-shadow:0 10px 30px rgba(31,25,20,.06)}.app-topbar img{width:118px}.back-link{border:1px solid var(--line);background:white;border-radius:999px;padding:9px 12px;font-weight:900;color:var(--muted)}.back-link:hover{color:var(--ink);border-color:var(--ink)}.app-label{margin-left:auto;font-family:Outfit;font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--pink)}.app-layout{max-width:1260px;margin:0 auto;display:grid;grid-template-columns:286px minmax(0,1fr);gap:14px}.app-main-panel{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:26px;box-shadow:0 10px 30px rgba(31,25,20,.06);padding:14px}.app-view .app-tabs{padding:0 0 14px}.app-view .pricing-section.inside{background:transparent;border:0;box-shadow:none}.empty-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 30px rgba(31,25,20,.06)}
@@ -349,7 +349,7 @@
 @media(max-width:760px){
   :root{--app-surface-w:min(400px,calc(100vw - 32px))}
   .mp-wrap{padding:14px 16px}
-  .app-shared-header .primary.small{display:none}
+  .appv2>.site-header .primary.small{display:none}
   .appv2-notification-btn{width:34px;height:34px;font-size:15px}
 }
 
