@@ -1,0 +1,66 @@
+[
+  {
+    "id": "user_mpz95kd3_qkxsgn",
+    "name": "demo",
+    "gender": "男性",
+    "riotId": "demo#JP1",
+    "rank": "Gold",
+    "role": "フレックス",
+    "agents": [
+      "Omen",
+      "Sage"
+    ],
+    "xHandle": "@pairly_demo",
+    "bio": "デモログイン中です。",
+    "plan": "FREE",
+    "verified": false,
+    "agreedAt": "2026-06-04T08:47:40.887Z",
+    "createdAt": "2026-06-04T08:47:40.887Z"
+  },
+  {
+    "id": "user_mpz9d366_dur1i3",
+    "name": "totp-test",
+    "gender": "男性",
+    "riotId": "totp1780563211821#JP1",
+    "rank": "Gold",
+    "role": "フレックス",
+    "agents": [],
+    "xHandle": "",
+    "bio": "",
+    "plan": "FREE",
+    "verified": false,
+    "agreedAt": "2026-06-04T08:53:31.854Z",
+    "createdAt": "2026-06-04T08:53:31.854Z"
+  },
+  {
+    "id": "user_mpz9dgir_mnx8yt",
+    "name": "shape-test",
+    "gender": "男性",
+    "riotId": "shape1780563229118#JP1",
+    "rank": "Gold",
+    "role": "フレックス",
+    "agents": [],
+    "xHandle": "",
+    "bio": "",
+    "plan": "FREE",
+    "verified": false,
+    "agreedAt": "2026-06-04T08:53:49.155Z",
+    "createdAt": "2026-06-04T08:53:49.155Z"
+  },
+  {
+    "id": "user_mpz9fc3l_dg5w4f",
+    "name": "totp-test",
+    "gender": "男性",
+    "riotId": "totp1780563316694#JP1",
+    "rank": "Gold",
+    "role": "フレックス",
+    "agents": [],
+    "xHandle": "",
+    "bio": "",
+    "plan": "FREE",
+    "verified": false,
+    "otpSecret": "FXQPXBH6ENQUDRMDAIOATCPYG5FAO76K",
+    "agreedAt": "2026-06-04T08:55:16.737Z",
+    "createdAt": "2026-06-04T08:55:16.738Z"
+  }
+]

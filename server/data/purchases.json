@@ -1,0 +1,58 @@
+[
+  {
+    "id": "purchase_mpz97k17_abfb06",
+    "userId": "user_mpz95kd3_qkxsgn",
+    "plan": "VIP",
+    "amount": 1980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-04T08:49:13.771Z"
+  },
+  {
+    "id": "purchase_mpz97jum_h6safz",
+    "userId": "user_mpz95kd3_qkxsgn",
+    "plan": "VIP",
+    "amount": 1980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-04T08:49:13.534Z"
+  },
+  {
+    "id": "purchase_mpz97jb0_vbu0p1",
+    "userId": "user_mpz95kd3_qkxsgn",
+    "plan": "VIP",
+    "amount": 1980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-04T08:49:12.828Z"
+  },
+  {
+    "id": "purchase_mpz97j0o_egb3pz",
+    "userId": "user_mpz95kd3_qkxsgn",
+    "plan": "PLUS",
+    "amount": 980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-04T08:49:12.456Z"
+  },
+  {
+    "id": "purchase_mpz97iob_76g52c",
+    "userId": "user_mpz95kd3_qkxsgn",
+    "plan": "PLUS",
+    "amount": 980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-04T08:49:12.011Z"
+  },
+  {
+    "id": "purchase_mpz97ibz_o1m0jr",
+    "userId": "user_mpz95kd3_qkxsgn",
+    "plan": "PLUS",
+    "amount": 980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-04T08:49:11.567Z"
+  },
+  {
+    "id": "purchase_mpz97h7b_p20x7x",
+    "userId": "user_mpz95kd3_qkxsgn",
+    "plan": "FREE",
+    "amount": 0,
+    "status": "demo_paid",
+    "createdAt": "2026-06-04T08:49:10.103Z"
+  }
+]
