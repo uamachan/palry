@@ -62,5 +62,35 @@
     "otpSecret": "FXQPXBH6ENQUDRMDAIOATCPYG5FAO76K",
     "agreedAt": "2026-06-04T08:55:16.737Z",
     "createdAt": "2026-06-04T08:55:16.738Z"
+  },
+  {
+    "id": "user_mq0mtuzj_hyrnt0",
+    "firebaseUid": "LWAleEgtKcgFQ3sXYydykRI8Tje2",
+    "email": "renr211215@gmail.com",
+    "name": "ren",
+    "gender": "女性",
+    "riotId": "213",
+    "age": "12",
+    "region": "北海道",
+    "profilePhoto": "",
+    "rank": "Platinum 3",
+    "role": "デュエリスト",
+    "tags": [
+      "ランクガチ"
+    ],
+    "agents": [
+      "Breach",
+      "Brimstone",
+      "Skye"
+    ],
+    "xHandle": "2131",
+    "bio": "rer",
+    "authCodeSalt": "d5a3419053ea8d0aebd468a97a1a30c6",
+    "authCodeHash": "8cc5636401bcee3dc07f59e64deacbc43d59c444c5511a5d7aa7576e483984dc",
+    "plan": "FREE",
+    "verified": true,
+    "agreedAt": "2026-06-05T07:58:15.583Z",
+    "createdAt": "2026-06-05T07:58:15.583Z",
+    "updatedAt": "2026-06-05T08:24:55.835Z"
   }
 ]

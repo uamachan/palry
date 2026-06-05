@@ -16,5 +16,23 @@
     "sender": "user",
     "body": "discord id教えてください",
     "createdAt": "2026-06-04T08:48:25.866Z"
+  },
+  {
+    "id": "msg_mq0mw88k_tum75x",
+    "matchId": "match_mq0mu980_spfjvm",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "profileId": "p04",
+    "sender": "user",
+    "body": "いいですいお",
+    "createdAt": "2026-06-05T08:00:06.068Z"
+  },
+  {
+    "id": "msg_mq0nac6z_8zal73",
+    "matchId": "match_mq0mu980_spfjvm",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "profileId": "p04",
+    "sender": "user",
+    "body": "やっぱりお前もか？",
+    "createdAt": "2026-06-05T08:11:04.379Z"
   }
 ]

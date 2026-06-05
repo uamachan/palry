@@ -6,7 +6,7 @@
   "description": "Pairly - VALORANT teammate matching service",
   "scripts": {
     "dev": "concurrently \"node server/index.js\" \"vite --host 0.0.0.0\"",
-    "local": "concurrently \"node server/index.js\" \"vite --host 127.0.0.1 --open /\"",
+    "local": "concurrently \"node server/index.js\" \"vite --host localhost --open /\"",
     "build": "vite build",
     "start": "NODE_ENV=production node server/index.js",
     "reset-data": "node server/reset-data.js"
