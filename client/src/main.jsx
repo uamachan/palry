@@ -159,13 +159,12 @@ function App() {
         }
 
         try {
-          const idToken = await currentFirebaseUser.getIdToken();
-          const payload = await api.login({ idToken });
-          setUser(payload.user);
-          setPlan(payload.user.plan || 'FREE');
-          setPendingFirebaseUser(null);
-          setAuthMode(null);
-          setView('app');
+          const restored = await loadSavedProfile(currentFirebaseUser);
+          if (!restored) {
+            setPendingUser(currentFirebaseUser.uid, currentFirebaseUser.email);
+            setAuthMode('profileSetup');
+            setView('site');
+          }
         } catch (error) {
           if (error?.message?.includes('Pairlyプロフィール')) {
             setPendingUser(currentFirebaseUser.uid, currentFirebaseUser.email);
@@ -371,6 +370,7 @@ function App() {
         showToast('メール確認がまだ完了していません。メール内のリンクを開いてからもう一度押してください');
         return;
       }
+      if (await loadSavedProfile(firebaseAuth.currentUser, '保存済みプロフィールでログインしました')) return;
       await advanceToProfileSetup(firebaseAuth.currentUser.uid, firebaseAuth.currentUser.email, 'メール認証が完了しました。プロフィールを設定してください');
     } catch (e) {
       showToast(authErrorMessage(e));
@@ -394,6 +394,7 @@ function App() {
             await sendEmailVerification(credential.user);
             await advanceToEmailVerification(credential.user, '確認メールを送信しました。メール認証後に次へ進めます');
           } else {
+            if (await loadSavedProfile(credential.user, '保存済みプロフィールでログインしました')) return;
             await advanceToProfileSetup(credential.user.uid, credential.user.email, 'メール確認済みです。プロフィールを設定してください');
           }
           return;
@@ -429,11 +430,24 @@ function App() {
   function completeAuth(nextUser, message) {
     setUser(nextUser);
     setPlan(nextUser.plan || 'FREE');
+    setPendingFirebaseUser(null);
     setAuthMode(null);
     setActiveTab('match');
     setView('app');
-    showToast(message);
+    if (message) showToast(message);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function loadSavedProfile(firebaseUser, message = '') {
+    try {
+      const idToken = await firebaseUser.getIdToken(true);
+      const payload = await api.login({ idToken });
+      completeAuth(payload.user, message);
+      return true;
+    } catch (error) {
+      if (error?.message?.includes('Pairlyプロフィール')) return false;
+      throw error;
+    }
   }
 
   async function loginWithFirebase() {
@@ -446,9 +460,8 @@ function App() {
         return;
       }
       try {
-        const idToken = await credential.user.getIdToken(true);
-        const payload = await api.login({ idToken });
-        completeAuth(payload.user, 'ログインしました');
+        const restored = await loadSavedProfile(credential.user, 'ログインしました');
+        if (!restored) await advanceToProfileSetup(credential.user.uid, credential.user.email, 'プロフィールを設定してください');
       } catch (profileError) {
         if (profileError?.message?.includes('Pairlyプロフィール')) {
           if (!credential.user.emailVerified) {
@@ -483,9 +496,13 @@ function App() {
         return;
       }
       try {
-        const idToken = await credential.user.getIdToken(true);
-        const payload = await api.login({ idToken });
-        completeAuth(payload.user, 'Googleでログインしました');
+        const restored = await loadSavedProfile(credential.user, 'Googleでログインしました');
+        if (!restored) {
+          setPendingUser(credential.user.uid, credential.user.email);
+          setForm((current) => ({ ...current, email: credential.user.email || current.email }));
+          setAuthMode('profileSetup');
+          showToast('Googleアカウントで認証しました。プロフィールを設定してください');
+        }
       } catch (profileError) {
         if (profileError?.message?.includes('Pairlyプロフィール')) {
           setPendingUser(credential.user.uid, credential.user.email);
@@ -616,10 +633,7 @@ function App() {
         nextCard();
         return;
       }
-      if (payload.liked_back) {
-        showToast(`${current.name}さんとマッチしました！DMできます`);
-        await refreshReceivedLikes();
-      } else if (payload.pending_sent) {
+      if (payload.pending_sent) {
         showToast(`${current.name}さんにいいねを送りました。相手からも返るとマッチします`);
       } else {
         showToast(`${label}しました`);
@@ -669,11 +683,9 @@ function App() {
   async function blockProfile(profileId, profileName = '相手') {
     if (!isAuthed || !profileId) return;
     await api.block({ userId: user.id, profileId }).catch(() => null);
+    // 楽観的に該当スレッドを除去。activeThreadId の再選択は refreshDmThreads に任せる
+    // （内部で現在の選択が消えていれば先頭スレッドへ寄せる）。
     setDmThreads((threads) => threads.filter((thread) => thread.match.profileId !== profileId));
-    setActiveThreadId((currentId) => {
-      const remaining = dmThreads.filter((thread) => thread.match.profileId !== profileId);
-      return remaining.some((thread) => thread.match.id === currentId) ? currentId : remaining[0]?.match.id || '';
-    });
     await refreshDmThreads();
     showToast(`${profileName}さんをブロックしました`);
   }
