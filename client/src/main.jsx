@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { api } from './api.js';
 import { firebaseAuth, firebaseReady } from './firebase.js';
 import './styles.css';
@@ -137,10 +137,55 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  async function advanceToProfileSetup(uid, email, message) {
+  function setPendingUser(uid, email) {
     setPendingFirebaseUser({ uid, email });
+  }
+
+  async function advanceToProfileSetup(uid, email, message) {
+    setPendingUser(uid, email);
     setAuthMode('profileSetup');
     showToast(message);
+  }
+
+  async function advanceToEmailVerification(firebaseUser, message) {
+    setPendingUser(firebaseUser.uid, firebaseUser.email);
+    setAuthMode('emailVerification');
+    showToast(message);
+  }
+
+  async function resendVerificationEmail() {
+    const firebaseUser = firebaseAuth?.currentUser;
+    if (!firebaseUser) return showToast('先にメールアドレスを登録してください');
+    try {
+      await sendEmailVerification(firebaseUser);
+      showToast('確認メールを再送信しました');
+    } catch (e) {
+      showToast(authErrorMessage(e));
+    }
+  }
+
+  async function confirmEmailVerified() {
+    const firebaseUser = firebaseAuth?.currentUser;
+    if (!firebaseUser) return showToast('先にメールアドレスを登録してください');
+    try {
+      await firebaseUser.reload();
+      if (!firebaseAuth.currentUser?.emailVerified) {
+        showToast('メール確認がまだ完了していません。メール内のリンクを開いてからもう一度押してください');
+        return;
+      }
+      setPendingUser(firebaseAuth.currentUser.uid, firebaseAuth.currentUser.email);
+      setAuthMode('authCodeSetup');
+      showToast('メール確認が完了しました。ログイン用の認証コードを設定してください');
+    } catch (e) {
+      showToast(authErrorMessage(e));
+    }
+  }
+
+  function saveAuthCode(event) {
+    event.preventDefault();
+    if (!/^\d{4,8}$/.test(form.authCode)) return showToast('ログイン用の認証コードを4〜8桁の数字で設定してください');
+    setAuthMode('profileSetup');
+    showToast('認証コードを設定しました。プロフィールを入力してください');
   }
 
   async function createAccount(event) {
@@ -150,12 +195,20 @@ function App() {
     if (form.email.trim().toLowerCase() !== form.emailConfirm.trim().toLowerCase()) return showToast('確認用メールアドレスが一致していません');
     try {
       const credential = await createUserWithEmailAndPassword(firebaseAuth, form.email, form.password);
-      await advanceToProfileSetup(credential.user.uid, credential.user.email, 'メール登録が完了しました。プロフィールを設定してください');
+      await sendEmailVerification(credential.user);
+      await advanceToEmailVerification(credential.user, '確認メールを送信しました。メール認証後に次へ進めます');
     } catch (e) {
       if (e?.code === 'auth/email-already-in-use') {
         try {
           const credential = await signInWithEmailAndPassword(firebaseAuth, form.email, form.password);
-          await advanceToProfileSetup(credential.user.uid, credential.user.email, 'メール確認済みです。プロフィールを設定してください');
+          if (!credential.user.emailVerified) {
+            await sendEmailVerification(credential.user);
+            await advanceToEmailVerification(credential.user, '確認メールを送信しました。メール認証後に次へ進めます');
+          } else {
+            setPendingUser(credential.user.uid, credential.user.email);
+            setAuthMode('authCodeSetup');
+            showToast('メール確認済みです。ログイン用の認証コードを設定してください');
+          }
           return;
         } catch (retryError) {
           showToast(retryError?.code === 'auth/invalid-credential'
@@ -172,13 +225,14 @@ function App() {
     event.preventDefault();
     if (!firebaseReady || !firebaseAuth) return showToast('Firebase設定が未設定です。.envを確認してください');
     if (!pendingFirebaseUser) return showToast('先にメールアドレスを登録してください');
+    if (!firebaseAuth.currentUser?.emailVerified) return showToast('プロフィール作成前にメール認証を完了してください');
     if (!form.gender) return showToast('性別選択は必須です');
     if (!form.name || !form.riotId) return showToast('表示名とRiot IDを入力してください');
     if (!/^\d{4,8}$/.test(form.authCode)) return showToast('ログイン用の認証コードを4〜8桁の数字で設定してください');
     if (!form.age || !form.region) return showToast('年齢と地域を入力してください');
     if (!form.agreed) return showToast('利用規約への同意が必要です');
     try {
-      const payload = await api.register({ ...form, firebaseUid: pendingFirebaseUser.uid, email: pendingFirebaseUser.email });
+      const payload = await api.register({ ...form, firebaseUid: pendingFirebaseUser.uid, email: pendingFirebaseUser.email, emailVerified: true });
       setPendingFirebaseUser(null);
       completeAuth(payload.user, 'アカウント作成とログインが完了しました');
     } catch (e) { showToast(e.message || 'プロフィール作成に失敗しました'); }
@@ -200,12 +254,24 @@ function App() {
     if (!form.authCode) return showToast('認証コードを入力してください');
     try {
       const credential = await signInWithEmailAndPassword(firebaseAuth, form.email, form.password);
+      if (!credential.user.emailVerified) {
+        await sendEmailVerification(credential.user);
+        await advanceToEmailVerification(credential.user, 'メール認証が必要です。確認メールを送信しました');
+        return;
+      }
       try {
         const payload = await api.login({ firebaseUid: credential.user.uid, email: credential.user.email, authCode: form.authCode });
         completeAuth(payload.user, 'ログインしました');
       } catch (profileError) {
         if (profileError?.message?.includes('Pairlyプロフィール')) {
-          await advanceToProfileSetup(credential.user.uid, credential.user.email, 'プロフィール設定を完了してください');
+          if (!credential.user.emailVerified) {
+            await sendEmailVerification(credential.user);
+            await advanceToEmailVerification(credential.user, '確認メールを送信しました。メール認証後にプロフィール設定へ進めます');
+          } else {
+            setPendingUser(credential.user.uid, credential.user.email);
+            setAuthMode('authCodeSetup');
+            showToast('ログイン用の認証コードを設定してください');
+          }
           return;
         }
         showToast(profileError.message || 'ログインに失敗しました');
@@ -322,8 +388,10 @@ function App() {
 
   return <>
     {toast && <div className="toast">{toast}</div>}
-    {!isAuthed && authMode && <AuthModal onClose={() => setAuthMode(null)} size={authMode === 'register' || authMode === 'login' ? 'narrow' : undefined}>
+    {!isAuthed && authMode && <AuthModal onClose={() => setAuthMode(null)} size={['register', 'login', 'emailVerification', 'authCodeSetup'].includes(authMode) ? 'narrow' : undefined}>
       {authMode === 'register' && <AccountSignupSection form={form} setForm={setForm} onSubmit={createAccount} onShowLogin={() => showAuth('login')} />}
+      {authMode === 'emailVerification' && <EmailVerificationSection pendingEmail={pendingFirebaseUser?.email} onCheck={confirmEmailVerified} onResend={resendVerificationEmail} onShowLogin={() => showAuth('login')} />}
+      {authMode === 'authCodeSetup' && <AuthCodeSetupSection form={form} setForm={setForm} pendingEmail={pendingFirebaseUser?.email} onSubmit={saveAuthCode} onShowLogin={() => showAuth('login')} />}
       {authMode === 'profileSetup' && <SignupSection form={form} setForm={setForm} pendingEmail={pendingFirebaseUser?.email} onSubmit={register} onShowLogin={() => showAuth('login')} />}
       {authMode === 'login' && <LoginSection form={form} setForm={setForm} onLogin={loginWithFirebase} onResetPassword={resetPassword} onShowRegister={() => showAuth('register')} />}
     </AuthModal>}
@@ -437,6 +505,50 @@ function AccountSignupSection({ form, setForm, onSubmit, onShowLogin }) {
   </section>;
 }
 
+function EmailVerificationSection({ pendingEmail, onCheck, onResend, onShowLogin }) {
+  return <section className="email-signup-panel verification-panel">
+    <div className="email-signup-header">
+      <span className="eyebrow">メール認証</span>
+      <h2>メールを確認してください</h2>
+      <p>{pendingEmail || '登録メールアドレス'} に確認メールを送信しました。メール内のリンクを開くと、次のステップへ進めます。</p>
+    </div>
+    <div className="signup-card email-confirm-card">
+      <div className="mail-check-icon">@</div>
+      <div className="email-confirm-steps">
+        <span>1. 受信メールの確認リンクを開く</span>
+        <span>2. この画面に戻る</span>
+        <span>3. 確認完了ボタンを押す</span>
+      </div>
+      <div className="email-signup-actions">
+        <button type="button" className="primary" onClick={onCheck}>メール確認を完了した</button>
+        <button type="button" className="secondary" onClick={onResend}>確認メールを再送信</button>
+        <button type="button" className="plain reset-password-link" onClick={onShowLogin}>ログインに戻る</button>
+      </div>
+    </div>
+  </section>;
+}
+
+function AuthCodeSetupSection({ form, setForm, pendingEmail, onSubmit, onShowLogin }) {
+  return <section className="email-signup-panel">
+    <div className="email-signup-header">
+      <span className="eyebrow">認証コード設定</span>
+      <h2>ログイン用コードを設定</h2>
+      <p>{pendingEmail && `${pendingEmail} の`}ログイン時に使う4〜8桁の数字を設定します。</p>
+    </div>
+    <form className="email-signup-form signup-card" autoComplete="off" onSubmit={onSubmit}>
+      <label className="email-field-label">
+        <span>認証コード</span>
+        <input required id="setup-auth-code" name="authCode" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength="8" value={form.authCode} onChange={(e) => setForm({ ...form, authCode: e.target.value.replace(/\D/g, '').slice(0, 8) })} placeholder="4〜8桁の数字" />
+      </label>
+      <p className="auth-code-note">このコードは次回以降のログインで、メールアドレスとパスワードに加えて必要になります。</p>
+      <div className="email-signup-actions">
+        <button type="submit" className="primary">プロフィール設定へ進む</button>
+        <button type="button" className="plain reset-password-link" onClick={onShowLogin}>ログインに戻る</button>
+      </div>
+    </form>
+  </section>;
+}
+
 function SignupSection({ form, setForm, pendingEmail, onSubmit, onShowLogin }) {
   return <section className="setup-profile-section"><div className="setup-title"><span>プロフィール設定</span><h2>プロフィール設定</h2>{pendingEmail && <p className="registered-email">登録メール: {pendingEmail}</p>}</div><SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onShowLogin} /></section>;
 }
@@ -463,7 +575,6 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin }) {
         <label>表示名<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="yamada" /></label>
         <label>性別<select required value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}><option value="">選択してください</option><option>女性</option><option>男性</option><option>その他/未設定</option></select></label>
         <label>RIOT ID<input required value={form.riotId} onChange={(e) => setForm({ ...form, riotId: e.target.value })} placeholder="name#JP1" /></label>
-        <label>認証コード<input required inputMode="numeric" maxLength="8" value={form.authCode} onChange={(e) => setForm({ ...form, authCode: e.target.value.replace(/\D/g, '').slice(0, 8) })} placeholder="4〜8桁の数字" /></label>
         <label>年齢<input required inputMode="numeric" maxLength="2" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value.replace(/\D/g, '').slice(0, 2) })} placeholder="20" /></label>
         <label>地域<select required value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}><option value="">選択してください</option>{regions.map((region) => <option key={region}>{region}</option>)}</select></label>
         <label>ランク<select value={form.rank} onChange={(e) => setForm({ ...form, rank: e.target.value })}>{ranks.map((r) => <option key={r}>{r}</option>)}</select></label>

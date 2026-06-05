@@ -139,6 +139,7 @@ app.post('/api/register', async (req, res) => {
   if (!payload.age) return res.status(400).json({ message: '年齢が必要です。' });
   if (!payload.region) return res.status(400).json({ message: '地域が必要です。' });
   if (!payload.agreed) return res.status(400).json({ message: '利用規約への同意が必要です。' });
+  if (!payload.emailVerified) return res.status(403).json({ message: 'メール認証を完了してからプロフィールを作成してください。' });
 
   const users = await readJson('users.json', []);
   if (users.some((user) => user.riotId === cleanText(payload.riotId, 60))) {
