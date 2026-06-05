@@ -195,6 +195,43 @@ function publicUser(user) {
   return safeUser;
 }
 
+function emailKey(email) {
+  return cleanText(email, 120).toLowerCase();
+}
+
+async function findAndLinkFirebaseProfile(firebaseUser) {
+  let profile = null;
+  const firebaseUid = cleanText(firebaseUser.uid, 120);
+  const firebaseEmail = cleanText(firebaseUser.email, 120);
+  const firebaseEmailKey = emailKey(firebaseEmail);
+
+  await updateJson('users.json', [], (users) => {
+    const byUid = users.find((user) => user.firebaseUid === firebaseUid);
+    if (byUid) {
+      profile = byUid;
+      return { value: undefined, result: profile };
+    }
+
+    const byEmailIndex = users.findIndex((user) => firebaseEmailKey && emailKey(user.email) === firebaseEmailKey);
+    if (byEmailIndex < 0) return { value: undefined, result: null };
+
+    const existing = users[byEmailIndex];
+    const updated = {
+      ...existing,
+      firebaseUid,
+      email: firebaseEmail || existing.email,
+      firebaseLinkedAt: existing.firebaseLinkedAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    const next = [...users];
+    next[byEmailIndex] = updated;
+    profile = updated;
+    return { value: next, result: profile };
+  });
+
+  return profile;
+}
+
 function userToProfile(user) {
   const hasVoiceIntro = Boolean(user.voiceIntro);
   return {
@@ -421,8 +458,7 @@ async function requireAuth(req, res, next) {
   } catch (error) {
     return res.status(error.status || 401).json({ message: error.message || '認証に失敗しました。' });
   }
-  const users = await readJson('users.json', []);
-  const user = users.find((u) => u.firebaseUid === firebaseUser.uid);
+  const user = await findAndLinkFirebaseProfile(firebaseUser);
   if (!user) return res.status(404).json({ message: 'Pairlyプロフィールが見つかりません。' });
   req.authedUser = user;
   next();
@@ -445,6 +481,10 @@ app.post('/api/register', authLimiter, async (req, res) => {
     return res.status(error.status || 500).json({ message: error.message || 'Firebase認証の確認に失敗しました。' });
   }
   if (!firebaseUser.emailVerified) return res.status(403).json({ message: 'メール認証を完了してからプロフィールを作成してください。' });
+  const existingProfile = await findAndLinkFirebaseProfile(firebaseUser);
+  if (existingProfile) {
+    return res.json({ user: publicUser(existingProfile), message: '保存済みプロフィールでログインしました。' });
+  }
   if (!payload.gender) return res.status(400).json({ message: '性別選択が必要です。' });
   if (!payload.name) return res.status(400).json({ message: '表示名が必要です。' });
   if (!payload.riotId) return res.status(400).json({ message: 'Riot IDが必要です。' });
@@ -494,8 +534,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
     return res.status(error.status || 500).json({ message: error.message || 'Firebase認証の確認に失敗しました。' });
   }
   if (!firebaseUser.emailVerified) return res.status(403).json({ message: 'メール認証を完了してください。' });
-  const users = await readJson('users.json', []);
-  const found = users.find((user) => user.firebaseUid === firebaseUser.uid);
+  const found = await findAndLinkFirebaseProfile(firebaseUser);
   if (!found) return res.status(404).json({ message: 'Pairlyプロフィールが見つかりません。先にアカウント作成してください。' });
   res.json({ user: publicUser(found) });
 });
@@ -657,26 +696,19 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
 
   const users = await readJson('users.json', []);
   const fromUser = users.find((u) => u.id === rl.fromProfileId);
+  // received-like は常に実ユーザー発のはず。万一見つからなければ対象なし扱い。
+  if (!fromUser) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
 
-  // === 相手が実プレイヤー: 双方向マッチを作成し、両者の会話を同期 ===
-  if (fromUser) {
-    // いいねを返す＝自分も相手をいいねしたとみなし、likes.json にも記録（真の相互いいね）。
-    await updateJson('likes.json', [], (likes) => {
-      const exists = likes.some((l) => l.userId === userId && l.profileId === rl.fromProfileId);
-      if (exists) return { value: undefined, result: false };
-      return { value: [...likes, { id: uid('like'), userId, profileId: rl.fromProfileId, type: 'like', plan: me.plan || 'FREE', createdAt: new Date().toISOString() }], result: true };
-    });
-    const created = await ensureMutualMatch(me, fromUser);
-    await resolvePendingBetween(userId, rl.fromProfileId);
-    const myMatch = created.find((m) => m.userId === userId) || null;
-    return res.json({ ok: true, match: myMatch, matched: true });
-  }
-
-  await updateJson('received_likes.json', [], (received) => {
-    const next = received.map((item) => item.id === receivedLikeId ? { ...item, status: 'invalid', invalidAt: new Date().toISOString() } : item);
-    return { value: next, result: true };
+  // いいねを返す＝自分も相手をいいねしたとみなし、likes.json にも記録（真の相互いいね）。
+  await updateJson('likes.json', [], (likes) => {
+    const exists = likes.some((l) => l.userId === userId && l.profileId === rl.fromProfileId);
+    if (exists) return { value: undefined, result: false };
+    return { value: [...likes, { id: uid('like'), userId, profileId: rl.fromProfileId, type: 'like', plan: me.plan || 'FREE', createdAt: new Date().toISOString() }], result: true };
   });
-  res.status(410).json({ message: 'このいいねは実プレイヤーからのものではないため返せません。' });
+  const matchRows = await tryCreateMutualMatch(me, fromUser);
+  await resolvePendingBetween(userId, rl.fromProfileId);
+  const myMatch = matchRows.find((m) => m.userId === userId) || null;
+  return res.json({ ok: true, match: myMatch, matched: true });
 });
 
 app.get('/api/matches/:userId', requireAuth, async (req, res) => {
