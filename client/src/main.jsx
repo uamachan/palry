@@ -603,10 +603,7 @@ function App() {
   }
 
   function nextCard() {
-    // 末尾を超えたら index が profiles.length に達し、current が undefined になって
-    // 「候補がなくなりました」が表示される。剰余で巻き戻すと既にいいね/見送り済みの
-    // 相手が無限ループで再表示されてしまうため使わない。
-    setIndex((i) => i + 1);
+    setIndex((i) => (profiles.length ? (i + 1) % profiles.length : 0));
   }
 
   async function swipe(type) {
