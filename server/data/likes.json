@@ -134,5 +134,21 @@
     "type": "like",
     "plan": "VIP",
     "createdAt": "2026-06-05T08:47:27.377Z"
+  },
+  {
+    "id": "like_mq230szc_pdoszc",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "profileId": "user_mpz9dgir_mnx8yt",
+    "type": "like",
+    "plan": "FREE",
+    "createdAt": "2026-06-06T08:19:19.609Z"
+  },
+  {
+    "id": "like_mq231alx_5ulwpx",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "profileId": "p01",
+    "type": "like",
+    "plan": "PLUS",
+    "createdAt": "2026-06-06T08:19:42.453Z"
   }
 ]

@@ -1,5 +1,21 @@
 [
   {
+    "id": "purchase_mq2317ig_ekjiqd",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "plan": "PLUS",
+    "amount": 980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-06T08:19:38.440Z"
+  },
+  {
+    "id": "purchase_mq2316op_78azdu",
+    "userId": "user_mq0mtuzj_hyrnt0",
+    "plan": "VIP",
+    "amount": 1980,
+    "status": "demo_paid",
+    "createdAt": "2026-06-06T08:19:37.369Z"
+  },
+  {
     "id": "purchase_mq0xh7am_rxfkwa",
     "userId": "user_mq0mtuzj_hyrnt0",
     "plan": "FREE",
