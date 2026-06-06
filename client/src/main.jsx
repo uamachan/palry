@@ -8,6 +8,7 @@ import Safety from './Safety.jsx';
 import SiteHeader from './SiteHeader.jsx';
 import { appTabs, defaultRole, planLabel, roles } from './constants.jsx';
 import './styles.css';
+import './profile-setup.css';
 
 let firebaseModsPromise = null;
 function getFirebaseMods() {
@@ -33,520 +34,263 @@ function getFirebaseMods() {
   return firebaseModsPromise;
 }
 
-function authErrorMessage(error) {
-  const code = error?.code || '';
-  const message = error?.message || '';
-  if (code.includes('api-key-not-valid') || message.includes('api-key-not-valid')) {
-    return 'FirebaseのAPIキーが無効です。Firebase ConsoleのWeb API Keyを.envに入れ直して、ローカルを再起動してください。';
-  }
-  if (code === 'auth/email-already-in-use') return 'このメールアドレスはすでに登録されています。ログインしてください。';
-  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') return 'メールアドレスまたはパスワードが違います。';
-  if (code === 'auth/user-not-found') return 'このメールアドレスのアカウントが見つかりません。先にアカウント作成してください。';
-  if (code === 'auth/operation-not-allowed') return 'Firebaseでメール/パスワードログインが有効になっていません。Authenticationのログイン方法を確認してください。';
-  if (code === 'auth/network-request-failed') return 'Firebaseに接続できません。ネットワークを確認してください。';
-  if (code === 'auth/invalid-email') return 'メールアドレスの形式を確認してください。';
-  if (code === 'auth/popup-closed-by-user') return 'Googleログインのポップアップが閉じられました。もう一度お試しください。';
-  if (code === 'auth/popup-blocked') return 'Googleログインのポップアップがブロックされました。ブラウザ設定を確認してください。';
-  if (code === 'auth/account-exists-with-different-credential') return '同じメールアドレスの別ログイン方法が存在します。メール/パスワードでログインしてください。';
-  return message || 'ログイン処理に失敗しました。';
+function initialForm() {
+  return { email: '', emailConfirm: '', password: '', name: '', riotId: '', age: '', gender: '', region: '', profilePhoto: '', rank: 'Gold 1', role: defaultRole, tags: [], agents: [], xHandle: '', bio: '', voiceIntro: '', agreed: false };
+}
+
+function publicUserToForm(user) {
+  return { ...initialForm(), ...user, tags: user?.tags || [], agents: user?.agents || [], agreed: true };
 }
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [authBooting, setAuthBooting] = useState(true);
-  const [view, setView] = useState('site');
   const [authMode, setAuthMode] = useState(null);
-  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
-  const [pendingFirebaseUser, setPendingFirebaseUser] = useState(null);
-  const [profileSetupPrompt, setProfileSetupPrompt] = useState(false);
-  const [activeTab, setActiveTab] = useState('match');
-  const [pricingTab, setPricingTab] = useState('monthly');
-  const [plansData, setPlansData] = useState({ plans: {}, singleItems: [] });
-  const [entitlements, setEntitlements] = useState({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
+  const [view, setView] = useState('site');
+  const [form, setForm] = useState(initialForm());
+  const [user, setUser] = useState(null);
   const [plan, setPlan] = useState('FREE');
-  const [targetGender, setTargetGender] = useState('all');
+  const [toast, setToast] = useState('');
   const [profiles, setProfiles] = useState([]);
   const [index, setIndex] = useState(0);
-  const [stats, setStats] = useState({ likes: 0, passes: 0, super: 0, dual: 5, matches: 0 });
   const [matches, setMatches] = useState([]);
   const [receivedLikes, setReceivedLikes] = useState([]);
   const [dmThreads, setDmThreads] = useState([]);
-  const [activeThreadId, setActiveThreadId] = useState('');
+  const [activeThreadId, setActiveThreadId] = useState(null);
   const [dmDraft, setDmDraft] = useState('');
   const [dmSending, setDmSending] = useState(false);
   const [footprints, setFootprints] = useState([]);
   const [reports, setReports] = useState([]);
-  const [toast, setToast] = useState('');
-  const toastTimer = useRef(null);
-  const notificationBooted = useRef(false);
-  const lastNotificationCount = useRef(0);
-  const [form, setForm] = useState({ name: '', gender: '', riotId: '', email: '', emailConfirm: '', password: '', age: '', region: '', profilePhoto: '', rank: 'Gold 1', role: defaultRole, tags: [], agents: [], xHandle: '', bio: '', voiceIntro: '', agreed: false });
-  const [editForm, setEditForm] = useState({ name: '', gender: '', riotId: '', age: '', region: '', profilePhoto: '', rank: 'Gold 1', role: defaultRole, tags: [], agents: [], xHandle: '', bio: '', voiceIntro: '', agreed: true });
+  const [activeTab, setActiveTab] = useState('match');
+  const [plansData, setPlansData] = useState(null);
+  const [pricingTab, setPricingTab] = useState('plans');
+  const [activePlan, setActivePlan] = useState('FREE');
+  const [entitlements, setEntitlements] = useState({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
+  const [targetGender, setTargetGender] = useState('all');
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const [editForm, setEditForm] = useState(initialForm());
+  const [pendingFirebaseUser, setPendingFirebaseUser] = useState(null);
+  const [profileSetupPrompt, setProfileSetupPrompt] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
-  const isAuthed = Boolean(user);
-  const current = profiles[index] || null;
-  const activePlan = plansData.plans?.[plan] || null;
-  // プラン特典 or 単発購入（性別フィルター7日）でフィルター解放。
-  const genderFilterLocked = !activePlan?.genderFilter && !entitlements.genderFilter;
-  const unreadDmCount = useMemo(() => dmThreads.reduce((sum, thread) => sum + Number(thread.unreadCount || 0), 0), [dmThreads]);
-  const notificationCount = receivedLikes.length + unreadDmCount;
-
-  useEffect(() => { api.plans().then(setPlansData).catch(() => showToast('料金データの取得に失敗しました')); }, []);
-
-  useEffect(() => {
-    let canceled = false;
-    let unsubscribe = () => {};
-
-    getFirebaseMods()
-      .then(({ firebaseReady, firebaseAuth, setPersistence, browserLocalPersistence, onAuthStateChanged }) => {
-        if (canceled) return;
-        if (!firebaseReady || !firebaseAuth) {
-          setAuthBooting(false);
-          return;
-        }
-
-        setPersistence(firebaseAuth, browserLocalPersistence).catch(() => null).finally(() => {
-          if (canceled) return;
-          unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
-            if (!firebaseUser) {
-              setUser(null);
-              setPendingFirebaseUser(null);
-              setProfileSetupPrompt(false);
-              setAuthBooting(false);
-              return;
-            }
-
-            setForm((currentForm) => ({ ...currentForm, email: firebaseUser.email || currentForm.email }));
-            await firebaseUser.reload().catch(() => null);
-            const currentFirebaseUser = firebaseAuth.currentUser || firebaseUser;
-
-            if (!currentFirebaseUser.emailVerified) {
-              setPendingUser(currentFirebaseUser.uid, currentFirebaseUser.email);
-              setAuthMode('emailVerification');
-              setView('site');
-              setAuthBooting(false);
-              return;
-            }
-
-            try {
-              const restored = await loadSavedProfile(currentFirebaseUser);
-              if (!restored) {
-                setPendingUser(currentFirebaseUser.uid, currentFirebaseUser.email);
-                setAuthMode(null);
-                setProfileSetupPrompt(true);
-                setView('site');
-              }
-            } catch (error) {
-              if (error?.message?.includes('Pairlyプロフィール')) {
-                setPendingUser(currentFirebaseUser.uid, currentFirebaseUser.email);
-                setAuthMode(null);
-                setProfileSetupPrompt(true);
-                setView('site');
-              } else {
-                setUser(null);
-                setProfileSetupPrompt(false);
-              }
-            } finally {
-              setAuthBooting(false);
-            }
-          });
-        });
-      })
-      .catch(() => setAuthBooting(false));
-
-    return () => {
-      canceled = true;
-      unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthed) return;
-    const appliedTarget = genderFilterLocked ? 'all' : targetGender;
-    if (genderFilterLocked && targetGender !== 'all') setTargetGender('all');
-    api.profiles({ plan, targetGender: appliedTarget, userId: user.id }).then((payload) => {
-      setProfiles(payload.profiles || []);
-      setIndex(0);
-    }).catch(() => showToast('候補の取得に失敗しました'));
-  }, [isAuthed, plan, targetGender, genderFilterLocked]);
-
-  useEffect(() => { if (!user) return; api.reports().then((p) => setReports(p.reports || [])).catch(() => null); }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    refreshMatches();
-    refreshDmThreads();
-    refreshReceivedLikes();
-    refreshEntitlements();
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) {
-      notificationBooted.current = false;
-      lastNotificationCount.current = 0;
-      return;
-    }
-    // ログイン直後は初回ロードが落ち着くまでトースト判定を抑制する。
-    // （既存の未読DM/受信いいねを「新着」と誤検知して
-    //  「新しい通知があります」が毎回出るのを防ぐ）
-    notificationBooted.current = false;
-    const settle = setTimeout(() => { notificationBooted.current = true; }, 3000);
-    const timer = setInterval(() => {
-      refreshReceivedLikes();
-      refreshDmThreads();
-      refreshMatches();
-    }, 15000);
-    return () => { clearTimeout(settle); clearInterval(timer); };
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    if (!notificationBooted.current) {
-      // 初回ロード中は基準値だけ更新し、トーストは出さない。
-      lastNotificationCount.current = notificationCount;
-      return;
-    }
-    if (notificationCount > lastNotificationCount.current) showToast('新しい通知があります');
-    lastNotificationCount.current = notificationCount;
-  }, [notificationCount, user]);
-
-  useEffect(() => {
-    if (activeTab === 'dm') refreshDmThreads();
-  }, [activeTab]);
-
-  useEffect(() => {
-    document.body.classList.toggle('modal-open', Boolean(authMode || profileEditorOpen));
-    return () => document.body.classList.remove('modal-open');
-  }, [authMode, profileEditorOpen]);
-
-  useEffect(() => {
-    function isInputTarget(el) {
-      if (!el) return false;
-      const tag = el.tagName;
-      return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
-    }
-    function blockClipboard(e) {
-      // コピーは全面許可（Riot ID や DM 本文を相手とやり取りできるようにするため）。
-      // 入力欄・[data-copyable] 配下以外でのカット/ペーストのみ抑止する。
-      if (isInputTarget(e.target)) return;
-      if (e.target?.closest?.('[data-copyable]')) return;
-      e.preventDefault();
-    }
-    document.addEventListener('cut', blockClipboard);
-    document.addEventListener('paste', blockClipboard);
-    return () => {
-      document.removeEventListener('cut', blockClipboard);
-      document.removeEventListener('paste', blockClipboard);
-    };
-  }, []);
+  const toastTimerRef = useRef(null);
 
   function showToast(message) {
     setToast(message);
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(''), 2600);
+    clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(''), 2600);
   }
 
-  function showAuth(mode = 'login') {
-    if (mode === 'register') setPendingFirebaseUser(null);
-    if (mode !== 'profileSetup') setProfileSetupPrompt(false);
-    setAuthMode(mode);
-    setView('site');
-  }
-
-  function openProfileEditor() {
-    if (!user) return;
-    setEditForm({
-      name: user.name || '',
-      gender: user.gender || '',
-      riotId: user.riotId || '',
-      age: user.age || '',
-      region: user.region || '',
-      profilePhoto: user.profilePhoto || '',
-      rank: user.rank || 'Gold 1',
-      role: roles.includes(user.role) ? user.role : defaultRole,
-      tags: Array.isArray(user.tags) ? user.tags : [],
-      agents: Array.isArray(user.agents) ? user.agents : [],
-      xHandle: user.xHandle || '',
-      bio: user.bio || '',
-      voiceIntro: user.voiceIntro || '',
-      agreed: true
-    });
-    setProfileEditorOpen(true);
-  }
-
-  async function saveProfileEdit(event) {
-    event.preventDefault();
-    if (!user) return;
-    if (!editForm.gender) return showToast('性別選択は必須です');
-    if (!editForm.name || !editForm.riotId) return showToast('表示名とRiot IDを入力してください');
-    if (!editForm.age || !editForm.region) return showToast('年齢と地域を入力してください');
-    try {
-      const payload = await api.updateProfile({ ...editForm, userId: user.id });
-      setUser(payload.user);
-      setProfileEditorOpen(false);
-      setProfileSetupPrompt(false);
-      showToast('プロフィールを更新しました');
-    } catch (e) {
-      showToast(e.message || 'プロフィール更新に失敗しました');
-    }
-  }
-
-  async function logout() {
-    const mods = await getFirebaseMods().catch(() => null);
-    if (mods?.firebaseAuth) await mods.signOut(mods.firebaseAuth).catch(() => null);
-    setUser(null);
-    setAuthMode(null);
-    setProfileEditorOpen(false);
-    setPendingFirebaseUser(null);
-    setProfileSetupPrompt(false);
-    setMatches([]);
-    setDmThreads([]);
-    setActiveThreadId('');
-    setView('site');
-    showToast('ログアウトしました');
-  }
-
-  function openApp(tab = 'match') {
-    if (authBooting) {
-      showToast('ログイン状態を確認中です');
-      return;
-    }
-    if (!user) {
-      showToast('ログインしてください');
-      showAuth('login');
-      return;
-    }
-    setActiveTab(tab);
-    setView('app');
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  }
-
-  function setPendingUser(uid, email) {
-    setPendingFirebaseUser({ uid, email });
-  }
-
-  async function advanceToProfileSetup(uid, email, message) {
-    setPendingUser(uid, email);
-    setProfileSetupPrompt(false);
-    setAuthMode('profileSetup');
-    showToast(message);
-  }
-
-  async function advanceToEmailVerification(firebaseUser, message) {
-    setPendingUser(firebaseUser.uid, firebaseUser.email);
-    setProfileSetupPrompt(false);
-    setAuthMode('emailVerification');
-    setView('site');
-    showToast(message);
-  }
-
-  async function openEmailVerificationFromLegacyCodeError(firebaseUser) {
-    const mods = await getFirebaseMods().catch(() => null);
-    if (!firebaseUser) {
-      showAuth('login');
-      showToast('Firebaseのメール認証が必要です。先にログインしてください');
-      return;
-    }
-    await firebaseUser.reload().catch(() => null);
-    const currentFirebaseUser = mods?.firebaseAuth?.currentUser || firebaseUser;
-    setPendingUser(currentFirebaseUser.uid, currentFirebaseUser.email);
-    setAuthMode('emailVerification');
-    setView('site');
-    if (!currentFirebaseUser.emailVerified) {
-      await mods?.sendEmailVerification?.(currentFirebaseUser).catch(() => null);
-      showToast('認証コードではなく、Firebaseの確認メールを送信しました');
-    } else {
-      showToast('認証コードは不要です。ページを更新してもう一度ログインしてください');
-    }
-  }
-
-  async function resendVerificationEmail() {
-    const mods = await getFirebaseMods().catch(() => null);
-    const firebaseUser = mods?.firebaseAuth?.currentUser;
-    if (!firebaseUser) return showToast('先にメールアドレスを登録してください');
-    try {
-      await mods.sendEmailVerification(firebaseUser);
-      showToast('確認メールを再送信しました');
-    } catch (e) {
-      showToast(authErrorMessage(e));
-    }
-  }
-
-  async function confirmEmailVerified() {
-    const mods = await getFirebaseMods().catch(() => null);
-    const firebaseUser = mods?.firebaseAuth?.currentUser;
-    if (!firebaseUser) return showToast('先にメールアドレスを登録してください');
-    try {
-      await firebaseUser.reload();
-      if (!mods.firebaseAuth.currentUser?.emailVerified) {
-        showToast('メール確認がまだ完了していません。メール内のリンクを開いてからもう一度押してください');
-        return;
-      }
-      if (await loadSavedProfile(mods.firebaseAuth.currentUser, '保存済みプロフィールでログインしました')) return;
-      await advanceToProfileSetup(mods.firebaseAuth.currentUser.uid, mods.firebaseAuth.currentUser.email, 'メール認証が完了しました。プロフィールを設定してください');
-    } catch (e) {
-      showToast(authErrorMessage(e));
-    }
-  }
-
-  async function createAccount(event) {
-    event.preventDefault();
-    const mods = await getFirebaseMods().catch(() => null);
-    if (!mods?.firebaseReady || !mods?.firebaseAuth) return showToast('Firebase設定が未設定です。.envを確認してください');
-    if (!form.email || form.password.length < 6) return showToast('メールアドレスと6文字以上のパスワードを入力してください');
-    if (form.email.trim().toLowerCase() !== form.emailConfirm.trim().toLowerCase()) return showToast('確認用メールアドレスが一致していません');
-    try {
-      const credential = await mods.createUserWithEmailAndPassword(mods.firebaseAuth, form.email, form.password);
-      await mods.sendEmailVerification(credential.user);
-      await advanceToEmailVerification(credential.user, '確認メールを送信しました。メール認証後に次へ進めます');
-    } catch (e) {
-      if (e?.code === 'auth/email-already-in-use') {
-        try {
-          const credential = await mods.signInWithEmailAndPassword(mods.firebaseAuth, form.email, form.password);
-          if (!credential.user.emailVerified) {
-            await mods.sendEmailVerification(credential.user);
-            await advanceToEmailVerification(credential.user, '確認メールを送信しました。メール認証後に次へ進めます');
-          } else {
-            if (await loadSavedProfile(credential.user, '保存済みプロフィールでログインしました')) return;
-            await advanceToProfileSetup(credential.user.uid, credential.user.email, 'メール確認済みです。プロフィールを設定してください');
+  useEffect(() => {
+    api.plans().then(setPlansData).catch(() => null);
+    getFirebaseMods().then(({ onAuthStateChanged, firebaseAuth, firebaseReady }) => {
+      firebaseReady.catch(() => null).finally(() => {
+        onAuthStateChanged(firebaseAuth, async (fbUser) => {
+          setAuthReady(true);
+          if (!fbUser) return;
+          if (!fbUser.emailVerified) {
+            setPendingFirebaseUser({ uid: fbUser.uid, email: fbUser.email, emailVerified: false });
+            return;
           }
-          return;
-        } catch (retryError) {
-          showToast(retryError?.code === 'auth/invalid-credential'
-            ? 'このメールはFirebaseにあります。パスワードを忘れたから再設定してください。'
-            : authErrorMessage(retryError));
-          return;
-        }
-      }
-      showToast(authErrorMessage(e));
-    }
-  }
+          try {
+            const idToken = await fbUser.getIdToken();
+            const payload = await api.login({ idToken });
+            completeAuth(payload.user, '保存済みプロフィールでログインしました');
+          } catch {
+            setPendingFirebaseUser({ uid: fbUser.uid, email: fbUser.email, emailVerified: true });
+            setProfileSetupPrompt(true);
+          }
+        });
+      });
+    }).catch(() => setAuthReady(true));
+  }, []);
 
-  async function register(event) {
-    event.preventDefault();
-    const mods = await getFirebaseMods().catch(() => null);
-    if (!mods?.firebaseReady || !mods?.firebaseAuth) return showToast('Firebase設定が未設定です。.envを確認してください');
-    if (!pendingFirebaseUser) return showToast('先にメールアドレスを登録してください');
-    const firebaseUser = mods.firebaseAuth.currentUser;
-    if (!firebaseUser?.emailVerified) return showToast('プロフィール作成前にメール認証を完了してください');
-    if (!form.gender) return showToast('性別選択は必須です');
-    if (!form.name || !form.riotId) return showToast('表示名とRiot IDを入力してください');
-    if (!form.age || !form.region) return showToast('年齢と地域を入力してください');
-    if (!form.agreed) return showToast('利用規約への同意が必要です');
-    try {
-      const idToken = await firebaseUser.getIdToken(true);
-      const payload = await api.register({ ...form, idToken });
-      setPendingFirebaseUser(null);
-      setProfileSetupPrompt(false);
-      completeAuth(payload.user, 'アカウント作成とログインが完了しました');
-    } catch (e) { showToast(e.message || 'プロフィール作成に失敗しました'); }
-  }
+  useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
   function completeAuth(nextUser, message) {
     setUser(nextUser);
     setPlan(nextUser.plan || 'FREE');
-    setPendingFirebaseUser(null);
-    setProfileSetupPrompt(false);
+    setActivePlan(nextUser.plan || 'FREE');
+    setEntitlements({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
     setAuthMode(null);
-    setActiveTab('match');
+    setProfileSetupPrompt(false);
+    setPendingFirebaseUser(null);
     setView('app');
     if (message) showToast(message);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  async function loadSavedProfile(firebaseUser, message = '') {
+  function showAuth(mode = 'entry') {
+    setForm(initialForm());
+    setAuthMode(mode);
+  }
+
+  async function createAccount(e) {
+    e.preventDefault();
+    if (!form.email || !form.emailConfirm || !form.password) return showToast('メールアドレスとパスワードを入力してください');
+    if (form.email.trim().toLowerCase() !== form.emailConfirm.trim().toLowerCase()) return showToast('メールアドレスが一致しません');
+    if (form.password.length < 6) return showToast('パスワードは6文字以上です');
     try {
-      const idToken = await firebaseUser.getIdToken(true);
-      const payload = await api.login({ idToken });
-      completeAuth(payload.user, message);
-      return true;
+      const { createUserWithEmailAndPassword, sendEmailVerification, firebaseAuth } = await getFirebaseMods();
+      const credential = await createUserWithEmailAndPassword(firebaseAuth, form.email.trim(), form.password);
+      await sendEmailVerification(credential.user);
+      setPendingFirebaseUser({ uid: credential.user.uid, email: credential.user.email, emailVerified: false });
+      setAuthMode('emailVerification');
+      showToast('確認メールを送信しました');
     } catch (error) {
-      if (error?.message?.includes('Pairlyプロフィール')) return false;
-      throw error;
+      showToast(firebaseErrorMessage(error));
     }
   }
 
-  async function loginWithFirebase() {
-    const mods = await getFirebaseMods().catch(() => null);
-    if (!mods?.firebaseReady || !mods?.firebaseAuth) return showToast('Firebase設定が未設定です。.envを確認してください');
-    if (!form.email || !form.password) return showToast('メールアドレスとパスワードを入力してください');
+  async function resendVerificationEmail() {
     try {
-      const credential = await mods.signInWithEmailAndPassword(mods.firebaseAuth, form.email, form.password);
+      const { sendEmailVerification, firebaseAuth } = await getFirebaseMods();
+      if (!firebaseAuth.currentUser) return showToast('もう一度登録またはログインしてください');
+      await sendEmailVerification(firebaseAuth.currentUser);
+      showToast('確認メールを再送信しました');
+    } catch (error) {
+      showToast(firebaseErrorMessage(error));
+    }
+  }
+
+  async function confirmEmailVerified() {
+    try {
+      const { firebaseAuth } = await getFirebaseMods();
+      if (!firebaseAuth.currentUser) return showToast('もう一度ログインしてください');
+      await firebaseAuth.currentUser.reload();
+      const current = firebaseAuth.currentUser;
+      if (!current.emailVerified) return showToast('まだメール認証が完了していません');
+      advanceToProfileSetup(current.uid, current.email, 'メール認証が完了しました。プロフィールを設定してください');
+    } catch (error) {
+      showToast(firebaseErrorMessage(error));
+    }
+  }
+
+  function advanceToProfileSetup(uid, email, message) {
+    setPendingFirebaseUser({ uid, email, emailVerified: true });
+    setForm((f) => ({ ...initialForm(), email: email || f.email, emailConfirm: email || f.emailConfirm, agreed: false }));
+    setProfileSetupPrompt(false);
+    setAuthMode('profileSetup');
+    if (message) showToast(message);
+  }
+
+  async function loginWithFirebase(e) {
+    e.preventDefault();
+    try {
+      const { signInWithEmailAndPassword, firebaseAuth } = await getFirebaseMods();
+      const credential = await signInWithEmailAndPassword(firebaseAuth, form.email.trim(), form.password);
       if (!credential.user.emailVerified) {
-        await advanceToEmailVerification(credential.user, 'メール認証が必要です。メール内のリンクを確認してください');
-        return;
+        setPendingFirebaseUser({ uid: credential.user.uid, email: credential.user.email, emailVerified: false });
+        setAuthMode('emailVerification');
+        return showToast('メール認証を完了してください');
       }
-      try {
-        const restored = await loadSavedProfile(credential.user, 'ログインしました');
-        if (!restored) await advanceToProfileSetup(credential.user.uid, credential.user.email, 'プロフィールを設定してください');
-      } catch (profileError) {
-        if (profileError?.message?.includes('Pairlyプロフィール')) {
-          if (!credential.user.emailVerified) {
-            await mods.sendEmailVerification(credential.user);
-            await advanceToEmailVerification(credential.user, '確認メールを送信しました。メール認証後にプロフィール設定へ進めます');
-          } else {
-            await advanceToProfileSetup(credential.user.uid, credential.user.email, 'プロフィールを設定してください');
-          }
-          return;
-        }
-        if (profileError?.message?.includes('認証コード')) {
-          await openEmailVerificationFromLegacyCodeError(credential.user);
-          return;
-        }
-        showToast(profileError.message || 'ログインに失敗しました');
-      }
-    } catch (e) {
-      if (authErrorMessage(e).includes('認証コード')) {
-        await openEmailVerificationFromLegacyCodeError(mods.firebaseAuth?.currentUser);
-        return;
-      }
-      showToast(authErrorMessage(e));
+      const idToken = await credential.user.getIdToken();
+      const payload = await api.login({ idToken });
+      completeAuth(payload.user, 'ログインしました');
+    } catch (error) {
+      showToast(error.message || firebaseErrorMessage(error));
     }
   }
 
   async function continueWithGoogle() {
-    const mods = await getFirebaseMods().catch(() => null);
-    if (!mods?.firebaseReady || !mods?.firebaseAuth) return showToast('Firebase設定が未設定です。.envを確認してください');
-    const googleProvider = new mods.GoogleAuthProvider();
     try {
-      const credential = await mods.signInWithPopup(mods.firebaseAuth, googleProvider);
-      if (!credential.user.emailVerified) {
-        await advanceToEmailVerification(credential.user, 'Googleアカウントのメール確認が必要です。メール内のリンクを確認してください');
-        return;
-      }
+      const { signInWithPopup, GoogleAuthProvider, firebaseAuth } = await getFirebaseMods();
+      const provider = new GoogleAuthProvider();
+      const credential = await signInWithPopup(firebaseAuth, provider);
+      const idToken = await credential.user.getIdToken();
       try {
-        const restored = await loadSavedProfile(credential.user, 'Googleでログインしました');
-        if (!restored) {
-          setPendingUser(credential.user.uid, credential.user.email);
-          setForm((current) => ({ ...current, email: credential.user.email || current.email }));
-          setProfileSetupPrompt(false);
-          setAuthMode('profileSetup');
-          showToast('Googleアカウントで認証しました。プロフィールを設定してください');
-        }
-      } catch (profileError) {
-        if (profileError?.message?.includes('Pairlyプロフィール')) {
-          setPendingUser(credential.user.uid, credential.user.email);
-          setForm((current) => ({ ...current, email: credential.user.email || current.email }));
-          setProfileSetupPrompt(false);
-          setAuthMode('profileSetup');
-          showToast('Googleアカウントで認証しました。プロフィールを設定してください');
-          return;
-        }
-        showToast(profileError.message || 'Googleログインに失敗しました');
+        const payload = await api.login({ idToken });
+        completeAuth(payload.user, 'Googleでログインしました');
+      } catch {
+        setPendingFirebaseUser({ uid: credential.user.uid, email: credential.user.email, emailVerified: true });
+        setForm((f) => ({ ...initialForm(), email: credential.user.email || f.email, emailConfirm: credential.user.email || f.emailConfirm }));
+        setAuthMode('profileSetup');
       }
-    } catch (e) {
-      showToast(authErrorMessage(e));
+    } catch (error) {
+      showToast(firebaseErrorMessage(error));
     }
   }
 
   async function resetPassword() {
-    const mods = await getFirebaseMods().catch(() => null);
-    if (!mods?.firebaseReady || !mods?.firebaseAuth) return showToast('Firebase設定が未設定です。.envを確認してください');
-    if (!form.email) return showToast('再設定メールを送るメールアドレスを入力してください');
+    if (!form.email) return showToast('メールアドレスを入力してください');
     try {
-      await mods.sendPasswordResetEmail(mods.firebaseAuth, form.email);
+      const { sendPasswordResetEmail, firebaseAuth } = await getFirebaseMods();
+      await sendPasswordResetEmail(firebaseAuth, form.email.trim());
       showToast('パスワード再設定メールを送信しました');
-    } catch (e) { showToast(authErrorMessage(e)); }
+    } catch (error) {
+      showToast(firebaseErrorMessage(error));
+    }
+  }
+
+  async function register(e) {
+    e.preventDefault();
+    try {
+      const { firebaseAuth } = await getFirebaseMods();
+      const current = firebaseAuth.currentUser;
+      if (!current) return showToast('Firebaseログインが必要です');
+      if (!current.emailVerified) return showToast('メール認証を完了してください');
+      const idToken = await current.getIdToken();
+      const payload = await api.register({ ...form, idToken, email: current.email });
+      completeAuth(payload.user, payload.message || 'アカウントを作成しました');
+    } catch (error) {
+      showToast(error.message || '登録に失敗しました');
+    }
+  }
+
+  async function saveProfileEdit(e) {
+    e.preventDefault();
+    try {
+      const payload = await api.updateProfile(editForm);
+      setUser(payload.user);
+      setPlan(payload.user.plan || plan);
+      setProfileEditorOpen(false);
+      showToast('プロフィールを保存しました');
+    } catch (error) {
+      showToast(error.message || 'プロフィール保存に失敗しました');
+    }
+  }
+
+  function openProfileEditor() {
+    if (!user) return;
+    setEditForm(publicUserToForm(user));
+    setProfileEditorOpen(true);
+  }
+
+  async function logout() {
+    const { signOut, firebaseAuth } = await getFirebaseMods();
+    await signOut(firebaseAuth).catch(() => null);
+    setUser(null);
+    setPlan('FREE');
+    setActivePlan('FREE');
+    setView('site');
+    setMatches([]);
+    setReceivedLikes([]);
+    setDmThreads([]);
+    setActiveThreadId(null);
+    setEntitlements({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
+    showToast('ログアウトしました');
+  }
+
+  function openApp(tab = 'match') {
+    if (!user) {
+      showToast(authReady ? 'アカウント作成またはログインが必要です' : 'ログイン状態を確認中です');
+      showAuth('entry');
+      return;
+    }
+    setActiveTab(tab);
+    setView('app');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  const genderFilterLocked = targetGender !== 'all' && !plansData?.plans?.[plan]?.genderFilter && !entitlements.genderFilter;
+
+  async function refreshProfiles() {
+    if (!user) return;
+    try {
+      const payload = await api.profiles({ plan, targetGender, userId: user.id });
+      setProfiles(payload.profiles || []);
+      setIndex(0);
+    } catch (error) {
+      showToast(error.message || 'プロフィール取得に失敗しました');
+    }
   }
 
   async function refreshMatches() {
@@ -561,166 +305,122 @@ function App() {
     setReceivedLikes(payload.receivedLikes || []);
   }
 
-  async function refreshEntitlements() {
+  async function refreshDmThreads(preferredThreadId = activeThreadId) {
     if (!user) return;
-    const payload = await api.entitlements(user.id).catch(() => null);
-    if (payload?.entitlements) setEntitlements(payload.entitlements);
+    const payload = await api.dmThreads(user.id).catch(() => ({ threads: [] }));
+    const nextThreads = payload.threads || [];
+    setDmThreads(nextThreads);
+    setActiveThreadId((currentId) => {
+      const desired = preferredThreadId || currentId;
+      if (desired && nextThreads.some((thread) => thread.match.id === desired)) return desired;
+      return nextThreads[0]?.match.id || null;
+    });
+  }
+
+  useEffect(() => { if (user) refreshProfiles(); }, [user?.id, plan, targetGender, entitlements.genderFilter]);
+  useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); } }, [user?.id]);
+  useEffect(() => {
+    if (!user) return;
+    api.entitlements(user.id).then((payload) => setEntitlements(payload.entitlements || entitlements)).catch(() => null);
+  }, [user?.id]);
+
+  const current = profiles[index] || null;
+  const stats = useMemo(() => ({ likes: receivedLikes.length, matches: matches.length, footprints: footprints.length }), [receivedLikes.length, matches.length, footprints.length]);
+  const unreadDmCount = useMemo(() => dmThreads.reduce((sum, thread) => sum + Number(thread.unreadCount || 0), 0), [dmThreads]);
+  const notificationCount = receivedLikes.length + unreadDmCount;
+
+  function nextCard() { setIndex((i) => Math.min(i + 1, profiles.length)); }
+
+  async function swipe(type) {
+    if (!current || !user) return;
+    const directionLabel = type === 'pass' ? '見送り' : type === 'super' ? 'SUPER LIKE' : type === 'dual' ? '両LIKE' : 'LIKE';
+    if (type === 'pass') {
+      setFootprints((f) => [{ name: current.name, rank: current.rank, gender: current.gender, action: '見送り', time: '今' }, ...f].slice(0, 20));
+      nextCard();
+      return;
+    }
+    try {
+      const payload = await api.like({ userId: user.id, profileId: current.id, type, plan, targetGender });
+      if (payload.entitlements) setEntitlements(payload.entitlements);
+      if (payload.match) {
+        setMatches((m) => [payload.match, ...m]);
+        showToast(`${current.name}さんとマッチしました！`);
+        await refreshMatches();
+        await refreshDmThreads(payload.match.id);
+      } else if (payload.receivedLike) {
+        showToast(`${directionLabel} を送りました。相手の通知に表示されます。`);
+      } else {
+        showToast(`${directionLabel} しました`);
+      }
+      setFootprints((f) => [{ name: current.name, rank: current.rank, gender: current.gender, action: directionLabel, time: '今' }, ...f].slice(0, 20));
+      nextCard();
+    } catch (error) {
+      showToast(error.message || '操作に失敗しました');
+    }
   }
 
   async function acceptLike(receivedLikeId) {
     if (!user) return;
     try {
       const payload = await api.acceptLike({ userId: user.id, receivedLikeId });
-      setReceivedLikes((list) => list.filter((r) => r.id !== receivedLikeId));
-      setStats((s) => ({ ...s, matches: s.matches + 1 }));
-      showToast('いいねを返しました。マッチ成立、DMできます');
-      await refreshMatches();
-      await refreshDmThreads(payload.match?.id);
-      setActiveTab('dm');
-    } catch (e) { showToast(e.message); }
-  }
-
-  async function refreshDmThreads(selectMatchId) {
-    if (!user) return;
-    const payload = await api.dmThreads(user.id).catch(() => ({ threads: [] }));
-    const threads = payload.threads || [];
-    setDmThreads(threads);
-    setActiveThreadId((currentId) => {
-      if (selectMatchId && threads.some((thread) => thread.match.id === selectMatchId)) return selectMatchId;
-      if (currentId && threads.some((thread) => thread.match.id === currentId)) return currentId;
-      return threads[0]?.match.id || '';
-    });
+      if (payload.match) {
+        setMatches((m) => [payload.match, ...m]);
+        await refreshMatches();
+        await refreshDmThreads(payload.match.id);
+        setActiveTab('dm');
+        showToast('マッチしました！DMを開始できます');
+      }
+      await refreshReceivedLikes();
+    } catch (error) {
+      showToast(error.message || 'いいね返しに失敗しました');
+    }
   }
 
   async function markDmRead(matchId) {
-    if (!user || !matchId) return;
-    const readAt = new Date().toISOString();
-    setDmThreads((threads) => threads.map((thread) => (
-      thread.match.id === matchId
-        ? {
-          ...thread,
-          unreadCount: 0,
-          messages: thread.messages.map((message) => message.sender !== 'user' && !message.readAt ? { ...message, readAt } : message)
-        }
-        : thread
-    )));
-    await api.markDmRead({ userId: user.id, matchId }).catch(() => null);
+    if (!matchId) return;
+    try {
+      await api.markDmRead({ matchId });
+      setDmThreads((threads) => threads.map((thread) => thread.match.id === matchId ? {
+        ...thread,
+        unreadCount: 0,
+        messages: thread.messages.map((message) => message.sender !== 'user' ? { ...message, readAt: message.readAt || new Date().toISOString() } : message)
+      } : thread));
+    } catch { /* ignore */ }
   }
 
   function selectDmThread(matchId) {
     setActiveThreadId(matchId);
+    setActiveTab('dm');
+    markDmRead(matchId);
   }
 
-  function track(profile, action) {
-    const time = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-    setFootprints((list) => [{ name: profile.name, action, time, rank: profile.rank, gender: profile.gender }, ...list].slice(0, 20));
-  }
-
-  function nextCard() {
-    setIndex((i) => (profiles.length ? (i + 1) % profiles.length : 0));
-  }
-
-  async function swipe(type) {
-    if (!isAuthed) return openApp('match');
-    if (!current) return;
-    if (type === 'pass') {
-      setStats((s) => ({ ...s, passes: s.passes + 1 }));
-      track(current, '見送り');
-      nextCard();
-      return;
-    }
+  async function sendDm(e) {
+    e.preventDefault();
+    if (!activeThreadId || !dmDraft.trim()) return;
+    setDmSending(true);
     try {
-      const payload = await api.like({ userId: user.id, profileId: current.id, type, plan });
-      const label = type === 'super' ? 'スーパーいいね' : type === 'dual' ? '両いいね' : 'いいね';
-      if (payload.already_matched) {
-        showToast(`${current.name}さんとはすでにマッチ済みです`);
-        await refreshMatches();
-        await refreshDmThreads(payload.match?.id);
-        nextCard();
-        return;
-      }
-      if (payload.already_liked && !payload.matched) {
-        showToast(`${current.name}さんにはすでにいいね済みです`);
-        nextCard();
-        return;
-      }
-      if (!payload.already_liked) {
-        setStats((s) => ({
-          ...s,
-          super: type === 'super' ? s.super + 1 : s.super,
-          dual: type === 'dual' && plan !== 'VIP' ? Math.max(0, s.dual - 1) : s.dual,
-        }));
-        track(current, label);
-      }
-      if (payload.matched) {
-        // 相互いいね成立 → その場でマッチ。両者の会話が同期される。
-        showToast(`${current.name}さんとマッチしました！メッセージを送れます`);
-        setStats((s) => ({ ...s, matches: s.matches + 1 }));
-        await refreshMatches();
-        await refreshDmThreads(payload.match?.id);
-        nextCard();
-        return;
-      }
-      if (payload.pending_sent) {
-        showToast(`${current.name}さんにいいねを送りました。相手からも返るとマッチします`);
-      } else {
-        showToast(`${label}しました`);
-      }
-      nextCard();
-    } catch (e) { showToast(e.message); }
-  }
-
-  async function sendDm(event) {
-    event.preventDefault();
-    if (dmSending) return;
-    const body = dmDraft.trim();
-    if (!body) return;
-    const matchId = activeThreadId;
-    if (!matchId) return showToast('先にメッセージ相手を選択してください');
-    try {
-      setDmSending(true);
-      const payload = await api.sendDm({ userId: user.id, matchId, body });
-      const sentMessage = payload.message || {
-        id: `local_${Date.now()}`,
-        matchId,
-        sender: 'user',
-        body,
-        createdAt: new Date().toISOString(),
-        readAt: null
-      };
+      const payload = await api.sendDm({ matchId: activeThreadId, body: dmDraft.trim() });
       setDmDraft('');
-      setDmThreads((threads) => threads
-        .map((thread) => thread.match.id === matchId
-          ? {
-            ...thread,
-            messages: [...thread.messages, { ...sentMessage, sender: 'user' }],
-            updatedAt: sentMessage.createdAt
-          }
-          : thread)
-        .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)));
-      refreshDmThreads(matchId);
-    } catch (e) {
-      showToast(e.message);
+      setDmThreads((threads) => threads.map((thread) => thread.match.id === activeThreadId ? { ...thread, messages: [...thread.messages, payload.message], updatedAt: payload.message.createdAt } : thread));
+      showToast('メッセージを送信しました');
+    } catch (error) {
+      showToast(error.message || '送信に失敗しました');
     } finally {
       setDmSending(false);
     }
   }
 
-  async function reportCurrent() {
-    if (!isAuthed) return openApp('match');
+  function blockCurrent() {
     if (!current) return;
-    await api.report({ userId: user.id, profileId: current.id, reason: '迷惑行為/不適切なプロフィール' }).catch(() => null);
-    const payload = await api.reports().catch(() => ({ reports: [] }));
-    setReports(payload.reports || []);
-    showToast('通報を受け付けました');
+    nextCard();
+    showToast(`${current.name}を非表示にしました`);
   }
 
-  async function blockCurrent() {
-    if (!isAuthed) return openApp('match');
+  function reportCurrent() {
     if (!current) return;
-    await api.block({ userId: user.id, profileId: current.id }).catch(() => null);
-    showToast(`${current.name}をブロックしました`);
-    nextCard();
+    api.report({ userId: user.id, profileId: current.id, reason: 'プロフィールでの迷惑行為/不適切な内容' }).catch(() => null);
+    setReports((r) => [{ id: Date.now(), profileId: current.id, reason: 'プロフィール通報', status: 'open' }, ...r]);
+    showToast(`${current.name}を通報しました`);
   }
 
   async function reportProfile(profileId, profileName = '相手') {
