@@ -9,21 +9,22 @@ import { cx, planLabel, TAB_ICONS } from './constants.jsx';
 export default function SiteHeader({
   isAuthed, user, plan, notificationCount,
   onAuth, onOpenApp, openProfileEditor, logout,
-  onGoApp, onGoNotifications,
+  onGoApp, onGoNotifications, onGoPricing, onGoSafety,
   brandHref, onBrandClick,
   activeTab, setActiveTab,
 }) {
   const [accountOpen, setAccountOpen] = useState(false);
+  const logo = <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" width="132" height="44" decoding="async" fetchPriority="high" />;
 
   const brandEl = onBrandClick
     ? (
       <button className="brand app-brand-button" type="button" onClick={onBrandClick} aria-label="Pairlyトップへ">
-        <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" />
+        {logo}
       </button>
     )
     : (
       <a className="brand" href={brandHref || '#top'}>
-        <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" />
+        {logo}
       </a>
     );
 
@@ -34,8 +35,8 @@ export default function SiteHeader({
         {setActiveTab ? (
           <>
             <button type="button" className={cx('nav-button', activeTab === 'match' && 'active')} onClick={() => setActiveTab('match')}>マッチング</button>
-            <button type="button" className={cx('nav-button', activeTab === 'pricing' && 'active')} onClick={() => setActiveTab('pricing')}>料金</button>
-            <button type="button" className={cx('nav-button', activeTab === 'safety' && 'active')} onClick={() => setActiveTab('safety')}>安全・規約</button>
+            <button type="button" className="nav-button" onClick={onGoPricing || (() => setActiveTab('pricing'))}>料金</button>
+            <button type="button" className="nav-button" onClick={onGoSafety || (() => setActiveTab('safety'))}>安全・規約</button>
           </>
         ) : (
           <>
