@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { cx, ranks, roles, agents, intentTags, regions, resizePhoto } from './constants.jsx';
 
-// ─── AuthModal ────────────────────────────────────────────────────
 function AuthModal({ children, onClose, size }) {
   const panelRef = useRef(null);
   const onCloseRef = useRef(onClose);
@@ -10,7 +9,6 @@ function AuthModal({ children, onClose, size }) {
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  // フォーカストラップ: モーダル内に留まらせる
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
@@ -19,19 +17,24 @@ function AuthModal({ children, onClose, size }) {
     );
     const preferredFocus = panel.querySelector('input:not([type="hidden"]):not([disabled]),textarea:not([disabled]),select:not([disabled])');
     (preferredFocus || getFocusable()[0])?.focus();
+
     function trap(e) {
       if (e.key !== 'Tab') return;
       const focusable = getFocusable();
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
-      } else {
-        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
       }
     }
-    function esc(e) { if (e.key === 'Escape') onCloseRef.current(); }
+    function esc(e) {
+      if (e.key === 'Escape') onCloseRef.current();
+    }
     panel.addEventListener('keydown', trap);
     document.addEventListener('keydown', esc);
     return () => {
@@ -51,7 +54,6 @@ function AuthModal({ children, onClose, size }) {
   );
 }
 
-// ─── AuthEntrySection ─────────────────────────────────────────────
 function AuthEntrySection({ onShowRegister, onShowLogin, onGoogle }) {
   return (
     <section className="email-signup-panel auth-entry-panel">
@@ -60,15 +62,14 @@ function AuthEntrySection({ onShowRegister, onShowLogin, onGoogle }) {
         <p>VALORANTの相方を見つけよう</p>
       </div>
       <div className="email-signup-actions">
-        <button className="primary" onClick={onShowRegister}>無料で新規登録</button>
-        <button className="secondary google-button" onClick={onGoogle}>Googleで続ける</button>
-        <button className="secondary" onClick={onShowLogin}>ログイン（登録済みの方）</button>
+        <button type="button" className="primary" onClick={onShowRegister}>無料で新規登録</button>
+        <button type="button" className="secondary google-button" onClick={onGoogle}>Googleで続ける</button>
+        <button type="button" className="secondary" onClick={onShowLogin}>ログイン（登録済みの方）</button>
       </div>
     </section>
   );
 }
 
-// ─── LoginSection ─────────────────────────────────────────────────
 function LoginSection({ form, setForm, onLogin, onGoogle, onResetPassword, onShowRegister }) {
   return (
     <section className="email-signup-panel">
@@ -77,7 +78,7 @@ function LoginSection({ form, setForm, onLogin, onGoogle, onResetPassword, onSho
         <h2 id="auth-modal-title">ログイン</h2>
         <p>メールアドレスとパスワードでログインします。メール未確認の場合はFirebaseの確認メールが必要です。</p>
       </div>
-      <form className="email-signup-form signup-card" autoComplete="on" onSubmit={(e) => { e.preventDefault(); onLogin(); }}>
+      <form className="email-signup-form signup-card" autoComplete="on" onSubmit={(e) => { e.preventDefault(); onLogin(e); }}>
         <label className="email-field-label">
           <span>メールアドレス</span>
           <input required id="login-email" name="email" type="email" autoComplete="username email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" />
@@ -97,14 +98,13 @@ function LoginSection({ form, setForm, onLogin, onGoogle, onResetPassword, onSho
   );
 }
 
-// ─── AccountSignupSection ─────────────────────────────────────────
 function AccountSignupSection({ form, setForm, onSubmit, onGoogle, onShowLogin }) {
   return (
     <section className="email-signup-panel">
       <div className="email-signup-header">
         <span className="eyebrow">アカウント作成</span>
         <h2 id="auth-modal-title">メール登録</h2>
-        <p>まずメールアドレスとパスワードを登録します。<br />登録後にプロフィール設定へ進みます。</p>
+        <p>まずメールアドレスとパスワードを登録します。登録後にメール認証へ進みます。</p>
       </div>
       <form className="email-signup-form signup-card" autoComplete="on" onSubmit={onSubmit}>
         <label className="email-field-label">
@@ -120,7 +120,7 @@ function AccountSignupSection({ form, setForm, onSubmit, onGoogle, onShowLogin }
           <input required id="signup-password" name="new-password" type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="6文字以上" />
         </label>
         <div className="email-signup-actions">
-          <button type="submit" className="primary">次のステップへ</button>
+          <button type="submit" className="primary">確認メールを送る</button>
           <button type="button" className="secondary google-button" onClick={onGoogle}>Googleで続ける</button>
           <button type="button" className="plain reset-password-link" onClick={onShowLogin}>すでにアカウントがある方はこちら</button>
         </div>
@@ -129,14 +129,13 @@ function AccountSignupSection({ form, setForm, onSubmit, onGoogle, onShowLogin }
   );
 }
 
-// ─── EmailVerificationSection ─────────────────────────────────────
 function EmailVerificationSection({ pendingEmail, onCheck, onResend, onShowLogin }) {
   return (
     <section className="email-signup-panel verification-panel">
       <div className="email-signup-header">
         <span className="eyebrow">メール認証</span>
         <h2 id="auth-modal-title">メールを確認してください</h2>
-        <p>{pendingEmail || '登録メールアドレス'} にFirebaseの確認メールを送信しました。メール内のリンクを開くと、次のステップへ進めます。</p>
+        <p>{pendingEmail || '登録メールアドレス'} に確認メールを送信しました。リンクを開いたあと、この画面へ戻ってください。</p>
       </div>
       <div className="signup-card email-confirm-card">
         <div className="mail-check-icon">@</div>
@@ -155,14 +154,10 @@ function EmailVerificationSection({ pendingEmail, onCheck, onResend, onShowLogin
   );
 }
 
-// ─── CustomSelect ─────────────────────────────────────────────────
 function CustomSelect({ label, value, options, onChange }) {
   const [open, setOpen] = useState(false);
   return (
-    <div
-      className={cx('custom-select-field', open && 'open')}
-      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}
-    >
+    <div className={cx('custom-select-field', open && 'open')} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}>
       <span>{label}</span>
       <button type="button" className="custom-select-trigger" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((c) => !c)}>
         <b>{value}</b>
@@ -189,15 +184,18 @@ function CustomSelect({ label, value, options, onChange }) {
   );
 }
 
-// ─── SignupForm ───────────────────────────────────────────────────
-function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLabel = '無料でアカウント作成', cancelLabel = 'ログインに戻る', showAgreement = true }) {
+function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLabel = 'プロフィールを完成する', cancelLabel = 'ログインに戻る', showAgreement = true }) {
   const tabs = ['基本情報', 'ランク', 'プレイスタイル', '自己紹介', ...(showAgreement ? ['規約'] : [])];
   const [activeSetupTab, setActiveSetupTab] = useState(tabs[0]);
+  const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(0);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
-  const [submitAfterAgree, setSubmitAfterAgree] = useState(false);
   const recorderRef = useRef(null);
   const streamRef = useRef(null);
   const recordTimerRef = useRef(null);
+
+  const activeIndex = Math.max(0, tabs.indexOf(activeSetupTab));
+  const isLastStep = activeIndex === tabs.length - 1;
+  const progress = Math.round(((activeIndex + 1) / tabs.length) * 100);
 
   const toggleAgent = (agent) => setForm((f) => ({
     ...f,
@@ -208,62 +206,12 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
     tags: f.tags.includes(tag) ? f.tags.filter((item) => item !== tag) : [...f.tags, tag].slice(0, 4)
   }));
 
-  // クリーンアップ: コンポーネントアンマウント時に録音を停止
   useEffect(() => () => {
     clearTimeout(recordTimerRef.current);
     streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
 
-  // チェックボックス同意後に自動送信
-  useEffect(() => {
-    if (submitAfterAgree && form.agreed) {
-      setSubmitAfterAgree(false);
-      onSubmit({ preventDefault: () => {} });
-    }
-  }, [submitAfterAgree, form.agreed]);
-
-  async function startVoiceRecording() {
-    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return alert('このブラウザは音声録音に対応していません。');
-    let stream;
-    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-    catch { return alert('マイクの許可が必要です。ブラウザの権限を確認してください。'); }
-    const chunks = [];
-    const recorder = new MediaRecorder(stream);
-    recorderRef.current = recorder;
-    streamRef.current = stream;
-    recorder.ondataavailable = (e) => { if (e.data?.size) chunks.push(e.data); };
-    recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-      const reader = new FileReader();
-      reader.onload = () => setForm((c) => ({ ...c, voiceIntro: String(reader.result || '') }));
-      reader.readAsDataURL(blob);
-      stream.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-      recorderRef.current = null;
-      setIsRecordingVoice(false);
-      clearTimeout(recordTimerRef.current);
-    };
-    recorder.start();
-    setIsRecordingVoice(true);
-    recordTimerRef.current = setTimeout(() => stopVoiceRecording(), 20000);
-  }
-  function stopVoiceRecording() {
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-  }
-  async function selectPhoto(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const dataUrl = await resizePhoto(file);
-      setForm((c) => ({ ...c, profilePhoto: dataUrl }));
-      showToast?.('プロフィール写真を設定しました');
-    } catch { showToast?.('画像の読み込みに失敗しました'); }
-  }
-
-  const activeIndex = Math.max(0, tabs.indexOf(activeSetupTab));
-  const progress = Math.round(((activeIndex + 1) / tabs.length) * 100);
-
-  function canLeaveTab(tab = activeSetupTab) {
+  function validateStep(tab = activeSetupTab) {
     if (tab === '基本情報') {
       if (!form.name?.trim()) return '表示名を入力してください';
       if (!form.riotId?.trim()) return 'Riot IDを入力してください';
@@ -280,35 +228,83 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
     return '';
   }
 
+  function validateAllSteps() {
+    for (const tab of tabs) {
+      const error = validateStep(tab);
+      if (error) {
+        setActiveSetupTab(tab);
+        return error;
+      }
+    }
+    return '';
+  }
+
+  function goNext() {
+    const error = validateStep();
+    if (error) return showToast?.(error);
+    const nextIndex = Math.min(activeIndex + 1, tabs.length - 1);
+    setMaxUnlockedIndex((current) => Math.max(current, nextIndex));
+    setActiveSetupTab(tabs[nextIndex]);
+  }
+
+  function goPrev() {
+    const prevIndex = Math.max(activeIndex - 1, 0);
+    setActiveSetupTab(tabs[prevIndex]);
+  }
+
   function goToStep(index) {
-    if (index <= activeIndex) return setActiveSetupTab(tabs[index]);
-    const blocker = canLeaveTab();
-    if (blocker) return showToast?.(blocker);
-    if (index === activeIndex + 1) return setActiveSetupTab(tabs[index]);
+    if (index <= maxUnlockedIndex) return setActiveSetupTab(tabs[index]);
+    if (index === maxUnlockedIndex + 1 && index === activeIndex + 1) return goNext();
     showToast?.('項目を一つずつ設定してください');
   }
 
-  const goNext = () => {
-    const blocker = canLeaveTab();
-    if (blocker) return showToast?.(blocker);
-    if (activeIndex < tabs.length - 1) setActiveSetupTab(tabs[activeIndex + 1]);
-  };
-  const goPrev = () => {
-    if (activeIndex > 0) setActiveSetupTab(tabs[activeIndex - 1]);
-  };
+  function handleProfileSubmit(e) {
+    e.preventDefault();
+    if (!isLastStep) return goNext();
+    const error = validateAllSteps();
+    if (error) return showToast?.(error);
+    onSubmit({ preventDefault: () => {} });
+  }
 
-  function handleSubmit(e) {
-    const blocker = canLeaveTab();
-    if (blocker) {
-      e.preventDefault();
-      showToast?.(blocker);
-      return;
-    }
-    if (showAgreement && !form.agreed) {
-      e.preventDefault();
-      setActiveSetupTab('規約');
-      setSubmitAfterAgree(true);
-      showToast?.('最後に利用規約へ同意してください');
+  async function startVoiceRecording() {
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return alert('このブラウザは音声録音に対応していません。');
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch { return alert('マイクの許可が必要です。ブラウザの権限を確認してください。'); }
+    const chunks = [];
+    const recorder = new MediaRecorder(stream);
+    recorderRef.current = recorder;
+    streamRef.current = stream;
+    recorder.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data); };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+      const reader = new FileReader();
+      reader.onload = () => setForm((current) => ({ ...current, voiceIntro: String(reader.result || '') }));
+      reader.readAsDataURL(blob);
+      stream.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      recorderRef.current = null;
+      setIsRecordingVoice(false);
+      clearTimeout(recordTimerRef.current);
+    };
+    recorder.start();
+    setIsRecordingVoice(true);
+    recordTimerRef.current = setTimeout(() => stopVoiceRecording(), 20000);
+  }
+
+  function stopVoiceRecording() {
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+  }
+
+  async function selectPhoto(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await resizePhoto(file);
+      setForm((current) => ({ ...current, profilePhoto: dataUrl }));
+      showToast?.('プロフィール写真を設定しました');
+    } catch {
+      showToast?.('画像の読み込みに失敗しました');
     }
   }
 
@@ -320,10 +316,14 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
         <p>上から順番に1つずつ設定します。写真は任意ですが、設定するとマッチしやすくなります。</p>
       </div>
 
-      <form className="email-signup-form signup-card profile-setup-card" onSubmit={onSubmit}>
+      <form className="email-signup-form signup-card profile-setup-card" onSubmit={handleProfileSubmit}>
         <div className="setup-progress" aria-label={`プロフィール設定の進捗 ${progress}%`}><span style={{ width: `${progress}%` }} /></div>
         <div className="setup-tabs" role="tablist" aria-label="プロフィール設定ステップ">
-          {tabs.map((tab, i) => <button key={tab} type="button" className={cx(activeSetupTab === tab && 'active', i > activeIndex + 1 && 'locked')} onClick={() => goToStep(i)}>{i + 1}. {tab}</button>)}
+          {tabs.map((tab, index) => (
+            <button key={tab} type="button" className={cx(activeSetupTab === tab && 'active', index > maxUnlockedIndex + 1 && 'locked')} onClick={() => goToStep(index)}>
+              {index + 1}. {tab}
+            </button>
+          ))}
         </div>
 
         {activeSetupTab === '基本情報' && <div className="setup-grid two">
@@ -363,9 +363,9 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
         </div>}
 
         <div className="email-signup-actions profile-setup-actions">
-          <button type="button" className="secondary" onClick={goPrev} disabled={activeSetupTab === tabs[0]}>戻る</button>
-          {activeSetupTab !== tabs[tabs.length - 1] && <button type="button" className="secondary" onClick={goNext}>次へ</button>}
-          <button type="submit" className="primary" onClick={handleSubmit}>{submitLabel}</button>
+          <button type="button" className="secondary" onClick={goPrev} disabled={activeIndex === 0}>戻る</button>
+          {!isLastStep && <button type="button" className="secondary" onClick={goNext}>次へ</button>}
+          {isLastStep && <button type="submit" className="primary">{submitLabel}</button>}
           <button type="button" className="plain reset-password-link" onClick={onShowLogin}>{cancelLabel}</button>
         </div>
       </form>
