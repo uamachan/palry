@@ -300,6 +300,73 @@ body,
   font-weight:900;
 }
 
+/* Keep auth/signup panels visually stable between steps and validation states. */
+.auth-modal-panel--narrow{
+  width:min(520px,calc(100vw - 28px))!important;
+  height:min(620px,calc(100dvh - 28px))!important;
+  max-height:calc(100dvh - 28px)!important;
+  overflow:auto!important;
+}
+.auth-modal-panel--profile{
+  width:min(760px,calc(100vw - 28px))!important;
+  height:min(820px,calc(100dvh - 28px))!important;
+  max-height:calc(100dvh - 28px)!important;
+  overflow:auto!important;
+}
+.email-signup-panel{
+  min-height:100%!important;
+  display:grid!important;
+  grid-template-rows:auto 1fr!important;
+  align-content:start!important;
+}
+.auth-modal-panel--narrow .email-signup-panel{
+  min-height:560px!important;
+}
+.email-signup-header{
+  min-height:112px!important;
+}
+.auth-entry-panel .email-signup-header,
+.verification-panel .email-signup-header{
+  min-height:132px!important;
+}
+.email-signup-form.signup-card,
+.email-confirm-card{
+  align-self:stretch!important;
+}
+.email-signup-actions{
+  align-self:end!important;
+}
+.profile-setup-panel{
+  min-height:760px!important;
+  display:grid!important;
+  grid-template-rows:auto 1fr!important;
+}
+.profile-setup-heading{
+  min-height:128px!important;
+}
+.profile-setup-card{
+  min-height:590px!important;
+  grid-template-rows:auto auto auto 1fr auto!important;
+  align-self:stretch!important;
+}
+.profile-setup-card>.setup-grid,
+.profile-setup-card>.setup-stack,
+.profile-setup-card>.terms-box{
+  min-height:300px!important;
+  align-content:start!important;
+}
+.setup-error{
+  min-height:42px!important;
+  display:grid!important;
+  align-items:center!important;
+}
+.profile-setup-card:not(:has(.setup-error))::before{
+  content:'';
+  display:block;
+  min-height:42px;
+  grid-row:3;
+}
+
 @media(max-width:760px){
   .appv2{
     padding:8px 8px 88px;
@@ -351,5 +418,29 @@ body,
     bottom:8px;
     width:calc(100vw - 16px);
     border-radius:22px;
+  }
+  .auth-modal-panel--narrow,
+  .auth-modal-panel--profile{
+    width:calc(100vw - 20px)!important;
+    height:calc(100dvh - 20px)!important;
+    max-height:calc(100dvh - 20px)!important;
+  }
+  .auth-modal-panel--narrow .email-signup-panel,
+  .profile-setup-panel{
+    min-height:calc(100dvh - 20px)!important;
+  }
+  .email-signup-header,
+  .auth-entry-panel .email-signup-header,
+  .verification-panel .email-signup-header,
+  .profile-setup-heading{
+    min-height:auto!important;
+  }
+  .profile-setup-card{
+    min-height:calc(100dvh - 260px)!important;
+  }
+  .profile-setup-card>.setup-grid,
+  .profile-setup-card>.setup-stack,
+  .profile-setup-card>.terms-box{
+    min-height:260px!important;
   }
 }
