@@ -11,25 +11,25 @@
     <meta name="keywords" content="VALORANT,ヴァロラント,相方募集,デュオ,パーティー募集,マッチング,固定メンバー,ゲーム恋人,フルパ,ランク" />
     <meta name="author" content="Pairly" />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://pairly.gg/" />
+    <link rel="canonical" href="https://palry.onrender.com/" />
     <meta name="theme-color" content="#fffdf9" />
 
     <!-- Open Graph / Facebook / LINE -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://pairly.gg/" />
+    <meta property="og:url" content="https://palry.onrender.com/" />
     <meta property="og:site_name" content="Pairly" />
     <meta property="og:locale" content="ja_JP" />
     <meta property="og:title" content="Pairly | VALORANTの相方・パーティー募集マッチング" />
     <meta property="og:description" content="PairlyはVALORANTのデュオ・フルパ・固定メンバーを探せるゲーム恋人マッチングアプリです。ランク・ロール・地域で絞り込み、いいね・メッセージ・足あとで相方を見つけよう。" />
-    <meta property="og:image" content="https://pairly.gg/assets/pairly-logo-wide.png" />
+    <meta property="og:image" content="https://palry.onrender.com/assets/pairly-logo-wide.png" />
     <meta property="og:image:alt" content="Pairly — VALORANTの相方探しマッチングアプリ" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://pairly.gg/" />
+    <meta name="twitter:url" content="https://palry.onrender.com/" />
     <meta name="twitter:title" content="Pairly | VALORANTの相方・パーティー募集マッチング" />
     <meta name="twitter:description" content="PairlyはVALORANTのデュオ・フルパ・固定メンバーを探せるゲーム恋人マッチングアプリです。ランク・ロール・地域で絞り込み、いいね・メッセージ・足あとで相方を見つけよう。" />
-    <meta name="twitter:image" content="https://pairly.gg/assets/pairly-logo-wide.png" />
+    <meta name="twitter:image" content="https://palry.onrender.com/assets/pairly-logo-wide.png" />
 
     <!-- Icons & Manifest -->
     <link rel="icon" href="/assets/favicon.png" />
@@ -39,14 +39,10 @@
     <!-- Google Fonts: preconnect で接続を先取り -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- フォントを非同期読み込み（レンダリングブロック解消） -->
+    <!-- フォント読み込み。display=swap でフォント取得中もテキスト表示。
+         CSP が inline ハンドラを禁止しているため media=print + onload トリックは使わない。 -->
     <link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Outfit:wght@500;700;900&display=swap"
-      media="print" onload="this.media='all'" />
-    <noscript>
-      <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Outfit:wght@500;700;900&display=swap" />
-    </noscript>
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Outfit:wght@500;700;900&display=swap" />
     <!-- ロゴ SVG を LCP 前に取得 -->
     <link rel="preload" href="/assets/pairly-logo-wide-transparent.svg" as="image" type="image/svg+xml" />
 
@@ -57,30 +53,30 @@
       "@graph": [
         {
           "@type": "WebSite",
-          "@id": "https://pairly.gg/#website",
-          "url": "https://pairly.gg/",
+          "@id": "https://palry.onrender.com/#website",
+          "url": "https://palry.onrender.com/",
           "name": "Pairly",
           "description": "VALORANTの相方・パーティー募集マッチングアプリ",
           "inLanguage": "ja",
           "publisher": {
-            "@id": "https://pairly.gg/#organization"
+            "@id": "https://palry.onrender.com/#organization"
           }
         },
         {
           "@type": "Organization",
-          "@id": "https://pairly.gg/#organization",
+          "@id": "https://palry.onrender.com/#organization",
           "name": "Pairly",
-          "url": "https://pairly.gg/",
+          "url": "https://palry.onrender.com/",
           "logo": {
             "@type": "ImageObject",
-            "url": "https://pairly.gg/assets/pairly-logo-wide.png"
+            "url": "https://palry.onrender.com/assets/pairly-logo-wide.png"
           }
         },
         {
           "@type": "WebApplication",
-          "@id": "https://pairly.gg/#app",
+          "@id": "https://palry.onrender.com/#app",
           "name": "Pairly",
-          "url": "https://pairly.gg/",
+          "url": "https://palry.onrender.com/",
           "description": "PairlyはVALORANTのデュオ・フルパ・固定メンバーを探せるゲーム恋人マッチングアプリです。ランク・ロール・地域で絞り込み、いいね・メッセージ・足あとで相方を見つけよう。",
           "applicationCategory": "SocialNetworkingApplication",
           "operatingSystem": "Web",
@@ -92,7 +88,7 @@
             "description": "無料プランあり"
           },
           "publisher": {
-            "@id": "https://pairly.gg/#organization"
+            "@id": "https://palry.onrender.com/#organization"
           }
         }
       ]
