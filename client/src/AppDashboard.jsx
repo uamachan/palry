@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { cx, planLabel, TAB_ICONS } from './constants.jsx';
+import { appTabs, cx, planLabel, TAB_ICONS } from './constants.jsx';
 import SiteHeader from './SiteHeader.jsx';
 import PublicPricing from './Pricing.jsx';
 import { SafetyCompact } from './Safety.jsx';
@@ -497,7 +497,17 @@ function TabPanel(props) {
  * このファイルのコードが一切ダウンロードされない。
  */
 export default function AppDashboard(props) {
-  const { activeTab, setActiveTab, onBackSite, user, plan, notificationCount, openProfileEditor, logout } = props;
+  const { activeTab, setActiveTab, tabs = appTabs, onBackSite, user, plan, notificationCount, unreadDmCount, openProfileEditor, logout } = props;
+
+  function openSiteSection(sectionId) {
+    onBackSite();
+    window.setTimeout(() => {
+      const section = document.getElementById(sectionId);
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.history.replaceState(null, '', `#${sectionId}`);
+    }, 50);
+  }
+
   return (
     <div className="appv2">
       <SiteHeader
@@ -508,12 +518,32 @@ export default function AppDashboard(props) {
         onBrandClick={onBackSite}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        onGoPricing={() => openSiteSection('pricing')}
+        onGoSafety={() => openSiteSection('safety')}
         openProfileEditor={openProfileEditor}
         logout={logout}
       />
       <main className={cx('appv2-content', activeTab === 'dm' && 'appv2-content--dm')} key={activeTab}>
         <TabPanel {...props} />
       </main>
+      <nav className="appv2-bottom-nav" aria-label="アプリメニュー">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={cx('appv2-nav-btn', activeTab === tab.id && 'active')}
+            onClick={() => setActiveTab(tab.id)}
+            aria-current={activeTab === tab.id ? 'page' : undefined}
+          >
+            <span className="appv2-nav-icon">
+              {TAB_ICONS[tab.id]}
+              {tab.id === 'notifications' && notificationCount > 0 && <em className="appv2-nav-badge">{notificationCount}</em>}
+              {tab.id === 'dm' && unreadDmCount > 0 && <em className="appv2-nav-badge">{unreadDmCount}</em>}
+            </span>
+            <span className="appv2-nav-label">{tab.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }
