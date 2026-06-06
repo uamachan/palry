@@ -49,5 +49,34 @@ if (!source.includes(originalProfilesRouteBlock)) {
 }
 
 source = source.replace(originalProfilesRouteBlock, patchedProfilesRouteBlock);
+
+source = source.replace(
+  `function cleanText(value, max = 160) {
+  return String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
+}`,
+  `function cleanText(value, max = 160) {
+  return String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
+}
+
+function cleanAge(value) {
+  const digits = String(value || '').replace(/\\D/g, '').slice(0, 2);
+  const age = Number(digits);
+  if (!Number.isInteger(age) || age < 13 || age > 80) return '';
+  return String(age);
+}`
+);
+
+source = source.replace(
+  `  if (!payload.age) return res.status(400).json({ message: '年齢が必要です。' });`,
+  `  const safeAge = cleanAge(payload.age);
+  if (!safeAge) return res.status(400).json({ message: '年齢は13〜80歳で入力してください。' });`
+);
+source = source.replace(
+  `  if (!payload.age) return res.status(400).json({ message: '年齢が必要です。' });`,
+  `  const safeAge = cleanAge(payload.age);
+  if (!safeAge) return res.status(400).json({ message: '年齢は13〜80歳で入力してください。' });`
+);
+source = source.replaceAll(`age: cleanText(payload.age, 10),`, `age: safeAge,`);
+
 await fs.writeFile(runtimePath, source, 'utf8');
 await import(pathToFileURL(runtimePath).href);
