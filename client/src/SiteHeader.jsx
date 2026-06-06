@@ -35,8 +35,8 @@ export default function SiteHeader({
         {setActiveTab ? (
           <>
             <button type="button" className={cx('nav-button', activeTab === 'match' && 'active')} onClick={() => setActiveTab('match')}>マッチング</button>
-            <button type="button" className="nav-button" onClick={onGoPricing || (() => setActiveTab('pricing'))}>料金</button>
-            <button type="button" className="nav-button" onClick={onGoSafety || (() => setActiveTab('safety'))}>安全・規約</button>
+            <button type="button" className={cx('nav-button', activeTab === 'pricing' && 'active')} onClick={() => setActiveTab('pricing')}>料金</button>
+            <button type="button" className={cx('nav-button', activeTab === 'safety' && 'active')} onClick={() => setActiveTab('safety')}>安全・規約</button>
           </>
         ) : (
           <>
