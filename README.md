@@ -14,6 +14,17 @@ Pairly の作り込み版です。
 - 女性プロフィールは人気集中ガードで少しマッチしにくく調整
 - 利用規約・免責・禁止事項・非公式表記入り
 
+## 本番環境に向けたコードレビュー
+
+本番公開前のレビュー結果、Render設定、環境変数、永続保存、Firebase認証、CORS、公開前チェックリストは以下にまとめています。
+
+```txt
+PRODUCTION_REVIEW.md
+```
+
+結論として、現在の構成は **Render単一Web Service + Persistent Disk** での小規模公開を推奨します。
+本格運用では JSON 保存から DB への移行を推奨します。
+
 ## プロフィールの永続保存
 
 Pairly は Firebase Authentication のログインアカウントと、サーバー側のプロフィールデータを紐づけて保存します。
@@ -126,4 +137,4 @@ npm run release:check
 本番環境変数は `.env.production.example` を参考に設定します。
 Firebase Authenticationの承認済みドメインには、実際の公開ドメインを追加してください。
 
-詳しい手順は `RELEASE_CHECKLIST.md` を確認してください。
+詳しい手順は `RELEASE_CHECKLIST.md` と `PRODUCTION_REVIEW.md` を確認してください。
