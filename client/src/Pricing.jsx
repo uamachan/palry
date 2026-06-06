@@ -1,15 +1,36 @@
 import React from 'react';
 import { cx, planLabel } from './constants.jsx';
 
+const fallbackPlansData = {
+  plans: {
+    FREE: {
+      name: 'FREE',
+      price: 0,
+      features: ['通常LIKE 10回/day', 'SUPER LIKE 1回/day', '両LIKE 5回', 'マッチ後DM']
+    },
+    PLUS: {
+      name: 'PLUS',
+      price: 980,
+      features: ['通常LIKE 40回/day', 'SUPER LIKE 5回/day', '性別指定フィルター', '足あと詳細']
+    },
+    VIP: {
+      name: 'VIP',
+      price: 1980,
+      features: ['LIKE無制限', 'SUPER LIKE無制限', '性別指定フィルター', '全制限解除']
+    }
+  },
+  singleItems: []
+};
+
 /**
  * 料金セクション。
  * ランディングページ（main.jsx）とアプリ画面（AppDashboard.jsx/PricingPanel）の
  * 両方で使用するため独立ファイルに切り出す。
- * Vite はこのモジュールを main.jsx の静的インポートとして判定し main チャンクに含めるため、
- * AppDashboard チャンクとの重複は発生しない。
  */
-export default function PublicPricing({ plansData, pricingTab, setPricingTab, onSignup, appMode, buyPlan, buyItem }) {
-  const plans = plansData.plans || {};
+export default function PublicPricing({ plansData, pricingTab = 'monthly', setPricingTab = () => {}, onSignup, appMode, buyPlan, buyItem }) {
+  const safePlansData = plansData && typeof plansData === 'object' ? plansData : fallbackPlansData;
+  const plans = safePlansData.plans || fallbackPlansData.plans;
+  const singleItems = Array.isArray(safePlansData.singleItems) ? safePlansData.singleItems : [];
   const monthly = Object.values(plans);
 
   return (
@@ -20,9 +41,9 @@ export default function PublicPricing({ plansData, pricingTab, setPricingTab, on
         <p>男女で特典差はありません。VIPは全制限解除です。</p>
       </div>
       <div className="price-tabs">
-        <button className={pricingTab === 'monthly' ? 'active' : ''} onClick={() => setPricingTab('monthly')}>月額プラン</button>
-        <button className={pricingTab === 'single' ? 'active' : ''} onClick={() => setPricingTab('single')}>単発課金</button>
-        <button className={pricingTab === 'compare' ? 'active' : ''} onClick={() => setPricingTab('compare')}>比較表</button>
+        <button type="button" className={pricingTab === 'monthly' ? 'active' : ''} onClick={() => setPricingTab('monthly')}>月額プラン</button>
+        <button type="button" className={pricingTab === 'single' ? 'active' : ''} onClick={() => setPricingTab('single')}>単発課金</button>
+        <button type="button" className={pricingTab === 'compare' ? 'active' : ''} onClick={() => setPricingTab('compare')}>比較表</button>
       </div>
 
       {pricingTab === 'monthly' && (
@@ -30,9 +51,9 @@ export default function PublicPricing({ plansData, pricingTab, setPricingTab, on
           {monthly.map((p) => (
             <article className={cx('price-card', p.name === 'VIP' && 'featured')} key={p.name}>
               <h3>{planLabel(p.name)}</h3>
-              <div className="price">¥{p.price.toLocaleString()}<span>/月</span></div>
+              <div className="price">¥{Number(p.price || 0).toLocaleString()}<span>/月</span></div>
               <ul>{p.features?.map((f) => <li key={f}>{f}</li>)}</ul>
-              <button className="primary" onClick={buyPlan ? () => buyPlan(p.name) : onSignup}>
+              <button type="button" className="primary" onClick={buyPlan ? () => buyPlan(p.name) : onSignup}>
                 {p.name === 'FREE' ? '無料で始める' : `${planLabel(p.name)}にする`}
               </button>
             </article>
@@ -42,16 +63,16 @@ export default function PublicPricing({ plansData, pricingTab, setPricingTab, on
 
       {pricingTab === 'single' && (
         <div className="single-grid">
-          {(plansData.singleItems || []).map((item) => (
+          {singleItems.length ? singleItems.map((item) => (
             <article key={item.name} className="single-card">
               <h3>{item.name}</h3>
               <b>¥{item.price}</b>
               <p>{item.detail}</p>
-              <button className="primary" onClick={buyItem ? () => buyItem(item.name) : onSignup}>
+              <button type="button" className="primary" onClick={buyItem ? () => buyItem(item.name) : onSignup}>
                 {buyItem ? '購入する（デモ）' : '無料登録して購入'}
               </button>
             </article>
-          ))}
+          )) : <p className="empty-text">単発課金メニューを読み込み中です。</p>}
         </div>
       )}
 
