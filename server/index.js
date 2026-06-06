@@ -104,6 +104,7 @@ app.use((req, res, next) => {
 // 全 API への緩めの制限と、認証系エンドポイントへの厳しめの制限。
 const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: Number(process.env.RATE_LIMIT_API_PER_MIN || 120) });
 const authLimiter = rateLimit({ windowMs: 60 * 1000, max: Number(process.env.RATE_LIMIT_AUTH_PER_MIN || 20), message: '認証の試行が多すぎます。しばらくしてからお試しください。' });
+const reportLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, message: '通報の送信が多すぎます。しばらくしてからお試しください。' });
 app.use('/api', apiLimiter);
 
 validateProductionConfig();
@@ -578,7 +579,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
   if (!firebaseUser.emailVerified) return res.status(403).json({ message: 'メール認証を完了してからプロフィールを作成してください。' });
   const existingProfile = await findAndLinkFirebaseProfile(firebaseUser);
   if (existingProfile) {
-    return res.json({ user: publicUser(existingProfile), message: '保存済みプロフィールでログインしました。' });
+    return res.json({ user: { ...publicUser(existingProfile), isAdmin: isAdmin(existingProfile) }, message: '保存済みプロフィールでログインしました。' });
   }
   if (!payload.gender) return res.status(400).json({ message: '性別選択が必要です。' });
   if (!payload.name) return res.status(400).json({ message: '表示名が必要です。' });
@@ -622,7 +623,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
   });
   if (result?.status) return res.status(result.status).json({ message: result.message });
   const user = result.user;
-  res.status(201).json({ user: publicUser(user), message: 'アカウントを作成しました。' });
+  res.status(201).json({ user: { ...publicUser(user), isAdmin: isAdmin(user) }, message: 'アカウントを作成しました。' });
 });
 
 app.post('/api/login', authLimiter, async (req, res) => {
@@ -635,7 +636,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
   if (!firebaseUser.emailVerified) return res.status(403).json({ message: 'メール認証を完了してください。' });
   const found = await findAndLinkFirebaseProfile(firebaseUser);
   if (!found) return res.status(404).json({ message: 'Pairlyプロフィールが見つかりません。先にアカウント作成してください。' });
-  res.json({ user: publicUser(found) });
+  res.json({ user: { ...publicUser(found), isAdmin: isAdmin(found) } });
 });
 
 app.put('/api/profile', requireAuth, async (req, res) => {
@@ -953,8 +954,13 @@ app.post('/api/dm', requireAuth, async (req, res) => {
   res.status(201).json({ message: { ...message, sender: 'user' } });
 });
 
-app.post('/api/report', requireAuth, async (req, res) => {
-  const report = { id: uid('report'), userId: req.authedUser.id, profileId: cleanText(req.body.profileId, 80), reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
+app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
+  const profileId = cleanText(req.body.profileId, 80);
+  if (!profileId) return res.status(400).json({ message: '通報する相手が必要です。' });
+  if (profileId === req.authedUser.id) return res.status(400).json({ message: '自分自身を通報することはできません。' });
+  const users = await readJson('users.json', []);
+  if (!users.some((u) => u.id === profileId)) return res.status(404).json({ message: '対象ユーザーが見つかりません。' });
+  const report = { id: uid('report'), userId: req.authedUser.id, profileId, reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
   await updateJson('reports.json', [], (reports) => ({ value: [report, ...reports], result: report }));
   res.status(201).json({ report });
 });
@@ -963,6 +969,9 @@ app.post('/api/block', requireAuth, async (req, res) => {
   const userId = req.authedUser.id;
   const profileId = cleanText(req.body.profileId, 80);
   if (!profileId) return res.status(400).json({ message: 'ブロックする相手が必要です。' });
+  if (profileId === userId) return res.status(400).json({ message: '自分自身をブロックすることはできません。' });
+  const users = await readJson('users.json', []);
+  if (!users.some((u) => u.id === profileId)) return res.status(404).json({ message: 'ブロック対象ユーザーが見つかりません。' });
   let block = null;
   await updateJson('blocks.json', [], (blocks) => {
     const existing = blocks.find((item) => item.userId === userId && item.profileId === profileId);
