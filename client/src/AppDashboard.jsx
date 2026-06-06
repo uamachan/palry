@@ -360,7 +360,7 @@ function TabPanel(props) {
     case 'dm': return <DmPanel {...props} />;
     case 'footprints': return <FootprintsPanel {...props} />;
     case 'profile': return <ProfilePanel {...props} />;
-    case 'admin': return <AdminPanel {...props} />;
+    case 'admin': return props.user?.isAdmin ? <AdminPanel {...props} /> : <MatchPanel {...props} />;
     default: return <MatchPanel {...props} />;
   }
 }
