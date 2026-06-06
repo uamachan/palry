@@ -44,7 +44,12 @@ export default defineConfig(({ mode }) => {
           // （オブジェクト形式は Rollup 専用で、Rolldown ではビルドが失敗する）。
           manualChunks(id) {
             if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'vendor-react';
+            // Firebase SDK を独立チャンクに分割。動的インポートにより初期ロードから除外される。
             if (/[\\/]node_modules[\\/](firebase|@firebase)[\\/]/.test(id)) return 'vendor-firebase';
+            // アプリ画面チャンク（ログイン後のみ読み込まれる）
+            if (/[\\/]src[\\/]AppDashboard\.jsx/.test(id)) return 'app-dashboard';
+            // 認証フォームチャンク（ログインボタン押下後のみ読み込まれる）
+            if (/[\\/]src[\\/]AuthForms\.jsx/.test(id)) return 'auth-forms';
             return undefined;
           }
         }
