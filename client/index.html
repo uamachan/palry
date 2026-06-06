@@ -35,7 +35,6 @@
     <link rel="icon" href="/assets/favicon.png" />
     <link rel="apple-touch-icon" href="/assets/pairly-app-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <link rel="stylesheet" href="/profile-setup.css" />
 
     <!-- Google Fonts: preconnect で接続を先取り。
          フォント CSS 本体は main.jsx の module script 内（defer 扱い）で非同期追加する。
@@ -107,35 +106,6 @@
         </div>
       </div>
     </div>
-    <script>
-      // 一時的な表示補正: サーバー側で読了確定していないメッセージを既読に見せない。
-      // 既読表示の false positive を防ぐため、クライアント上では未読表示へ寄せる。
-      (function () {
-        function preventFalseReadLabels() {
-          document.querySelectorAll('.dm-read-state.read').forEach((el) => {
-            el.classList.remove('read');
-            el.textContent = '未読';
-          });
-        }
-
-        function openFirstDmNotification() {
-          const candidates = [...document.querySelectorAll('.notification-card button')];
-          const target = candidates.find((button) => ['開く', 'DM'].includes(button.textContent.trim()));
-          if (target) target.click();
-        }
-
-        document.addEventListener('click', (event) => {
-          const notificationButton = event.target.closest?.('.appv2-notification-btn');
-          if (!notificationButton) return;
-          setTimeout(openFirstDmNotification, 80);
-          setTimeout(openFirstDmNotification, 180);
-        }, true);
-
-        const observer = new MutationObserver(preventFalseReadLabels);
-        observer.observe(document.documentElement, { childList: true, subtree: true });
-        preventFalseReadLabels();
-      })();
-    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
