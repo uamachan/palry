@@ -238,6 +238,25 @@ function App() {
     return () => document.body.classList.remove('modal-open');
   }, [authMode, profileEditorOpen]);
 
+  useEffect(() => {
+    function isInputTarget(el) {
+      if (!el) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+    }
+    function blockClipboard(e) {
+      if (!isInputTarget(e.target)) e.preventDefault();
+    }
+    document.addEventListener('copy', blockClipboard);
+    document.addEventListener('cut', blockClipboard);
+    document.addEventListener('paste', blockClipboard);
+    return () => {
+      document.removeEventListener('copy', blockClipboard);
+      document.removeEventListener('cut', blockClipboard);
+      document.removeEventListener('paste', blockClipboard);
+    };
+  }, []);
+
   function showToast(message) {
     setToast(message);
     clearTimeout(toastTimer.current);
