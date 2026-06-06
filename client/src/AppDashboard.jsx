@@ -218,6 +218,7 @@ function NotificationsPanel({ receivedLikes, dmThreads, setActiveTab, selectDmTh
   const unreadThreads = dmThreads.filter((t) => Number(t.unreadCount || 0) > 0);
   const recentThreads = dmThreads.slice(0, 3);
   const totalUnread = receivedLikes.length + unreadThreads.reduce((sum, t) => sum + Number(t.unreadCount || 0), 0);
+
   return (
     <div className="notifications-panel list-panel" aria-label="通知パネル">
       <div className="notifications-head"><div><span>通知</span><h3>通知</h3></div><b aria-label={`${totalUnread}件の通知`}>{totalUnread}件</b></div>
@@ -310,14 +311,14 @@ function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraf
                 <div className={cx('dm-bubble', message.sender === 'user' && 'mine')} key={message.id}>
                   <p>{message.body}</p>
                   <div className="dm-message-meta">
-                    {message.sender === 'user' && <span className={cx('dm-read-state', message.readAt && 'read')}>{message.readAt ? '既読' : '未読'}</span>}
+                    {message.sender === 'user' && <span className={cx('dm-read-state', message.readAt && 'read')}>{message.readAt ? '既読' : '送信済み'}</span>}
                     <time>{new Date(message.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time>
                   </div>
                 </div>
               ))}
             </div>
             {!hasUserMessage && <div className="dm-starters">{dmStarters.map((starter) => <button type="button" key={starter} onClick={() => setDmDraft(starter)}>{starter}</button>)}</div>}
-            <form className="dm-form" onSubmit={sendDm}>
+            <form className="dm-form" data-sending={dmSending ? 'true' : 'false'} onSubmit={sendDm}>
               <input value={dmDraft} maxLength="500" onChange={(e) => setDmDraft(e.target.value)} placeholder="メッセージを入力" />
               <button className="primary" type="submit" disabled={dmSending || !dmDraft.trim()}>{dmSending ? '送信中' : '送信'}</button>
             </form>
