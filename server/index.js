@@ -706,14 +706,19 @@ app.post('/api/like', requireAuth, async (req, res) => {
   const selectedType = ['like', 'super', 'dual'].includes(type) ? type : 'like';
   const limit = quotaFor(planName, selectedType);
 
-  const [profiles, users, matches, blocks] = await Promise.all([
+  const [profiles, users, matches, blocks, singlePurchases] = await Promise.all([
     readCandidateProfiles(userId),
     readJson('users.json', []),
     readJson('matches.json', []),
-    readJson('blocks.json', [])
+    readJson('blocks.json', []),
+    readJson('single_purchases.json', [])
   ]);
   const profile = profiles.find((item) => item.id === profileId);
   if (!profile) return res.status(404).json({ message: 'プロフィールが見つかりません。' });
+
+  // SUPER LIKE 3回 の購入分は、プランの本日上限を超えても消費して送れる。
+  const superCredits = selectedType === 'super' ? activeEntitlements(singlePurchases, userId).superCredits : 0;
+  const effectiveLimit = limit + superCredits;
   if (blocks.some((block) =>
     (block.userId === userId && block.profileId === profileId) ||
     (block.userId === profileId && block.profileId === userId))) {
@@ -727,13 +732,26 @@ app.post('/api/like', requireAuth, async (req, res) => {
   // 利用枠チェックと like 追加を 1ファイルにつき直列・原子的に行い、
   // 同時リクエストでの枠の二重消費を防ぐ。
   const like = { id: uid('like'), userId, profileId, type: selectedType, plan: planName, createdAt: new Date().toISOString() };
+  let usedSuperCredit = false;
   const likeResult = await updateJson('likes.json', [], (likes) => {
     if (userHasLiked(likes, userId, profileId)) return { value: undefined, result: 'duplicate' };
     const used = countTodayUsage(likes, userId, selectedType);
-    if (used >= limit) return { value: undefined, result: 'quota' };
+    if (used >= effectiveLimit) return { value: undefined, result: 'quota' };
+    usedSuperCredit = selectedType === 'super' && used >= limit; // プラン上限超過 = 購入分を消費
     return { value: [...likes, like], result: 'created' };
   });
   if (likeResult === 'quota') return res.status(402).json({ message: '本日の利用枠を使い切りました。PLUS/VIPで上限を増やせます。' });
+
+  // 購入したスーパーいいねを1回分消費する。
+  if (likeResult === 'created' && usedSuperCredit) {
+    await updateJson('single_purchases.json', [], (purchases) => {
+      const idx = purchases.findIndex((p) => p.userId === userId && p.perk === 'superCredits' && Number(p.remaining || 0) > 0);
+      if (idx < 0) return { value: undefined, result: false };
+      const next = [...purchases];
+      next[idx] = { ...next[idx], remaining: Number(next[idx].remaining) - 1 };
+      return { value: next, result: true };
+    });
+  }
 
   // 候補は実ユーザー限定。念のため非実ユーザーは安全に返す。
   if (!isRealUserId(profileId, users)) {
@@ -970,6 +988,43 @@ app.post('/api/purchase', requireAuth, async (req, res) => {
     return { value: next, result: true };
   });
   res.status(201).json({ purchase });
+});
+
+// 現在有効な単発課金の特典を返す。
+app.get('/api/entitlements/:userId', requireAuth, async (req, res) => {
+  const singlePurchases = await readJson('single_purchases.json', []);
+  res.json({ entitlements: activeEntitlements(singlePurchases, req.authedUser.id) });
+});
+
+// 単発課金（性別フィルター7日 / ブースト / SUPER LIKE 3回 / 目立たせ）を購入する。
+app.post('/api/purchase-item', requireAuth, async (req, res) => {
+  const userId = req.authedUser.id;
+  const itemName = cleanText(req.body?.item, 60);
+  const config = singleItemConfig[itemName];
+  const meta = singleItems.find((i) => i.name === itemName);
+  if (!config || !meta) return res.status(400).json({ message: '不明な商品です。' });
+
+  const now = Date.now();
+  const record = {
+    id: uid('single'),
+    userId,
+    item: itemName,
+    perk: config.perk,
+    kind: config.kind,
+    amount: meta.price,
+    status: 'demo_paid',
+    createdAt: new Date().toISOString(),
+    expiresAt: config.kind === 'timed' ? new Date(now + config.durationMs).toISOString() : null,
+    remaining: config.kind === 'consumable' ? config.count : null
+  };
+
+  let entitlements = null;
+  await updateJson('single_purchases.json', [], (purchases) => {
+    const next = [record, ...purchases];
+    entitlements = activeEntitlements(next, userId, now);
+    return { value: next, result: true };
+  });
+  res.status(201).json({ purchase: record, entitlements });
 });
 
 // 未知の /api ルートは HTML ではなく JSON の 404 を返す
