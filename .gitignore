@@ -4,6 +4,8 @@
 !.env.production.example
 node_modules/
 dist/
+server/data/*.json
+server/.index-runtime.generated.js
 .playwright-mcp/
 .claude/settings.local.json
 *.log

@@ -30,6 +30,7 @@ async function request(path, options = {}) {
   if (!response.ok) {
     const error = new Error(payload.message || payload.reason || `${response.status} ${response.statusText}`);
     Object.assign(error, payload);
+    error.httpStatus = response.status;
     throw error;
   }
   return payload;

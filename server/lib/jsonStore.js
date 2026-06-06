@@ -24,6 +24,19 @@ export function getDataDir() {
   return dataDir;
 }
 
+// dataDir 外へのパストラバーサルを防ぐ。
+// base をモジュール定数にして毎回の再計算を避ける。
+const dataDirBase = dataDir.endsWith(path.sep) ? dataDir : dataDir + path.sep;
+function safeFilePath(file) {
+  const resolved = path.resolve(dataDir, file);
+  if (!resolved.startsWith(dataDirBase)) {
+    const err = new Error('Invalid data file path');
+    err.status = 400;
+    throw err;
+  }
+  return resolved;
+}
+
 let dataDirReady = null;
 function ensureDataDir() {
   if (!dataDirReady) dataDirReady = fs.mkdir(dataDir, { recursive: true });
@@ -31,8 +44,10 @@ function ensureDataDir() {
 }
 
 export async function readJson(file, fallback) {
+  // safeFilePath は try の外で呼ぶ。中で呼ぶと throw が catch に飲まれガードが無効になる。
+  const filePath = safeFilePath(file);
   try {
-    const text = await fs.readFile(path.join(dataDir, file), 'utf8');
+    const text = await fs.readFile(filePath, 'utf8');
     return JSON.parse(text);
   } catch {
     return fallback;
@@ -45,7 +60,7 @@ const writeQueues = new Map();
 
 async function atomicWrite(file, data) {
   await ensureDataDir();
-  const target = path.join(dataDir, file);
+  const target = safeFilePath(file);
   // 同一ディレクトリ内の一時ファイルへ書いてから rename（同一FS上では原子的）。
   const tmp = `${target}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`;
   try {
