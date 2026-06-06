@@ -14,6 +14,45 @@ Pairly の作り込み版です。
 - 女性プロフィールは人気集中ガードで少しマッチしにくく調整
 - 利用規約・免責・禁止事項・非公式表記入り
 
+## プロフィールの永続保存
+
+Pairly は Firebase Authentication のログインアカウントと、サーバー側のプロフィールデータを紐づけて保存します。
+
+- Firebase UID: `firebaseUid`
+- メールアドレス: `email`
+- プロフィール保存先: `users.json`
+- 登録API: `POST /api/register`
+- ログイン復元API: `POST /api/login`
+- プロフィール更新API: `PUT /api/profile`
+
+アカウント作成後は、同じ Firebase アカウントでログインすると `firebaseUid` から保存済みプロフィールを復元します。
+プロフィール編集画面で保存した内容も `users.json` に更新されるため、ブラウザを閉じてもログアウトしても残ります。
+
+### 本番で消えない保存先にする
+
+ローカル開発では `server/data/users.json` に保存します。これは開発用です。
+Render / Railway / VPS などで本番運用する場合、再デプロイやコンテナ再起動でデータが消えないように、永続ディスクを用意して `DATA_DIR` を設定してください。
+
+例:
+
+```bash
+DATA_DIR=/var/pairly-data
+```
+
+`DATA_DIR` の中に以下のようなデータが保存されます。
+
+```txt
+users.json
+likes.json
+matches.json
+received_likes.json
+messages.json
+single_purchases.json
+```
+
+完全に長期運用する場合は、JSONファイル保存ではなく Supabase / PostgreSQL / Firebase Firestore などのDB化を推奨します。
+ただし現在の構成でも、`DATA_DIR` を永続ディスクに向ければプロフィールデータはアカウントに紐づいたまま保存されます。
+
 ## 起動方法
 
 ```bash
