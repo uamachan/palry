@@ -191,8 +191,49 @@ body,
 .mp-actions{
   display:flex;
   justify-content:center;
-  gap:14px;
-  padding:2px 0 4px;
+  align-items:center;
+  gap:18px;
+  padding:6px 0 8px;
+}
+.mp-btn{
+  appearance:none;
+  border:1px solid var(--line,#e7e0d8);
+  background:#fff;
+  color:var(--ink,#181614);
+  border-radius:999px;
+  display:inline-grid;
+  place-items:center;
+  flex:0 0 auto;
+  box-shadow:0 10px 26px rgba(31,25,20,.1);
+}
+.mp-btn-lg{
+  width:68px;
+  height:68px;
+  padding:0;
+}
+.mp-btn svg{
+  display:block;
+  width:30px;
+  height:30px;
+  pointer-events:none;
+}
+.mp-btn-pass{
+  color:#6f6a64;
+  border-color:#ddd3ca;
+}
+.mp-btn-like{
+  color:var(--pink,#ff4f83);
+  border-color:#ffc3d4;
+  background:#fff1f6;
+}
+.mp-btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+.mp-btn:not(:disabled):hover{
+  transform:translateY(-1px);
+  box-shadow:0 14px 30px rgba(31,25,20,.14);
 }
 
 .notifications-panel,
@@ -298,6 +339,10 @@ body,
   }
   .mp-received-info{
     text-align:center;
+  }
+  .mp-btn-lg{
+    width:62px;
+    height:62px;
   }
   .mp-card{
     width:min(100%,390px);
