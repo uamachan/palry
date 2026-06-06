@@ -871,14 +871,10 @@ app.get('/api/dm/:userId', requireAuth, async (req, res) => {
       readAt: match.readAt || null,
       system: true
     };
-    // 自分が送ったメッセージは自分視点では常に既読扱いにして表示。
-    const normalizedMessages = threadMessages.map((message) => (
-      message.sender === 'user' && !message.readAt ? { ...message, readAt: message.createdAt } : message
-    ));
     return {
       match,
-      messages: [openerMessage, ...normalizedMessages],
-      unreadCount: (openerMessage.readAt ? 0 : 1) + normalizedMessages.filter((message) => message.sender !== 'user' && !message.readAt).length,
+      messages: [openerMessage, ...threadMessages],
+      unreadCount: (openerMessage.readAt ? 0 : 1) + threadMessages.filter((message) => message.sender !== 'user' && !message.readAt).length,
       updatedAt: threadMessages.at(-1)?.createdAt || match.createdAt
     };
   }).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -927,15 +923,33 @@ app.post('/api/dm', requireAuth, async (req, res) => {
   const body = cleanText(req.body?.body, 500);
   if (!matchId || !body) return res.status(400).json({ message: '送信先とメッセージ本文が必要です。' });
 
-  const matches = await readJson('matches.json', []);
+  const [matches, blocks] = await Promise.all([
+    readJson('matches.json', []),
+    readJson('blocks.json', [])
+  ]);
   const match = matches.find((item) => item.id === matchId && item.userId === viewerId && item.dmUnlocked);
   if (!match) return res.status(403).json({ message: 'マッチ後だけDMを送信できます。' });
+
+  const blocked = blocks.some((block) =>
+    (block.userId === viewerId && block.profileId === match.profileId) ||
+    (block.userId === match.profileId && block.profileId === viewerId)
+  );
+  if (blocked) return res.status(403).json({ message: 'ブロック済みの相手にはDMを送信できません。' });
 
   // 会話IDで保存することで、双方向マッチの両側に同じメッセージが見える。
   const conversationId = match.conversationId || match.id;
   const createdAt = new Date().toISOString();
   const message = { id: uid('msg'), conversationId, matchId: match.id, senderUserId: viewerId, profileId: match.profileId, body, createdAt, readAt: null };
-  await updateJson('messages.json', [], (messages) => ({ value: [...messages, message], result: message }));
+  await updateJson('messages.json', [], (messages) => {
+    const recentDuplicate = messages.some((existing) =>
+      (existing.conversationId ? existing.conversationId === conversationId : existing.matchId === match.id) &&
+      existing.senderUserId === viewerId &&
+      existing.body === body &&
+      Date.now() - new Date(existing.createdAt).getTime() < 2500
+    );
+    if (recentDuplicate) return { value: undefined, result: message };
+    return { value: [...messages, message], result: message };
+  });
   res.status(201).json({ message: { ...message, sender: 'user' } });
 });
 
@@ -976,7 +990,10 @@ app.post('/api/block', requireAuth, async (req, res) => {
   await updateJson('matches.json', [], (matches) => {
     let changed = false;
     const next = matches.map((match) => {
-      if (match.userId === userId && match.profileId === profileId && match.dmUnlocked) {
+      const related =
+        (match.userId === userId && match.profileId === profileId) ||
+        (match.userId === profileId && match.profileId === userId);
+      if (related && match.dmUnlocked) {
         changed = true;
         return { ...match, dmUnlocked: false, blockedAt: new Date().toISOString() };
       }
