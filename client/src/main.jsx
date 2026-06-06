@@ -42,6 +42,17 @@ function publicUserToForm(user) {
   return { ...initialForm(), ...user, tags: user?.tags || [], agents: user?.agents || [], agreed: true };
 }
 
+function firebaseErrorMessage(error) {
+  const code = error?.code || '';
+  if (code.includes('email-already-in-use')) return 'このメールアドレスは登録済みです';
+  if (code.includes('invalid-email')) return 'メールアドレスの形式が正しくありません';
+  if (code.includes('weak-password')) return 'パスワードは6文字以上にしてください';
+  if (code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('user-not-found')) return 'メールアドレスまたはパスワードが違います';
+  if (code.includes('popup-closed-by-user')) return 'Googleログインがキャンセルされました';
+  if (code.includes('popup-blocked')) return 'ポップアップがブロックされています';
+  return error?.message || '認証に失敗しました';
+}
+
 function App() {
   const [authMode, setAuthMode] = useState(null);
   const [view, setView] = useState('site');
@@ -115,7 +126,7 @@ function App() {
     setPendingFirebaseUser(null);
     setView('app');
     if (message) showToast(message);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
   }
 
   function showAuth(mode = 'entry') {
@@ -277,7 +288,7 @@ function App() {
     }
     setActiveTab(tab);
     setView('app');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
   }
 
   const genderFilterLocked = targetGender !== 'all' && !plansData?.plans?.[plan]?.genderFilter && !entitlements.genderFilter;
@@ -328,6 +339,7 @@ function App() {
   const stats = useMemo(() => ({ likes: receivedLikes.length, matches: matches.length, footprints: footprints.length }), [receivedLikes.length, matches.length, footprints.length]);
   const unreadDmCount = useMemo(() => dmThreads.reduce((sum, thread) => sum + Number(thread.unreadCount || 0), 0), [dmThreads]);
   const notificationCount = receivedLikes.length + unreadDmCount;
+  const isAuthed = Boolean(user);
 
   function nextCard() { setIndex((i) => Math.min(i + 1, profiles.length)); }
 
@@ -434,8 +446,6 @@ function App() {
   async function blockProfile(profileId, profileName = '相手') {
     if (!isAuthed || !profileId) return;
     await api.block({ userId: user.id, profileId }).catch(() => null);
-    // 楽観的に該当スレッドを除去。activeThreadId の再選択は refreshDmThreads に任せる
-    // （内部で現在の選択が消えていれば先頭スレッドへ寄せる）。
     setDmThreads((threads) => threads.filter((thread) => thread.match.profileId !== profileId));
     await refreshDmThreads();
     showToast(`${profileName}さんをブロックしました`);
@@ -448,7 +458,6 @@ function App() {
       return;
     }
     const prevPlan = plan;
-    // 楽観的に切替。失敗時は元のプランへ戻す。
     setPlan(nextPlan);
     setUser((u) => ({ ...u, plan: nextPlan }));
     try {
@@ -479,8 +488,7 @@ function App() {
     }
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, current, plan, activePlan, plansData, entitlements, pricingTab, buyPlan, buyItem, targetGender, genderFilterLocked, swipe, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, profiles, index, form, openApp, openProfileEditor, logout]);
+  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, profiles, index, form]);
 
   return <>
     <div className="toast" role="status" aria-live="polite" aria-atomic="true" aria-relevant="text" hidden={!toast}>{toast}</div>
