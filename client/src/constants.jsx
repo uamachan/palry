@@ -25,7 +25,20 @@ export const agents = [
   'Veto', 'Viper', 'Vyse', 'Waylay', 'Yoru'
 ];
 
-export const regions = ['北海道', '東北', '関東', '中部', '関西', '中国・四国', '九州・沖縄', '海外'];
+export const regions = [
+  '北海道',
+  '東北',
+  '関東',
+  '甲信越',
+  '北陸',
+  '東海',
+  '近畿',
+  '中国',
+  '四国',
+  '九州',
+  '沖縄',
+  '海外'
+];
 
 export const intentTags = [
   '気軽に遊ぶ友達', 'ランクガチ', '恋人探し', 'まずはデュオ', '固定相方',
