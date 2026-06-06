@@ -62,6 +62,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('match');
   const [pricingTab, setPricingTab] = useState('monthly');
   const [plansData, setPlansData] = useState({ plans: {}, singleItems: [] });
+  const [entitlements, setEntitlements] = useState({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
   const [plan, setPlan] = useState('FREE');
   const [targetGender, setTargetGender] = useState('all');
   const [profiles, setProfiles] = useState([]);
@@ -85,7 +86,8 @@ function App() {
   const isAuthed = Boolean(user);
   const current = profiles[index] || null;
   const activePlan = plansData.plans?.[plan] || null;
-  const genderFilterLocked = !activePlan?.genderFilter;
+  // プラン特典 or 単発購入（性別フィルター7日）でフィルター解放。
+  const genderFilterLocked = !activePlan?.genderFilter && !entitlements.genderFilter;
   const unreadDmCount = useMemo(() => dmThreads.reduce((sum, thread) => sum + Number(thread.unreadCount || 0), 0), [dmThreads]);
   const notificationCount = receivedLikes.length + unreadDmCount;
 
@@ -175,6 +177,7 @@ function App() {
     refreshMatches();
     refreshDmThreads();
     refreshReceivedLikes();
+    refreshEntitlements();
   }, [user]);
 
   useEffect(() => {
@@ -558,6 +561,12 @@ function App() {
     setReceivedLikes(payload.receivedLikes || []);
   }
 
+  async function refreshEntitlements() {
+    if (!user) return;
+    const payload = await api.entitlements(user.id).catch(() => null);
+    if (payload?.entitlements) setEntitlements(payload.entitlements);
+  }
+
   async function acceptLike(receivedLikeId) {
     if (!user) return;
     try {
@@ -755,8 +764,23 @@ function App() {
     }
   }
 
+  async function buyItem(itemName) {
+    if (!isAuthed) {
+      showToast('ログインしてください');
+      showAuth('login');
+      return;
+    }
+    try {
+      const payload = await api.purchaseItem({ item: itemName });
+      if (payload?.entitlements) setEntitlements(payload.entitlements);
+      showToast(`「${itemName}」を購入しました（デモ）`);
+    } catch (e) {
+      showToast(e.message || '購入に失敗しました');
+    }
+  }
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, pricingTab, setPricingTab, buyPlan, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, current, plan, activePlan, plansData, pricingTab, buyPlan, targetGender, genderFilterLocked, swipe, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, profiles, index, form, openApp, openProfileEditor, logout]);
+  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, current, plan, activePlan, plansData, entitlements, pricingTab, buyPlan, buyItem, targetGender, genderFilterLocked, swipe, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, profiles, index, form, openApp, openProfileEditor, logout]);
 
   return <>
     <div className="toast" role="status" aria-live="polite" aria-atomic="true" aria-relevant="text" hidden={!toast}>{toast}</div>
@@ -789,7 +813,7 @@ function App() {
         <Hero onSignup={() => showAuth('register')} onOpenApp={() => openApp('match')} />
         {profileSetupPrompt && pendingFirebaseUser && <PendingProfileSetupCard email={pendingFirebaseUser.email} onOpen={() => advanceToProfileSetup(pendingFirebaseUser.uid, pendingFirebaseUser.email, 'プロフィールを設定してください')} />}
         {isAuthed && <ReturnToAppCard user={user} openApp={openApp} />}
-        <PublicPricing plansData={plansData} pricingTab={pricingTab} setPricingTab={setPricingTab} onSignup={() => showAuth('register')} buyPlan={buyPlan} />
+        <PublicPricing plansData={plansData} pricingTab={pricingTab} setPricingTab={setPricingTab} onSignup={() => showAuth('register')} buyPlan={buyPlan} buyItem={buyItem} />
         <Safety />
       </main>
       <Footer />

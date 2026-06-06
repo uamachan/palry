@@ -8,7 +8,7 @@ import { cx, planLabel } from './constants.jsx';
  * Vite はこのモジュールを main.jsx の静的インポートとして判定し main チャンクに含めるため、
  * AppDashboard チャンクとの重複は発生しない。
  */
-export default function PublicPricing({ plansData, pricingTab, setPricingTab, onSignup, appMode, buyPlan }) {
+export default function PublicPricing({ plansData, pricingTab, setPricingTab, onSignup, appMode, buyPlan, buyItem }) {
   const plans = plansData.plans || {};
   const monthly = Object.values(plans);
 
@@ -47,6 +47,9 @@ export default function PublicPricing({ plansData, pricingTab, setPricingTab, on
               <h3>{item.name}</h3>
               <b>¥{item.price}</b>
               <p>{item.detail}</p>
+              <button className="primary" onClick={buyItem ? () => buyItem(item.name) : onSignup}>
+                {buyItem ? '購入する（デモ）' : '無料登録して購入'}
+              </button>
             </article>
           ))}
         </div>

@@ -48,5 +48,7 @@ export const api = {
   report: (body) => request('/api/report', { method: 'POST', body: JSON.stringify(body) }),
   block: (body) => request('/api/block', { method: 'POST', body: JSON.stringify(body) }),
   purchase: (body) => request('/api/purchase', { method: 'POST', body: JSON.stringify(body) }),
+  purchaseItem: (body) => request('/api/purchase-item', { method: 'POST', body: JSON.stringify(body) }),
+  entitlements: (userId) => request(`/api/entitlements/${encodeURIComponent(userId)}`),
   reports: () => request('/api/admin/reports'),
 };
