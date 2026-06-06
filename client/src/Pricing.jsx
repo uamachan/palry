@@ -32,6 +32,7 @@ export default function PublicPricing({ plansData, pricingTab = 'monthly', setPr
   const plans = safePlansData.plans || fallbackPlansData.plans;
   const singleItems = Array.isArray(safePlansData.singleItems) ? safePlansData.singleItems : [];
   const monthly = Object.values(plans);
+  const activePricingTab = pricingTab === 'plans' ? 'monthly' : (pricingTab || 'monthly');
 
   return (
     <section id="pricing" className={cx('section pricing-section', appMode && 'inside')}>
@@ -41,12 +42,12 @@ export default function PublicPricing({ plansData, pricingTab = 'monthly', setPr
         <p>男女で特典差はありません。VIPは全制限解除です。</p>
       </div>
       <div className="price-tabs">
-        <button type="button" className={pricingTab === 'monthly' ? 'active' : ''} onClick={() => setPricingTab('monthly')}>月額プラン</button>
-        <button type="button" className={pricingTab === 'single' ? 'active' : ''} onClick={() => setPricingTab('single')}>単発課金</button>
-        <button type="button" className={pricingTab === 'compare' ? 'active' : ''} onClick={() => setPricingTab('compare')}>比較表</button>
+        <button type="button" className={activePricingTab === 'monthly' ? 'active' : ''} onClick={() => setPricingTab('monthly')}>月額プラン</button>
+        <button type="button" className={activePricingTab === 'single' ? 'active' : ''} onClick={() => setPricingTab('single')}>単発課金</button>
+        <button type="button" className={activePricingTab === 'compare' ? 'active' : ''} onClick={() => setPricingTab('compare')}>比較表</button>
       </div>
 
-      {pricingTab === 'monthly' && (
+      {activePricingTab === 'monthly' && (
         <div className="price-grid">
           {monthly.map((p) => (
             <article className={cx('price-card', p.name === 'VIP' && 'featured')} key={p.name}>
@@ -61,7 +62,7 @@ export default function PublicPricing({ plansData, pricingTab = 'monthly', setPr
         </div>
       )}
 
-      {pricingTab === 'single' && (
+      {activePricingTab === 'single' && (
         <div className="single-grid">
           {singleItems.length ? singleItems.map((item) => (
             <article key={item.name} className="single-card">
@@ -76,7 +77,7 @@ export default function PublicPricing({ plansData, pricingTab = 'monthly', setPr
         </div>
       )}
 
-      {pricingTab === 'compare' && (
+      {activePricingTab === 'compare' && (
         <div className="compare">
           <table>
             <thead>
