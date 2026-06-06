@@ -196,6 +196,73 @@
   text-align:center!important;
 }
 
+/* Auth/profile final override. This file is loaded last, so keep critical panel fixes here. */
+.auth-modal .profile-setup-card{
+  display:grid!important;
+  grid-template-rows:8px 44px 42px minmax(0,1fr) 64px!important;
+  height:100%!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+.auth-modal .profile-setup-card .setup-progress{
+  grid-row:1!important;
+}
+.auth-modal .profile-setup-card .setup-tabs{
+  grid-row:2!important;
+  height:44px!important;
+  min-height:44px!important;
+  max-height:44px!important;
+}
+.auth-modal .profile-setup-card .setup-error{
+  grid-row:3!important;
+  height:42px!important;
+  min-height:42px!important;
+  max-height:42px!important;
+}
+.auth-modal .profile-setup-card:not(:has(.setup-error))::before{
+  content:''!important;
+  display:block!important;
+  grid-row:3!important;
+  height:42px!important;
+  min-height:42px!important;
+}
+.auth-modal .profile-setup-card>.setup-grid,
+.auth-modal .profile-setup-card>.setup-stack,
+.auth-modal .profile-setup-card>.terms-box{
+  grid-row:4!important;
+  min-height:0!important;
+  overflow:auto!important;
+}
+.auth-modal .profile-setup-actions{
+  grid-row:5!important;
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  height:64px!important;
+  min-height:64px!important;
+  max-height:64px!important;
+  overflow:visible!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:8px!important;
+  padding:10px 0 0!important;
+  margin:0!important;
+  position:relative!important;
+  z-index:50!important;
+  background:var(--paper,#fffdf9)!important;
+  border-top:1px solid var(--line,#e7e0d8)!important;
+}
+.auth-modal .profile-setup-actions button{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-height:40px!important;
+  padding:10px 14px!important;
+  white-space:nowrap!important;
+}
+
 @media(max-width:760px){
   .mp-wrap{
     width:100%!important;
@@ -225,5 +292,15 @@
     grid-template-columns:1fr!important;
     justify-items:center!important;
     text-align:center!important;
+  }
+  .auth-modal .profile-setup-card{
+    grid-template-rows:7px 42px 40px minmax(0,1fr) 72px!important;
+  }
+  .auth-modal .profile-setup-actions{
+    height:72px!important;
+    min-height:72px!important;
+    max-height:72px!important;
+    justify-content:center!important;
+    flex-wrap:wrap!important;
   }
 }
