@@ -54,6 +54,8 @@ function firebaseErrorMessage(error) {
   if (code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('user-not-found')) return 'メールアドレスまたはパスワードが違います';
   if (code.includes('popup-closed-by-user')) return 'Googleログインがキャンセルされました';
   if (code.includes('popup-blocked')) return 'ポップアップがブロックされています';
+  if (code.includes('too-many-requests')) return '試行回数が多すぎます。しばらくしてからお試しください';
+  if (code.includes('network-request-failed')) return 'ネットワークエラーです。接続を確認してください';
   return error?.message || '認証に失敗しました';
 }
 
@@ -212,7 +214,9 @@ function App() {
       const payload = await api.login({ idToken });
       completeAuth(payload.user, 'ログインしました');
     } catch (error) {
-      showToast(error.message || firebaseErrorMessage(error));
+      // firebaseErrorMessage は Firebase エラーを日本語化し、
+      // バックエンドエラー（404 等）はそのメッセージをそのまま返す。
+      showToast(firebaseErrorMessage(error));
     }
   }
 
@@ -225,10 +229,16 @@ function App() {
       try {
         const payload = await api.login({ idToken });
         completeAuth(payload.user, 'Googleでログインしました');
-      } catch {
-        setPendingFirebaseUser({ uid: credential.user.uid, email: credential.user.email, emailVerified: true });
-        setForm((f) => ({ ...initialForm(), email: credential.user.email || f.email, emailConfirm: credential.user.email || f.emailConfirm }));
-        setAuthMode('profileSetup');
+      } catch (error) {
+        // 404（Pairlyプロフィール未作成）の時だけプロフィール設定へ進む。
+        // それ以外（サーバーエラー等）は誤って新規作成フローに入れずエラー表示する。
+        if (error?.httpStatus === 404) {
+          setPendingFirebaseUser({ uid: credential.user.uid, email: credential.user.email, emailVerified: true });
+          setForm((f) => ({ ...initialForm(), email: credential.user.email || f.email, emailConfirm: credential.user.email || f.emailConfirm }));
+          setAuthMode('profileSetup');
+        } else {
+          showToast(error.message || 'ログインに失敗しました。しばらくしてからお試しください');
+        }
       }
     } catch (error) {
       showToast(firebaseErrorMessage(error));
@@ -236,14 +246,19 @@ function App() {
   }
 
   async function resetPassword() {
-    if (!form.email) return showToast('メールアドレスを入力してください');
+    const email = form.email.trim();
+    if (!email) return showToast('メールアドレスを入力してください');
     try {
       const { sendPasswordResetEmail, firebaseAuth } = await getFirebaseMods();
-      await sendPasswordResetEmail(firebaseAuth, form.email.trim());
-      showToast('パスワード再設定メールを送信しました');
+      await sendPasswordResetEmail(firebaseAuth, email);
     } catch (error) {
-      showToast(firebaseErrorMessage(error));
+      // user-not-found を区別して表示するとアカウントの存在有無が漏れる（enumeration）。
+      // 形式不正など利用者が直せるエラーだけ通知し、それ以外は成功と同じ中立メッセージにする。
+      const code = error?.code || '';
+      if (code.includes('invalid-email')) return showToast('メールアドレスの形式が正しくありません');
+      if (code.includes('too-many-requests')) return showToast('試行回数が多すぎます。しばらくしてからお試しください');
     }
+    showToast('登録済みのメールアドレスであれば、再設定メールを送信しました');
   }
 
   async function register(e) {
@@ -254,7 +269,10 @@ function App() {
       if (!current) return showToast('Firebaseログインが必要です');
       if (!current.emailVerified) return showToast('メール認証を完了してください');
       const idToken = await current.getIdToken();
-      const payload = await api.register({ ...form, idToken, email: current.email });
+      // パスワードは Firebase が保持しており、バックエンドは使用しない。
+      // 不要な秘密情報を送らないようプロフィール項目だけ送信する。
+      const { password, emailConfirm, ...profileData } = form;
+      const payload = await api.register({ ...profileData, idToken, email: current.email });
       completeAuth(payload.user, payload.message || 'アカウントを作成しました');
     } catch (error) {
       showToast(error.message || '登録に失敗しました');
@@ -287,10 +305,17 @@ function App() {
     setPlan('FREE');
     setActivePlan('FREE');
     setView('site');
+    setActiveTab('match');
     setMatches([]);
     setReceivedLikes([]);
     setDmThreads([]);
     setActiveThreadId(null);
+    setProfiles([]);
+    setIndex(0);
+    setFootprints([]);
+    setReports([]);
+    setProfileEditorOpen(false);
+    setPendingFirebaseUser(null);
     setEntitlements({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
     showToast('ログアウトしました');
   }
