@@ -16,10 +16,12 @@
   background:rgba(24,22,20,.56)!important;
   backdrop-filter:blur(10px)!important;
 }
-.auth-modal-panel{
+.auth-modal-panel,
+.auth-modal-panel--profile,
+.auth-modal-panel--narrow{
   position:relative!important;
   z-index:1!important;
-  width:min(500px,calc(100vw - 28px))!important;
+  width:min(760px,calc(100vw - 28px))!important;
   max-height:calc(100dvh - 28px)!important;
   overflow:auto!important;
   background:var(--paper,#fffdf9)!important;
@@ -27,8 +29,6 @@
   border-radius:26px!important;
   box-shadow:0 28px 90px rgba(24,22,20,.26)!important;
 }
-.auth-modal-panel--profile{width:min(860px,calc(100vw - 28px))!important}
-.auth-modal-panel--narrow{width:min(500px,calc(100vw - 28px))!important}
 .auth-close{
   position:absolute!important;
   top:14px!important;
@@ -283,14 +283,15 @@
 }
 .custom-select-menu{
   position:absolute!important;
-  z-index:20!important;
+  z-index:40!important;
   top:100%!important;
   left:0!important;
   right:0!important;
-  max-height:260px!important;
+  max-height:min(480px,58vh)!important;
   overflow:auto!important;
+  overscroll-behavior:contain!important;
   margin-top:8px!important;
-  padding:8px!important;
+  padding:10px!important;
   background:#fff!important;
   border:1px solid var(--line,#e7e0d8)!important;
   border-radius:18px!important;
@@ -298,10 +299,11 @@
 }
 .custom-select-menu button{
   width:100%!important;
+  min-height:42px!important;
   border:0!important;
   background:transparent!important;
   border-radius:12px!important;
-  padding:10px 12px!important;
+  padding:11px 12px!important;
   text-align:left!important;
   font-weight:900!important;
   color:var(--ink,#181614)!important;
@@ -364,6 +366,7 @@
   .setup-grid.two{grid-template-columns:1fr!important}
   .photo-upload-card{grid-template-columns:70px minmax(0,1fr)!important;padding:12px!important}
   .photo-upload-preview{width:70px!important;height:70px!important;border-radius:18px!important;font-size:30px!important}
+  .custom-select-menu{max-height:min(420px,56vh)!important}
   .profile-setup-actions{justify-content:stretch!important}
   .profile-setup-actions .primary,.profile-setup-actions .secondary,.profile-setup-actions .plain{width:100%!important}
   .voice-record-box{display:grid!important}
