@@ -1,37 +1,75 @@
-/* Force visible matching action symbols. SVG icons can be hidden by older CSS, so render text icons on the button itself. */
+/* Keep matching action buttons visible above the profile card and bottom nav. */
+.appv2-content{
+  overflow:visible!important;
+}
+.mp-wrap,
+.mp-card-wrap,
+.mp-actions{
+  overflow:visible!important;
+}
+.mp-card-wrap{
+  position:relative!important;
+  z-index:1!important;
+}
+.mp-card{
+  position:relative!important;
+  z-index:1!important;
+}
+.mp-actions{
+  position:relative!important;
+  z-index:40!important;
+  min-height:82px!important;
+  margin-top:0!important;
+  padding:10px 0 12px!important;
+  transform:translateZ(0)!important;
+}
 .mp-actions .mp-btn{
   position:relative!important;
-  isolation:isolate!important;
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;
+  z-index:45!important;
+  width:68px!important;
+  height:68px!important;
+  min-width:68px!important;
+  min-height:68px!important;
+  opacity:1!important;
+  visibility:visible!important;
+  display:inline-grid!important;
+  place-items:center!important;
+  overflow:visible!important;
 }
 .mp-actions .mp-btn svg{
-  display:none!important;
-}
-.mp-actions .mp-btn::before{
-  display:grid!important;
-  place-items:center!important;
-  width:100%!important;
-  height:100%!important;
-  line-height:1!important;
-  font-weight:1000!important;
+  display:block!important;
+  width:31px!important;
+  height:31px!important;
+  opacity:1!important;
+  visibility:visible!important;
   pointer-events:none!important;
 }
-.mp-actions .mp-btn-pass::before{
-  content:'×'!important;
-  color:#6f6a64!important;
-  font-size:42px!important;
-}
-.mp-actions .mp-btn-like::before{
-  content:'♥'!important;
-  color:var(--pink,#ff4f83)!important;
-  font-size:36px!important;
-  transform:translateY(1px)!important;
-}
-.mp-actions .mp-btn-like{
-  background:#fff1f6!important;
-  border-color:#ffc3d4!important;
+.mp-actions .mp-btn::before{
+  content:none!important;
+  display:none!important;
 }
 .mp-actions .mp-btn-pass{
   background:#fff!important;
   border-color:#ddd3ca!important;
+  color:#6f6a64!important;
+}
+.mp-actions .mp-btn-like{
+  background:#fff1f6!important;
+  border-color:#ffc3d4!important;
+  color:var(--pink,#ff4f83)!important;
+}
+@media(max-width:760px){
+  .appv2-content{
+    padding-bottom:24px!important;
+  }
+  .mp-actions{
+    min-height:76px!important;
+    padding-bottom:14px!important;
+  }
+  .mp-actions .mp-btn{
+    width:62px!important;
+    height:62px!important;
+    min-width:62px!important;
+    min-height:62px!important;
+  }
 }
