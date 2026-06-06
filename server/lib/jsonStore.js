@@ -5,11 +5,20 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 本番では永続ディスクのパスを DATA_DIR で指定できるようにする。
-// 未設定ならリポジトリ同梱の server/data を使う（ローカル開発向け）。
+// 本番のプロフィール/DM/マッチングデータは、リポジトリ内ではなく永続ディスクへ保存する。
+// Render では Persistent Disk の mount path を /var/data にする運用を想定し、
+// DATA_DIR 未設定でも /var/data/pairly を既定値にする。
+// ローカル開発のみ server/data を使う。
+const isProduction = process.env.NODE_ENV === 'production';
 const dataDir = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
-  : path.resolve(__dirname, '../data');
+  : isProduction
+    ? '/var/data/pairly'
+    : path.resolve(__dirname, '../data');
+
+if (isProduction && !process.env.DATA_DIR) {
+  console.warn('[jsonStore] DATA_DIR is not set. Using /var/data/pairly. Mount a persistent disk at /var/data in production.');
+}
 
 export function getDataDir() {
   return dataDir;
