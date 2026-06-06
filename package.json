@@ -5,10 +5,10 @@
   "type": "module",
   "description": "Pairly - VALORANT teammate matching service",
   "scripts": {
-    "dev": "concurrently \"node server/index.js\" \"vite --host 0.0.0.0\"",
-    "local": "concurrently \"node server/index.js\" \"vite --host localhost --open /\"",
+    "dev": "concurrently \"node server/index-runtime.js\" \"vite --host 0.0.0.0\"",
+    "local": "concurrently \"node server/index-runtime.js\" \"vite --host localhost --open /\"",
     "build": "vite build",
-    "release:check": "npm run build && node --check server/index.js",
+    "release:check": "npm run build && node --check server/index.js && node --check server/index-runtime.js",
     "start": "node server/start-production.js",
     "reset-data": "node server/reset-data.js"
   },
