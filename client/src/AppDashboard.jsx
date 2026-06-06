@@ -4,7 +4,6 @@ import SiteHeader from './SiteHeader.jsx';
 import PublicPricing from './Pricing.jsx';
 import { SafetyCompact } from './Safety.jsx';
 
-// ─── VoiceIntroPlayer ──────────────────────────────────────────────
 function VoiceIntroPlayer({ src, compact = false }) {
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -44,7 +43,6 @@ function VoiceIntroPlayer({ src, compact = false }) {
   );
 }
 
-// ─── ProfileDetailModal ────────────────────────────────────────────
 function ProfileDetailModal({ profile, onClose }) {
   const tags = Array.isArray(profile.tags) ? profile.tags : [];
   const modes = Array.isArray(profile.modes) ? profile.modes : [];
@@ -107,7 +105,6 @@ function ProfileDetailModal({ profile, onClose }) {
   );
 }
 
-// ─── TinderProfileCard ─────────────────────────────────────────────
 function TinderProfileCard({ profile, onReport, onBlock, swipeDir, onOpenProfile }) {
   const tags = profile.tags?.length ? profile.tags : profile.modes || [];
   const roleTone = profile.role === 'デュエリスト' ? 'duelist'
@@ -130,17 +127,13 @@ function TinderProfileCard({ profile, onReport, onBlock, swipeDir, onOpenProfile
         )}
       <div className="mp-gradient" />
       {swipeDir === 'right' && <div className="mp-stamp mp-stamp-like">LIKE</div>}
-      {swipeDir === 'left'  && <div className="mp-stamp mp-stamp-nope">NOPE</div>}
-      {swipeDir === 'up'    && <div className="mp-stamp mp-stamp-super">SUPER</div>}
-      <div className="mp-badges-top">
-        <span className="mp-badge mp-badge-score">相性 {profile.matchScore}%</span>
-      </div>
+      {swipeDir === 'left' && <div className="mp-stamp mp-stamp-nope">NOPE</div>}
+      {swipeDir === 'up' && <div className="mp-stamp mp-stamp-super">SUPER</div>}
+      <div className="mp-badges-top"><span className="mp-badge mp-badge-score">相性 {profile.matchScore}%</span></div>
       <div className="mp-card-info">
         <div className="mp-active-row"><span className="mp-active-dot" /><span>最近アクティブ</span></div>
         <div className="mp-name-row">
-          <button type="button" className="mp-name-button" onClick={(e) => { e.stopPropagation(); onOpenProfile?.(profile); }}>
-            {profile.name}
-          </button>
+          <button type="button" className="mp-name-button" onClick={(e) => { e.stopPropagation(); onOpenProfile?.(profile); }}>{profile.name}</button>
           <span className="mp-age">{profile.ageRange}</span>
         </div>
         <p className="mp-meta">{profile.rank} · {profile.role}</p>
@@ -157,12 +150,18 @@ function TinderProfileCard({ profile, onReport, onBlock, swipeDir, onOpenProfile
   );
 }
 
-// ─── MatchPanel ────────────────────────────────────────────────────
-function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike }) {
+function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike, plan, plansData, entitlements }) {
   const [swipeDir, setSwipeDir] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [acceptingLikeId, setAcceptingLikeId] = useState('');
   const [detailProfile, setDetailProfile] = useState(null);
+  const genderFilterAllowed = Boolean(plansData?.plans?.[plan]?.genderFilter || entitlements?.genderFilter);
+  const isGenderFilterLocked = genderFilterLocked || !genderFilterAllowed;
+  const safeTargetGender = isGenderFilterLocked ? 'all' : targetGender;
+
+  useEffect(() => {
+    if (isGenderFilterLocked && targetGender !== 'all') setTargetGender('all');
+  }, [isGenderFilterLocked, targetGender, setTargetGender]);
 
   async function handleSwipe(type) {
     if (actionBusy || !current) return;
@@ -186,51 +185,43 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender,
     finally { setAcceptingLikeId(''); }
   }
 
+  function handleGenderChange(event) {
+    if (isGenderFilterLocked) return setTargetGender('all');
+    setTargetGender(event.target.value);
+  }
+
   return (
     <div className="mp-wrap">
-      {/* 届いたいいねセクション */}
       <div className={cx('mp-received-section', !receivedLikes?.length && 'empty')}>
         <div className="mp-received-header">届いたいいね <span>{receivedLikes.length}</span></div>
         <div className="mp-received-list">
           {receivedLikes?.length ? receivedLikes.map((rl) => (
             <div key={rl.id} className="mp-received-card">
-              <div className="mp-received-avatar">
-                {rl.fromPhoto ? <img src={rl.fromPhoto} alt={rl.fromProfileName} /> : rl.fromProfileName?.slice(0, 1) || '?'}
-              </div>
+              <div className="mp-received-avatar">{rl.fromPhoto ? <img src={rl.fromPhoto} alt={rl.fromProfileName} /> : rl.fromProfileName?.slice(0, 1) || '?'}</div>
               <div className="mp-received-info"><b>{rl.fromProfileName}</b><span>{rl.fromRank} · {rl.fromRole}</span></div>
-              <button className="mp-accept-btn" onClick={() => handleAcceptLike(rl.id)} disabled={acceptingLikeId === rl.id}>
-                {acceptingLikeId === rl.id ? '送信中' : 'いいねを返す'}
-              </button>
+              <button className="mp-accept-btn" onClick={() => handleAcceptLike(rl.id)} disabled={acceptingLikeId === rl.id}>{acceptingLikeId === rl.id ? '送信中' : 'いいねを返す'}</button>
             </div>
           )) : <p className="mp-received-empty">まだ届いたいいねはありません。</p>}
         </div>
       </div>
 
-      {/* 性別フィルター */}
-      <div className="mp-filter-row">
+      <div className={cx('mp-filter-row', isGenderFilterLocked && 'locked')}>
         <label htmlFor="gender-filter" className="mp-filter-label">表示</label>
-        <select id="gender-filter" className="mp-filter-select" disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)} aria-label="表示する性別を選択">
+        <select id="gender-filter" className="mp-filter-select" disabled={isGenderFilterLocked} value={safeTargetGender} onChange={handleGenderChange} aria-label="表示する性別を選択">
           <option value="all">すべて</option>
           <option value="女性">女性</option>
           <option value="男性">男性</option>
           <option value="その他/未設定">その他</option>
         </select>
-        {genderFilterLocked && <span className="mp-lock-hint" aria-label="性別フィルターはPLUSまたはVIPプランで解放できます">PLUS/VIPで解放</span>}
+        {isGenderFilterLocked && <span className="mp-lock-hint" aria-label="性別フィルターはPLUSまたはVIPプランで解放できます">PLUS/VIPで解放</span>}
       </div>
 
-      {/* プロフィールカード */}
       <div className="mp-card-wrap">
-        {current ? (
-          <TinderProfileCard key={current.id} profile={current} onReport={reportCurrent} onBlock={blockCurrent} swipeDir={swipeDir} onOpenProfile={setDetailProfile} />
-        ) : (
-          <div className="mp-empty" role="status" aria-live="polite">
-            <h3>候補がなくなりました</h3>
-            <p>条件を変えるか、時間をおいて再読み込みしてください。</p>
-          </div>
+        {current ? <TinderProfileCard key={current.id} profile={current} onReport={reportCurrent} onBlock={blockCurrent} swipeDir={swipeDir} onOpenProfile={setDetailProfile} /> : (
+          <div className="mp-empty" role="status" aria-live="polite"><h3>候補がなくなりました</h3><p>条件を変えるか、時間をおいて再読み込みしてください。</p></div>
         )}
       </div>
 
-      {/* アクションボタン */}
       <div className="mp-actions">
         <button className="mp-btn mp-btn-pass mp-btn-lg" onClick={() => handleSwipe('pass')} aria-label="見送る" disabled={actionBusy || !current}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -244,17 +235,13 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender,
   );
 }
 
-// ─── NotificationsPanel ────────────────────────────────────────────
 function NotificationsPanel({ receivedLikes, dmThreads, setActiveTab, selectDmThread, acceptLike }) {
   const unreadThreads = dmThreads.filter((t) => Number(t.unreadCount || 0) > 0);
   const recentThreads = dmThreads.slice(0, 3);
   const totalUnread = receivedLikes.length + unreadThreads.reduce((sum, t) => sum + Number(t.unreadCount || 0), 0);
   return (
     <div className="notifications-panel list-panel" aria-label="通知パネル">
-      <div className="notifications-head">
-        <div><span>通知</span><h3>通知</h3></div>
-        <b aria-label={`${totalUnread}件の通知`}>{totalUnread}件</b>
-      </div>
+      <div className="notifications-head"><div><span>通知</span><h3>通知</h3></div><b aria-label={`${totalUnread}件の通知`}>{totalUnread}件</b></div>
       <div className="notification-list" role="list">
         {receivedLikes.map((like) => (
           <article className="notification-card important" key={like.id} role="listitem">
@@ -278,18 +265,13 @@ function NotificationsPanel({ receivedLikes, dmThreads, setActiveTab, selectDmTh
           </article>
         ))}
         {!receivedLikes.length && !unreadThreads.length && !recentThreads.length && (
-          <div className="notification-empty">
-            <div className="notification-empty-icon">{TAB_ICONS.notifications}</div>
-            <h3>通知はまだありません</h3>
-            <p>いいねが届いた時やDMが来た時にここへ表示されます。</p>
-          </div>
+          <div className="notification-empty"><div className="notification-empty-icon">{TAB_ICONS.notifications}</div><h3>通知はまだありません</h3><p>いいねが届いた時やDMが来た時にここへ表示されます。</p></div>
         )}
       </div>
     </div>
   );
 }
 
-// ─── DM ユーティリティ ─────────────────────────────────────────────
 const dmStarters = ['よろしくお願いします！', '何時ごろ遊べますか？', 'ランク一緒に行きませんか？'];
 
 function profileFromMatch(match) {
@@ -308,7 +290,6 @@ function profileFromMatch(match) {
   };
 }
 
-// ─── DmPanel ──────────────────────────────────────────────────────
 function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, reportProfile, blockProfile }) {
   const activeThread = dmThreads.find((t) => t.match.id === activeThreadId) || dmThreads[0];
   const [detailProfile, setDetailProfile] = useState(null);
@@ -326,11 +307,7 @@ function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraf
         {dmThreads.length ? dmThreads.map((thread) => {
           const lastMessage = thread.messages.at(-1);
           return (
-            <button
-              className={cx('dm-thread', activeThread?.match.id === thread.match.id && 'active', thread.unreadCount > 0 && 'unread')}
-              key={thread.match.id}
-              onClick={() => selectDmThread(thread.match.id)}
-            >
+            <button className={cx('dm-thread', activeThread?.match.id === thread.match.id && 'active', thread.unreadCount > 0 && 'unread')} key={thread.match.id} onClick={() => selectDmThread(thread.match.id)}>
               <b>{thread.match.profileName}{thread.unreadCount > 0 && <em>{thread.unreadCount}</em>}</b>
               <span>{lastMessage?.body || thread.match.opener}</span>
             </button>
@@ -341,11 +318,7 @@ function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraf
         {activeThread ? (
           <>
             <div className="dm-conversation-head">
-              <div className="avatar small">
-                {activeThread.match.profilePhoto
-                  ? <img src={activeThread.match.profilePhoto} alt="" loading="lazy" decoding="async" />
-                  : activeThread.match.profileName?.slice(0, 1) || 'P'}
-              </div>
+              <div className="avatar small">{activeThread.match.profilePhoto ? <img src={activeThread.match.profilePhoto} alt="" loading="lazy" decoding="async" /> : activeThread.match.profileName?.slice(0, 1) || 'P'}</div>
               <div><h3>{activeThread.match.profileName}</h3><span>メッセージ解放済み</span></div>
               <div className="dm-head-actions">
                 <button type="button" onClick={() => setDetailProfile(profileFromMatch(activeThread.match))}>プロフィール</button>
@@ -358,154 +331,70 @@ function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraf
                 <div className={cx('dm-bubble', message.sender === 'user' && 'mine')} key={message.id}>
                   <p>{message.body}</p>
                   <div className="dm-message-meta">
-                    {message.sender === 'user' && (
-                      <span className={cx('dm-read-state', message.readAt && 'read')}>{message.readAt ? '既読' : '未読'}</span>
-                    )}
+                    {message.sender === 'user' && <span className={cx('dm-read-state', message.readAt && 'read')}>{message.readAt ? '既読' : '未読'}</span>}
                     <time>{new Date(message.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time>
                   </div>
                 </div>
               ))}
             </div>
-            {!hasUserMessage && (
-              <div className="dm-starters">
-                {dmStarters.map((starter) => <button type="button" key={starter} onClick={() => setDmDraft(starter)}>{starter}</button>)}
-              </div>
-            )}
+            {!hasUserMessage && <div className="dm-starters">{dmStarters.map((starter) => <button type="button" key={starter} onClick={() => setDmDraft(starter)}>{starter}</button>)}</div>}
             <form className="dm-form" onSubmit={sendDm}>
               <input value={dmDraft} maxLength="500" onChange={(e) => setDmDraft(e.target.value)} placeholder="メッセージを入力" />
               <button className="primary" type="submit" disabled={dmSending || !dmDraft.trim()}>{dmSending ? '送信中' : '送信'}</button>
             </form>
             {detailProfile && <ProfileDetailModal profile={detailProfile} onClose={() => setDetailProfile(null)} />}
           </>
-        ) : (
-          <div className="locked-panel"><h3>メッセージはマッチ後に解放</h3><p>お互いにいいねすると、ここに1対1の会話が表示されます。</p></div>
-        )}
+        ) : <div className="locked-panel"><h3>メッセージはマッチ後に解放</h3><p>お互いにいいねすると、ここに1対1の会話が表示されます。</p></div>}
       </section>
     </div>
   );
 }
 
-// ─── FootprintsPanel ───────────────────────────────────────────────
 function FootprintsPanel({ footprints, plan }) {
   return (
     <div className="list-panel">
       <h3>足あと</h3>
       {plan === 'FREE' && <p className="hint">足あと詳細はPLUS/VIP向け機能です。デモでは直近ログのみ表示します。</p>}
-      {footprints.length ? footprints.map((f, i) => (
-        <div className="list-row" key={i}><b>{f.name}</b><p>{f.rank} / {f.gender}</p><span>{f.action}・{f.time}</span></div>
-      )) : <p className="empty-text">まだ操作履歴がありません。</p>}
+      {footprints.length ? footprints.map((f, i) => <div className="list-row" key={i}><b>{f.name}</b><p>{f.rank} / {f.gender}</p><span>{f.action}・{f.time}</span></div>) : <p className="empty-text">まだ操作履歴がありません。</p>}
     </div>
   );
 }
 
-// ─── PricingPanel ──────────────────────────────────────────────────
 function PricingPanel(props) { return <PublicPricing {...props} appMode />; }
-
-// ─── ProfilePanel ──────────────────────────────────────────────────
 function ProfilePanel({ user }) {
-  return (
-    <div className="list-panel">
-      <h3>プロフィール</h3>
-      <div className="profile-preview expanded">
-        <div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0, 1) || 'P'}</div>
-        <b>{user.name}</b>
-        <span>{user.gender} / {user.age ? `${user.age}歳` : '年齢未設定'} / {user.region || '地域未設定'}</span>
-        <span data-copyable>{user.riotId} / {user.rank} / {user.role}</span>
-        {Boolean(user.tags?.length) && <div className="tag-row">{user.tags.map((tag) => <span className="intent-tag" key={tag}>{tag}</span>)}</div>}
-        <p>{user.bio || '自己紹介は未入力です。'}</p>
-        <VoiceIntroPlayer src={user.voiceIntro} />
-      </div>
-    </div>
-  );
+  return <div className="list-panel"><h3>プロフィール</h3><div className="profile-preview expanded"><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0, 1) || 'P'}</div><b>{user.name}</b><span>{user.gender} / {user.age ? `${user.age}歳` : '年齢未設定'} / {user.region || '地域未設定'}</span><span data-copyable>{user.riotId} / {user.rank} / {user.role}</span>{Boolean(user.tags?.length) && <div className="tag-row">{user.tags.map((tag) => <span className="intent-tag" key={tag}>{tag}</span>)}</div>}<p>{user.bio || '自己紹介は未入力です。'}</p><VoiceIntroPlayer src={user.voiceIntro} /></div></div>;
 }
-
-// ─── AdminPanel ────────────────────────────────────────────────────
 function AdminPanel({ reports }) {
-  return (
-    <div className="list-panel">
-      <h3>通報管理</h3>
-      {reports.length ? reports.map((r) => (
-        <div className="list-row" key={r.id}><b>{r.reason}</b><p>プロフィール: {r.profileId || '-'}</p><span>{r.status}</span></div>
-      )) : <p className="empty-text">通報はありません。</p>}
-    </div>
-  );
+  return <div className="list-panel"><h3>通報管理</h3>{reports.length ? reports.map((r) => <div className="list-row" key={r.id}><b>{r.reason}</b><p>プロフィール: {r.profileId || '-'}</p><span>{r.status}</span></div>) : <p className="empty-text">通報はありません。</p>}</div>;
 }
-
-// ─── ProfileSummary ────────────────────────────────────────────────
 function ProfileSummary({ user, plan, stats, receivedLikes = [] }) {
-  return (
-    <div className="side-card">
-      <h3>自分の状態</h3>
-      <div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0, 1) || 'P'}</div>
-      <b>{user.name}</b>
-      <p data-copyable>{user.riotId}</p>
-      <div className="mini-list">
-        <span>{user.gender}</span>
-        <span>{user.age ? `${user.age}歳` : '年齢未設定'}</span>
-        <span>{user.region || '地域未設定'}</span>
-        <span>{user.rank}</span>
-        <span>{user.role}</span>
-        {user.tags?.map((tag) => <span key={tag}>{tag}</span>)}
-      </div>
-      <div className="statline">
-        <span>好意あり {receivedLikes.length}</span>
-        <span>マッチ {stats.matches}</span>
-      </div>
-      <span className="plan-pill">{planLabel(plan)}</span>
-    </div>
-  );
+  return <div className="side-card"><h3>自分の状態</h3><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0, 1) || 'P'}</div><b>{user.name}</b><p data-copyable>{user.riotId}</p><div className="mini-list"><span>{user.gender}</span><span>{user.age ? `${user.age}歳` : '年齢未設定'}</span><span>{user.region || '地域未設定'}</span><span>{user.rank}</span><span>{user.role}</span>{user.tags?.map((tag) => <span key={tag}>{tag}</span>)}</div><div className="statline"><span>好意あり {receivedLikes.length}</span><span>マッチ {stats.matches}</span></div><span className="plan-pill">{planLabel(plan)}</span></div>;
 }
 
-// ─── GenderFilter ──────────────────────────────────────────────────
-function GenderFilter({ targetGender, setTargetGender, genderFilterLocked }) {
-  return (
-    <div className="side-card">
-      <h3>表示フィルター</h3>
-      <label>表示する性別
-        <select disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)}>
-          <option value="all">すべて</option>
-          <option value="女性">女性だけ</option>
-          <option value="男性">男性だけ</option>
-          <option value="その他/未設定">その他/未設定</option>
-        </select>
-      </label>
-      {genderFilterLocked
-        ? <p className="hint">性別指定はPLUS/VIPで解放。FREEはすべて表示です。</p>
-        : <p className="hint">性別指定フィルター使用中。</p>}
-      <p className="hint">表示性別による特典差はありません。</p>
-    </div>
-  );
-}
-
-// ─── TabPanel ──────────────────────────────────────────────────────
 function TabPanel(props) {
   switch (props.activeTab) {
-    case 'match':         return <MatchPanel {...props} />;
-    case 'pricing':       return <PricingPanel {...props} />;
-    case 'safety':        return <SafetyCompact />;
+    case 'match': return <MatchPanel {...props} />;
+    case 'pricing': return <PricingPanel {...props} />;
+    case 'safety': return <SafetyCompact />;
     case 'notifications': return <NotificationsPanel {...props} />;
-    case 'dm':            return <DmPanel {...props} />;
-    case 'footprints':    return <FootprintsPanel {...props} />;
-    default:              return <MatchPanel {...props} />;
+    case 'dm': return <DmPanel {...props} />;
+    case 'footprints': return <FootprintsPanel {...props} />;
+    case 'profile': return <ProfilePanel {...props} />;
+    case 'admin': return <AdminPanel {...props} />;
+    default: return <MatchPanel {...props} />;
   }
 }
 
-// ─── AppDashboard（デフォルトエクスポート）─────────────────────────
-/**
- * ログイン後のアプリ画面。
- * React.lazy で遅延読み込みされるため、未ログインのユーザーには
- * このファイルのコードが一切ダウンロードされない。
- */
 export default function AppDashboard(props) {
   const { activeTab, setActiveTab, tabs = appTabs, onBackSite, user, plan, notificationCount, unreadDmCount, openProfileEditor, logout } = props;
+  const contentRef = useRef(null);
 
-  function openSiteSection(sectionId) {
-    onBackSite();
-    window.setTimeout(() => {
-      const section = document.getElementById(sectionId);
-      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      window.history.replaceState(null, '', `#${sectionId}`);
-    }, 50);
+  function goAppTab(tab) {
+    setActiveTab(tab);
+    requestAnimationFrame(() => {
+      contentRef.current?.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    });
   }
 
   return (
@@ -515,31 +404,21 @@ export default function AppDashboard(props) {
         user={user}
         plan={plan}
         notificationCount={notificationCount}
-        onBrandClick={onBackSite}
+        onBrandClick={() => goAppTab('match')}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onGoPricing={() => openSiteSection('pricing')}
-        onGoSafety={() => openSiteSection('safety')}
+        setActiveTab={goAppTab}
+        onGoApp={() => goAppTab('match')}
+        onGoNotifications={() => goAppTab('notifications')}
         openProfileEditor={openProfileEditor}
         logout={logout}
       />
-      <main className={cx('appv2-content', activeTab === 'dm' && 'appv2-content--dm')} key={activeTab}>
+      <main ref={contentRef} className={cx('appv2-content', activeTab === 'dm' && 'appv2-content--dm')} key={activeTab}>
         <TabPanel {...props} />
       </main>
       <nav className="appv2-bottom-nav" aria-label="アプリメニュー">
         {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={cx('appv2-nav-btn', activeTab === tab.id && 'active')}
-            onClick={() => setActiveTab(tab.id)}
-            aria-current={activeTab === tab.id ? 'page' : undefined}
-          >
-            <span className="appv2-nav-icon">
-              {TAB_ICONS[tab.id]}
-              {tab.id === 'notifications' && notificationCount > 0 && <em className="appv2-nav-badge">{notificationCount}</em>}
-              {tab.id === 'dm' && unreadDmCount > 0 && <em className="appv2-nav-badge">{unreadDmCount}</em>}
-            </span>
+          <button key={tab.id} type="button" className={cx('appv2-nav-btn', activeTab === tab.id && 'active')} onClick={() => goAppTab(tab.id)} aria-current={activeTab === tab.id ? 'page' : undefined}>
+            <span className="appv2-nav-icon">{TAB_ICONS[tab.id]}{tab.id === 'notifications' && notificationCount > 0 && <em className="appv2-nav-badge">{notificationCount}</em>}{tab.id === 'dm' && unreadDmCount > 0 && <em className="appv2-nav-badge">{unreadDmCount}</em>}</span>
             <span className="appv2-nav-label">{tab.label}</span>
           </button>
         ))}
