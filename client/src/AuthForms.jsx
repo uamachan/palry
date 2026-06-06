@@ -189,6 +189,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
   const [activeSetupTab, setActiveSetupTab] = useState(tabs[0]);
   const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(0);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [setupError, setSetupError] = useState('');
   const recorderRef = useRef(null);
   const streamRef = useRef(null);
   const recordTimerRef = useRef(null);
@@ -211,20 +212,30 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
     streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
 
+  useEffect(() => {
+    if (setupError && !validateStep()) setSetupError('');
+  }, [activeSetupTab, form.name, form.riotId, form.age, form.region, form.gender, form.rank, form.role, form.tags, form.agents, form.agreed]);
+
+  function notifyRequired(message) {
+    const notice = message.startsWith('入力が必要です') ? message : `入力が必要です：${message}`;
+    setSetupError(notice);
+    showToast?.(notice);
+  }
+
   function validateStep(tab = activeSetupTab) {
     if (tab === '基本情報') {
-      if (!form.name?.trim()) return '表示名を入力してください';
-      if (!form.riotId?.trim()) return 'Riot IDを入力してください';
-      if (!form.age) return '年齢を入力してください';
-      if (!form.region) return '地域を選択してください';
-      if (!form.gender) return '性別を選択してください';
+      if (!form.name?.trim()) return '表示名';
+      if (!form.riotId?.trim()) return 'Riot ID';
+      if (!form.age) return '年齢';
+      if (!form.region) return '地域';
+      if (!form.gender) return '性別';
     }
     if (tab === 'ランク') {
-      if (!form.rank) return '現在ランクを選択してください';
-      if (!form.role) return 'メインロールを選択してください';
+      if (!form.rank) return '現在ランク';
+      if (!form.role) return 'メインロール';
     }
-    if (tab === 'プレイスタイル' && (!form.tags?.length && !form.agents?.length)) return '目的タグかよく使うエージェントを1つ以上選んでください';
-    if (tab === '規約' && showAgreement && !form.agreed) return '利用規約へ同意してください';
+    if (tab === 'プレイスタイル' && (!form.tags?.length && !form.agents?.length)) return '目的タグ または よく使うエージェント';
+    if (tab === '規約' && showAgreement && !form.agreed) return '利用規約への同意';
     return '';
   }
 
@@ -241,28 +252,34 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
 
   function goNext() {
     const error = validateStep();
-    if (error) return showToast?.(error);
+    if (error) return notifyRequired(error);
+    setSetupError('');
     const nextIndex = Math.min(activeIndex + 1, tabs.length - 1);
     setMaxUnlockedIndex((current) => Math.max(current, nextIndex));
     setActiveSetupTab(tabs[nextIndex]);
   }
 
   function goPrev() {
+    setSetupError('');
     const prevIndex = Math.max(activeIndex - 1, 0);
     setActiveSetupTab(tabs[prevIndex]);
   }
 
   function goToStep(index) {
-    if (index <= maxUnlockedIndex) return setActiveSetupTab(tabs[index]);
+    if (index <= maxUnlockedIndex) {
+      setSetupError('');
+      return setActiveSetupTab(tabs[index]);
+    }
     if (index === maxUnlockedIndex + 1 && index === activeIndex + 1) return goNext();
-    showToast?.('項目を一つずつ設定してください');
+    notifyRequired('前の項目から順番に設定');
   }
 
   function handleProfileSubmit(e) {
     e.preventDefault();
     if (!isLastStep) return goNext();
     const error = validateAllSteps();
-    if (error) return showToast?.(error);
+    if (error) return notifyRequired(error);
+    setSetupError('');
     onSubmit({ preventDefault: () => {} });
   }
 
@@ -313,10 +330,10 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
       <div className="email-signup-header profile-setup-heading">
         <span className="eyebrow">プロフィール設定</span>
         <h2 id="auth-modal-title">プロフィールを作成</h2>
-        <p>上から順番に1つずつ設定します。写真は任意ですが、設定するとマッチしやすくなります。</p>
+        <p>上から順番に1つずつ設定します。未入力のまま次へ進むと、必要な項目を通知します。</p>
       </div>
 
-      <form className="email-signup-form signup-card profile-setup-card" onSubmit={handleProfileSubmit}>
+      <form className="email-signup-form signup-card profile-setup-card" onSubmit={handleProfileSubmit} noValidate>
         <div className="setup-progress" aria-label={`プロフィール設定の進捗 ${progress}%`}><span style={{ width: `${progress}%` }} /></div>
         <div className="setup-tabs" role="tablist" aria-label="プロフィール設定ステップ">
           {tabs.map((tab, index) => (
@@ -325,6 +342,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
             </button>
           ))}
         </div>
+        {setupError && <div className="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
 
         {activeSetupTab === '基本情報' && <div className="setup-grid two">
           <label className="email-field-label"><span>表示名</span><input required value={form.name} maxLength="40" onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="例：Pairlyちゃん" /></label>
