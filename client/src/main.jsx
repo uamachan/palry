@@ -11,6 +11,7 @@ import './styles.css';
 import './profile-setup.css';
 import './profile-validation.css';
 import './design-polish.css';
+import './matching-icons.css';
 
 let firebaseModsPromise = null;
 function getFirebaseMods() {
