@@ -489,3 +489,12 @@
   .appv2-content .dm-panel{grid-template-rows:auto minmax(0,1fr);grid-template-columns:1fr}
   .appv2-content .dm-thread-list{max-height:112px}
 }
+
+/* ── アクセシビリティ補完 ─────────────────────────── */
+/* aria-live toast: hidden 属性で DOM に残しつつ非表示 */
+.toast[hidden]{display:none}
+/* インタラクティブでない要素のテキスト選択を抑制（コピー禁止の補完） */
+.site-header,.appv2>.site-header,.hero-card,.mock-row,.tinder-profile-card .tinder-card-info,.mp-card-info{user-select:none}
+/* focus-visible のみにアウトライン（マウス操作でのちらつき防止） */
+:focus:not(:focus-visible){outline:none}
+:focus-visible{outline:3px solid var(--pink);outline-offset:2px;border-radius:4px}

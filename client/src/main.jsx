@@ -745,10 +745,11 @@ function App() {
       showToast(`${planLabel(nextPlan)} に切り替えました（デモ）`);
   }
 
-  const shared = { user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, pricingTab, setPricingTab, buyPlan, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: appTabs, current, plan, setPlan, activePlan, plansData, pricingTab, setPricingTab, buyPlan, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, current, plan, activePlan, plansData, pricingTab, buyPlan, targetGender, genderFilterLocked, swipe, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, profiles, index, form, openApp, openProfileEditor, logout]);
 
   return <>
-    {toast && <div className="toast">{toast}</div>}
+    <div className="toast" role="status" aria-live="polite" aria-atomic="true" aria-relevant="text" hidden={!toast}>{toast}</div>
     {isAuthed && profileEditorOpen && <AuthModal onClose={() => setProfileEditorOpen(false)} size="profile">
       <ProfileEditSection form={editForm} setForm={setEditForm} user={user} onSubmit={saveProfileEdit} onCancel={() => setProfileEditorOpen(false)} showToast={showToast} />
     </AuthModal>}
@@ -815,10 +816,39 @@ function SiteHeader({ isAuthed, user, plan, notificationCount, onAuth, onOpenApp
 }
 
 function AuthModal({ children, onClose, size }) {
-  return <div className={cx('auth-modal', size === 'profile' && 'auth-modal--profile')} role="dialog" aria-modal="true">
-    <button className="auth-scrim" type="button" aria-label="閉じる" onClick={onClose}></button>
-    <div className={cx('auth-modal-panel', size === 'narrow' && 'auth-modal-panel--narrow', size === 'profile' && 'auth-modal-panel--profile')}>
-      <button className="auth-close" type="button" onClick={onClose}>×</button>
+  const panelRef = useRef(null);
+
+  // フォーカストラップ: モーダル内に留まらせる
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const focusable = panel.querySelectorAll(
+      'button,input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    first?.focus();
+    function trap(e) {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    }
+    function esc(e) { if (e.key === 'Escape') onClose(); }
+    panel.addEventListener('keydown', trap);
+    document.addEventListener('keydown', esc);
+    return () => {
+      panel.removeEventListener('keydown', trap);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [onClose]);
+
+  return <div className={cx('auth-modal', size === 'profile' && 'auth-modal--profile')} role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <button className="auth-scrim" type="button" aria-label="モーダルを閉じる" onClick={onClose}></button>
+    <div ref={panelRef} className={cx('auth-modal-panel', size === 'narrow' && 'auth-modal-panel--narrow', size === 'profile' && 'auth-modal-panel--profile')}>
+      <button className="auth-close" type="button" aria-label="閉じる" onClick={onClose}>×</button>
       {children}
     </div>
   </div>;
@@ -876,7 +906,7 @@ function LoginSection({ form, setForm, onLogin, onGoogle, onResetPassword, onSho
   return <section className="email-signup-panel">
     <div className="email-signup-header">
       <span className="eyebrow">ログイン</span>
-      <h2>ログイン</h2>
+      <h2 id="auth-modal-title">ログイン</h2>
       <p>メールアドレスとパスワードでログインします。メール未確認の場合はFirebaseの確認メールが必要です。</p>
     </div>
     <form className="email-signup-form signup-card" autoComplete="on" onSubmit={(event) => { event.preventDefault(); onLogin(); }}>
@@ -902,7 +932,7 @@ function AccountSignupSection({ form, setForm, onSubmit, onGoogle, onShowLogin }
   return <section className="email-signup-panel">
     <div className="email-signup-header">
       <span className="eyebrow">アカウント作成</span>
-      <h2>メール登録</h2>
+      <h2 id="auth-modal-title">メール登録</h2>
       <p>まずメールアドレスとパスワードを登録します。<br />登録後にプロフィール設定へ進みます。</p>
     </div>
     <form className="email-signup-form signup-card" autoComplete="on" onSubmit={onSubmit}>
@@ -931,7 +961,7 @@ function EmailVerificationSection({ pendingEmail, onCheck, onResend, onShowLogin
   return <section className="email-signup-panel verification-panel">
     <div className="email-signup-header">
       <span className="eyebrow">メール認証</span>
-      <h2>メールを確認してください</h2>
+      <h2 id="auth-modal-title">メールを確認してください</h2>
       <p>{pendingEmail || '登録メールアドレス'} にFirebaseの確認メールを送信しました。メール内のリンクを開くと、次のステップへ進めます。</p>
     </div>
     <div className="signup-card email-confirm-card">
@@ -1168,26 +1198,27 @@ function GenderFilter({ targetGender, setTargetGender, genderFilterLocked }) {
 function NotificationsPanel({ receivedLikes, dmThreads, setActiveTab, selectDmThread, acceptLike }) {
   const unreadThreads = dmThreads.filter((thread) => Number(thread.unreadCount || 0) > 0);
   const recentThreads = dmThreads.slice(0, 3);
-  return <div className="notifications-panel list-panel">
+  const totalUnread = receivedLikes.length + unreadThreads.reduce((sum, t) => sum + Number(t.unreadCount || 0), 0);
+  return <div className="notifications-panel list-panel" aria-label="通知パネル">
     <div className="notifications-head">
       <div><span>通知</span><h3>通知</h3></div>
-      <b>{receivedLikes.length + unreadThreads.reduce((sum, thread) => sum + Number(thread.unreadCount || 0), 0)}件</b>
+      <b aria-label={`${totalUnread}件の通知`}>{totalUnread}件</b>
     </div>
-    <div className="notification-list">
-      {receivedLikes.map((like) => <article className="notification-card important" key={like.id}>
-        <div className="notification-icon">♡</div>
+    <div className="notification-list" role="list">
+      {receivedLikes.map((like) => <article className="notification-card important" key={like.id} role="listitem">
+        <div className="notification-icon" aria-hidden="true">♡</div>
         <div><b>{like.fromProfileName}さんからいいね</b><p>{like.fromRank || 'ランク未設定'} · {like.fromRole || 'ロール未設定'}</p></div>
-        <button type="button" onClick={() => acceptLike(like.id)}>いいねを返す</button>
+        <button type="button" aria-label={`${like.fromProfileName}さんにいいねを返す`} onClick={() => acceptLike(like.id)}>いいねを返す</button>
       </article>)}
-      {unreadThreads.map((thread) => <article className="notification-card" key={`unread_${thread.match.id}`}>
-        <div className="notification-icon">✉</div>
+      {unreadThreads.map((thread) => <article className="notification-card" key={`unread_${thread.match.id}`} role="listitem">
+        <div className="notification-icon" aria-hidden="true">✉</div>
         <div><b>{thread.match.profileName}さんからメッセージ</b><p>{thread.unreadCount}件の未読があります</p></div>
-        <button type="button" onClick={() => { selectDmThread(thread.match.id); setActiveTab('dm'); }}>開く</button>
+        <button type="button" aria-label={`${thread.match.profileName}さんのメッセージを開く`} onClick={() => { selectDmThread(thread.match.id); setActiveTab('dm'); }}>開く</button>
       </article>)}
-      {!receivedLikes.length && !unreadThreads.length && recentThreads.map((thread) => <article className="notification-card quiet" key={`recent_${thread.match.id}`}>
-        <div className="notification-icon">✓</div>
+      {!receivedLikes.length && !unreadThreads.length && recentThreads.map((thread) => <article className="notification-card quiet" key={`recent_${thread.match.id}`} role="listitem">
+        <div className="notification-icon" aria-hidden="true">✓</div>
         <div><b>{thread.match.profileName}さんとマッチ済み</b><p>DMで会話できます</p></div>
-        <button type="button" onClick={() => { selectDmThread(thread.match.id); setActiveTab('dm'); }}>DM</button>
+        <button type="button" aria-label={`${thread.match.profileName}さんにDMを送る`} onClick={() => { selectDmThread(thread.match.id); setActiveTab('dm'); }}>DM</button>
       </article>)}
       {!receivedLikes.length && !unreadThreads.length && !recentThreads.length && <div className="notification-empty">
         <div className="notification-empty-icon">{TAB_ICONS.notifications}</div>
@@ -1211,7 +1242,7 @@ function TabPanel(props) {
 }
 
 function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, profiles, index, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike }) {
-  const [swipeDir, setSwipeDir] = React.useState(null);
+  const [swipeDir, setSwipeDir] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [acceptingLikeId, setAcceptingLikeId] = useState('');
   const [detailProfile, setDetailProfile] = useState(null);
@@ -1264,14 +1295,14 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, 
 
       {/* フィルター行 */}
       <div className="mp-filter-row">
-        <span className="mp-filter-label">表示</span>
-        <select className="mp-filter-select" disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)}>
+        <label htmlFor="gender-filter" className="mp-filter-label">表示</label>
+        <select id="gender-filter" className="mp-filter-select" disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)} aria-label="表示する性別を選択">
           <option value="all">すべて</option>
           <option value="女性">女性</option>
           <option value="男性">男性</option>
           <option value="その他/未設定">その他</option>
         </select>
-        {genderFilterLocked && <span className="mp-lock-hint">PLUS/VIPで解放</span>}
+        {genderFilterLocked && <span className="mp-lock-hint" aria-label="性別フィルターはPLUSまたはVIPプランで解放できます">PLUS/VIPで解放</span>}
       </div>
 
       {/* プロフィールカード */}
@@ -1279,7 +1310,7 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, 
         {current ? (
           <TinderProfileCard key={current.id} profile={current} onReport={reportCurrent} onBlock={blockCurrent} swipeDir={swipeDir} onOpenProfile={setDetailProfile} />
         ) : (
-          <div className="mp-empty">
+          <div className="mp-empty" role="status" aria-live="polite">
             <h3>候補がなくなりました</h3>
             <p>条件を変えるか、時間をおいて再読み込みしてください。</p>
           </div>
@@ -1288,14 +1319,14 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, 
 
       {/* アクションボタン */}
       <div className="mp-actions">
-        <button className="mp-btn mp-btn-undo" title="元に戻す" onClick={() => {}} disabled={actionBusy}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        <button className="mp-btn mp-btn-undo" aria-label="元に戻す" onClick={() => {}} disabled={actionBusy}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
         </button>
-        <button className="mp-btn mp-btn-pass mp-btn-lg" onClick={() => handleSwipe('pass')} title="見送る" disabled={actionBusy || !current}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <button className="mp-btn mp-btn-pass mp-btn-lg" onClick={() => handleSwipe('pass')} aria-label="見送る" disabled={actionBusy || !current}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
-        <button className="mp-btn mp-btn-like mp-btn-lg" onClick={() => handleSwipe('like')} title="いいね" disabled={actionBusy || !current}>
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <button className="mp-btn mp-btn-like mp-btn-lg" onClick={() => handleSwipe('like')} aria-label="いいね" disabled={actionBusy || !current}>
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>
       </div>
       {detailProfile && <ProfileDetailModal profile={detailProfile} onClose={() => setDetailProfile(null)} />}
@@ -1403,7 +1434,7 @@ function ProfileDetailModal({ profile, onClose }) {
           <div className="profile-detail-tags is-plain">{agentsList.map((agent) => <span key={agent}>{agent}</span>)}</div>
         </div>}
         <div className="profile-detail-block"><strong>自己紹介</strong><p>{profile.bio || '自己紹介は未入力です。'}</p></div>
-        {profile.xHandle && <div className="profile-detail-block"><strong>X</strong><p className="profile-detail-link">@{profile.xHandle.replace(/^@/, '')}</p></div>}
+        {profile.xHandle && <div className="profile-detail-block"><strong>X</strong><a className="profile-detail-link" href={`https://x.com/${profile.xHandle.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" aria-label={`${profile.name}のXプロフィールを開く`}>@{profile.xHandle.replace(/^@/, '')}</a></div>}
         {profile.opener && <div className="profile-detail-note"><strong>話しかけるきっかけ</strong><p>{profile.opener}</p></div>}
         {reasons.length > 0 && <div className="profile-detail-block">
           <strong>相性が高い理由</strong>
