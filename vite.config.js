@@ -34,7 +34,18 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: resolve(projectRoot, 'dist'),
-      emptyOutDir: true
+      emptyOutDir: true,
+      // チャンクサイズ警告の閾値（kB）
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          // Firebase と React を独立チャンクに分割して初期バンドルを軽量化
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-firebase': ['firebase/app', 'firebase/auth'],
+          }
+        }
+      }
     }
   };
 });
