@@ -6,6 +6,35 @@ import { fileURLToPath } from 'node:url';
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 const clientRoot = resolve(projectRoot, 'client');
 
+function inlineEntryCss() {
+  return {
+    name: 'pairly-inline-entry-css',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_options, bundle) {
+      const htmlAsset = bundle['index.html'];
+      if (!htmlAsset || htmlAsset.type !== 'asset') return;
+
+      const inlinedCssFiles = [];
+      let html = String(htmlAsset.source);
+      html = html.replace(
+        /\s*<link rel="stylesheet"(?: crossorigin)? href="\/([^"]+\.css)">/g,
+        (tag, cssFileName) => {
+          const cssAsset = bundle[cssFileName];
+          if (!cssAsset || cssAsset.type !== 'asset') return tag;
+          inlinedCssFiles.push(cssFileName);
+          return `\n    <style data-inline="entry-css">\n${cssAsset.source}\n    </style>`;
+        }
+      );
+
+      htmlAsset.source = html;
+      for (const fileName of inlinedCssFiles) {
+        delete bundle[fileName];
+      }
+    }
+  };
+}
+
 export default defineConfig(({ mode }) => {
   // .env ファイルを読み込む（ローカル開発用）
   const fileEnv = loadEnv(mode, projectRoot, '');
@@ -24,7 +53,7 @@ export default defineConfig(({ mode }) => {
   return {
     root: clientRoot,
     envDir: projectRoot,
-    plugins: [react()],
+    plugins: [react(), inlineEntryCss()],
     define: viteDefines,
     server: {
       port: 5173,

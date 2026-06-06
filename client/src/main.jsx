@@ -711,11 +711,34 @@ function App() {
   }
 
   async function buyPlan(nextPlan) {
+<<<<<<< HEAD
     if (!isAuthed) { showToast('ログインしてください'); showAuth('login'); return; }
     setPlan(nextPlan);
     setUser((u) => ({ ...u, plan: nextPlan }));
     await api.purchase({ userId: user.id, plan: nextPlan }).catch(() => null);
     showToast(`${planLabel(nextPlan)} に切り替えました（デモ）`);
+=======
+    if (!isAuthed) {
+      showToast('ログインしてください');
+      showAuth('login');
+      return;
+    }
+    const prevPlan = plan;
+    // 楽観的に切替。失敗時は元のプランへ戻す。
+    setPlan(nextPlan);
+    setUser((u) => ({ ...u, plan: nextPlan }));
+    try {
+      const payload = await api.purchase({ userId: user.id, plan: nextPlan });
+      const confirmedPlan = payload?.purchase?.plan || payload?.plan || nextPlan;
+      setPlan(confirmedPlan);
+      setUser((u) => ({ ...u, plan: confirmedPlan }));
+      showToast(`${planLabel(confirmedPlan)} に切り替えました（デモ）`);
+    } catch (e) {
+      setPlan(prevPlan);
+      setUser((u) => ({ ...u, plan: prevPlan }));
+      showToast(e.message || 'プラン変更に失敗しました');
+    }
+>>>>>>> eeaecb9c6dd3c77bce32eb168a257e37652326fd
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -731,6 +754,7 @@ function App() {
     unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports,
     profiles, index, form, openApp, openProfileEditor, logout]);
 
+<<<<<<< HEAD
   // 認証フォームの表示条件
   const showAuthForms = (isAuthed && profileEditorOpen) || (!isAuthed && Boolean(authMode));
 
@@ -775,6 +799,65 @@ function App() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
               <div style={{ width: 48, height: 48, border: '3px solid #e0d8cf', borderTopColor: '#b8a99a', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
               <span style={{ color: '#b8a99a', fontSize: '0.875rem' }}>読み込み中...</span>
+=======
+  return <>
+    <div className="toast" role="status" aria-live="polite" aria-atomic="true" aria-relevant="text" hidden={!toast}>{toast}</div>
+    {isAuthed && profileEditorOpen && <AuthModal onClose={() => setProfileEditorOpen(false)} size="profile">
+      <ProfileEditSection form={editForm} setForm={setEditForm} user={user} onSubmit={saveProfileEdit} onCancel={() => setProfileEditorOpen(false)} showToast={showToast} />
+    </AuthModal>}
+    {!isAuthed && authMode && <AuthModal onClose={() => setAuthMode(null)} size={authMode === 'profileSetup' ? 'profile' : ['register', 'login', 'emailVerification', 'entry'].includes(authMode) ? 'narrow' : undefined}>
+      {authMode === 'entry' && <AuthEntrySection onShowRegister={() => showAuth('register')} onShowLogin={() => showAuth('login')} onGoogle={continueWithGoogle} />}
+      {authMode === 'register' && <AccountSignupSection form={form} setForm={setForm} onSubmit={createAccount} onGoogle={continueWithGoogle} onShowLogin={() => showAuth('login')} />}
+      {authMode === 'emailVerification' && <EmailVerificationSection pendingEmail={pendingFirebaseUser?.email} onCheck={confirmEmailVerified} onResend={resendVerificationEmail} onShowLogin={() => showAuth('login')} />}
+      {authMode === 'profileSetup' && <SignupSection form={form} setForm={setForm} pendingEmail={pendingFirebaseUser?.email} onSubmit={register} onShowLogin={() => showAuth('login')} showToast={showToast} />}
+      {authMode === 'login' && <LoginSection form={form} setForm={setForm} onLogin={loginWithFirebase} onGoogle={continueWithGoogle} onResetPassword={resetPassword} onShowRegister={() => showAuth('register')} />}
+    </AuthModal>}
+    {view === 'app' && user ? <AppDashboard {...shared} onBackSite={() => setView('site')} /> : <>
+      <SiteHeader isAuthed={isAuthed} user={user} plan={plan} notificationCount={notificationCount} onAuth={() => showAuth('entry')} onOpenApp={() => openApp('match')} openProfileEditor={openProfileEditor} logout={logout} onGoApp={() => { openApp('match'); }} onGoNotifications={() => { openApp('notifications'); }} />
+      <main className="site-page">
+        <Hero onSignup={() => showAuth('register')} onOpenApp={() => openApp('match')} />
+        {isAuthed && <ReturnToAppCard user={user} openApp={openApp} />}
+        <PublicPricing plansData={plansData} pricingTab={pricingTab} setPricingTab={setPricingTab} onSignup={() => showAuth('register')} buyPlan={buyPlan} />
+        <Safety />
+      </main>
+      <Footer />
+    </>}
+  </>;
+}
+
+function SiteHeader({ isAuthed, user, plan, notificationCount, onAuth, onOpenApp, openProfileEditor, logout, onGoApp, onGoNotifications, brandHref, onBrandClick, activeTab, setActiveTab }) {
+  const [accountOpen, setAccountOpen] = useState(false);
+  const logo = <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" width="132" height="44" decoding="async" fetchPriority="high" />;
+  const brandEl = onBrandClick
+    ? <button className="brand app-brand-button" type="button" onClick={onBrandClick} aria-label="Pairlyトップへ">{logo}</button>
+    : <a className="brand" href={brandHref || '#top'}>{logo}</a>;
+  return <header className="site-header">
+    {brandEl}
+    <nav className="site-nav">
+      {setActiveTab ? <>
+        <button type="button" className={cx('nav-button', activeTab === 'match' && 'active')} onClick={() => setActiveTab('match')}>マッチング</button>
+        <button type="button" className={cx('nav-button', activeTab === 'pricing' && 'active')} onClick={() => setActiveTab('pricing')}>料金</button>
+        <button type="button" className={cx('nav-button', activeTab === 'safety' && 'active')} onClick={() => setActiveTab('safety')}>安全・規約</button>
+      </> : <>
+        <button className="nav-button" onClick={onOpenApp}>マッチング</button><a href="#pricing">料金</a><a href="#safety">安全・規約</a>
+      </>}
+    </nav>
+    <div className="header-actions">
+      {isAuthed ? <span className="plan-pill">{planLabel(plan)}</span> : <button className="primary small" onClick={onAuth}>ログイン / 登録</button>}
+      {isAuthed && user && <>
+        <button className={cx('appv2-notification-btn', activeTab === 'notifications' && 'active', notificationCount > 0 && 'has-unread')} type="button" onClick={onGoNotifications || (() => setActiveTab?.('notifications'))} aria-label="通知">
+          {TAB_ICONS.notifications}
+          {notificationCount > 0 && <em>{notificationCount}</em>}
+        </button>
+        <div className="account-menu">
+          <button className={cx('appv2-avatar', accountOpen && 'active')} type="button" onClick={() => setAccountOpen(o => !o)} aria-haspopup="menu" aria-expanded={accountOpen}>
+            {user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0,1) || 'P')}
+          </button>
+          {accountOpen && <div className="account-dropdown" role="menu">
+            <div className="account-dropdown-head">
+              <div className="account-dropdown-avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0,1) || 'P')}</div>
+              <div><b>{user.name}</b><span>{user.email || user.riotId}</span></div>
+>>>>>>> eeaecb9c6dd3c77bce32eb168a257e37652326fd
             </div>
           </div>
         }>
@@ -867,7 +950,7 @@ function ReturnToAppCard({ user, openApp }) {
 function Footer() {
   return (
     <footer className="footer">
-      <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" />
+      <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" width="110" height="37" loading="lazy" decoding="async" />
       <p>使用した時点で利用規約に同意したものとみなします。PairlyはRiot Games公式サービスではありません。</p>
     </footer>
   );
