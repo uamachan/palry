@@ -130,16 +130,10 @@
   display:none!important;
 }
 
-/* DM labels: unread outgoing messages should look like sent, not like incoming unread. */
+/* DM read state: text is rendered by JSX ('送信済み' / '既読'). */
 .dm-read-state{
-  font-size:0!important;
-}
-.dm-read-state::before{
-  content:'送信済み'!important;
-  font-size:12px!important;
-}
-.dm-read-state.read::before{
-  content:'既読'!important;
+  font-size:12px;
+  opacity:0.65;
 }
 
 @media(max-width:760px){

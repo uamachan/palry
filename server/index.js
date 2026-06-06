@@ -941,17 +941,20 @@ app.post('/api/dm', requireAuth, async (req, res) => {
   const conversationId = match.conversationId || match.id;
   const createdAt = new Date().toISOString();
   const message = { id: uid('msg'), conversationId, matchId: match.id, senderUserId: viewerId, profileId: match.profileId, body, createdAt, readAt: null };
-  await updateJson('messages.json', [], (messages) => {
+  const savedMessage = await updateJson('messages.json', [], (messages) => {
     const recentDuplicate = messages.some((existing) =>
       (existing.conversationId ? existing.conversationId === conversationId : existing.matchId === match.id) &&
       existing.senderUserId === viewerId &&
       existing.body === body &&
       Date.now() - new Date(existing.createdAt).getTime() < 2500
     );
-    if (recentDuplicate) return { value: undefined, result: message };
+    if (recentDuplicate) return { value: undefined, result: null };
     return { value: [...messages, message], result: message };
   });
-  res.status(201).json({ message: { ...message, sender: 'user' } });
+  if (!savedMessage) {
+    return res.status(409).json({ message: '同じメッセージを連続送信しています。少し待ってから送信してください。' });
+  }
+  res.status(201).json({ message: { ...savedMessage, sender: 'user' } });
 });
 
 app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
@@ -961,8 +964,17 @@ app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
   const users = await readJson('users.json', []);
   if (!users.some((u) => u.id === profileId)) return res.status(404).json({ message: '対象ユーザーが見つかりません。' });
   const report = { id: uid('report'), userId: req.authedUser.id, profileId, reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
-  await updateJson('reports.json', [], (reports) => ({ value: [report, ...reports], result: report }));
-  res.status(201).json({ report });
+  const savedReport = await updateJson('reports.json', [], (reports) => {
+    const recentDuplicate = reports.some((r) =>
+      r.userId === req.authedUser.id &&
+      r.profileId === profileId &&
+      Date.now() - new Date(r.createdAt).getTime() < 24 * 60 * 60 * 1000
+    );
+    if (recentDuplicate) return { value: undefined, result: null };
+    return { value: [report, ...reports], result: report };
+  });
+  if (!savedReport) return res.status(409).json({ message: 'このユーザーはすでに通報済みです。時間をおいてください。' });
+  res.status(201).json({ report: savedReport });
 });
 
 app.post('/api/block', requireAuth, async (req, res) => {

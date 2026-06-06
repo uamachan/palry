@@ -460,7 +460,7 @@ function App() {
         return {
           ...thread,
           messages: alreadyExists ? thread.messages : [...thread.messages, payload.message],
-          updatedAt: payload.message.createdAt
+          updatedAt: payload.message?.createdAt
         };
       }));
       showToast('メッセージを送信しました');
