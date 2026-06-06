@@ -183,18 +183,23 @@ function App() {
       lastNotificationCount.current = 0;
       return;
     }
+    // ログイン直後は初回ロードが落ち着くまでトースト判定を抑制する。
+    // （既存の未読DM/受信いいねを「新着」と誤検知して
+    //  「新しい通知があります」が毎回出るのを防ぐ）
+    notificationBooted.current = false;
+    const settle = setTimeout(() => { notificationBooted.current = true; }, 3000);
     const timer = setInterval(() => {
       refreshReceivedLikes();
       refreshDmThreads();
       refreshMatches();
     }, 15000);
-    return () => clearInterval(timer);
+    return () => { clearTimeout(settle); clearInterval(timer); };
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
     if (!notificationBooted.current) {
-      notificationBooted.current = true;
+      // 初回ロード中は基準値だけ更新し、トーストは出さない。
       lastNotificationCount.current = notificationCount;
       return;
     }
