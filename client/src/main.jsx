@@ -7,6 +7,7 @@ import PublicPricing from './Pricing.jsx';
 import Safety from './Safety.jsx';
 import SiteHeader from './SiteHeader.jsx';
 import { appTabs, defaultRole, planLabel, roles } from './constants.jsx';
+import './dm-submit-guard.js';
 import './styles.css';
 import './profile-setup.css';
 import './profile-validation.css';
@@ -446,12 +447,22 @@ function App() {
 
   async function sendDm(e) {
     e.preventDefault();
-    if (!activeThreadId || !dmDraft.trim()) return;
+    if (dmSending) return;
+    const body = dmDraft.trim();
+    if (!activeThreadId || !body) return;
     setDmSending(true);
     try {
-      const payload = await api.sendDm({ matchId: activeThreadId, body: dmDraft.trim() });
+      const payload = await api.sendDm({ matchId: activeThreadId, body });
       setDmDraft('');
-      setDmThreads((threads) => threads.map((thread) => thread.match.id === activeThreadId ? { ...thread, messages: [...thread.messages, payload.message], updatedAt: payload.message.createdAt } : thread));
+      setDmThreads((threads) => threads.map((thread) => {
+        if (thread.match.id !== activeThreadId) return thread;
+        const alreadyExists = thread.messages.some((message) => message.id === payload.message?.id);
+        return {
+          ...thread,
+          messages: alreadyExists ? thread.messages : [...thread.messages, payload.message],
+          updatedAt: payload.message.createdAt
+        };
+      }));
       showToast('メッセージを送信しました');
     } catch (error) {
       showToast(error.message || '送信に失敗しました');
