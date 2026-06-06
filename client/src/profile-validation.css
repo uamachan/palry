@@ -150,13 +150,15 @@ html body #root .auth-modal .auth-modal-panel .profile-setup-card{
   border-radius:0!important;
   padding:0!important;
   display:grid!important;
-  grid-template-rows:8px 44px auto minmax(0,1fr) 58px!important;
+  grid-template-rows:8px 44px 42px minmax(0,1fr) 58px!important;
   gap:10px!important;
 }
 html body #root .auth-modal .auth-modal-panel .setup-progress{
+  grid-row:1!important;
   height:7px!important;
 }
 html body #root .auth-modal .auth-modal-panel .setup-tabs{
+  grid-row:2!important;
   height:44px!important;
   min-height:44px!important;
   max-height:44px!important;
@@ -170,13 +172,28 @@ html body #root .auth-modal .auth-modal-panel .setup-tabs button{
   padding:8px 11px!important;
   font-size:12px!important;
 }
+html body #root .auth-modal .auth-modal-panel .setup-error{
+  grid-row:3!important;
+  height:42px!important;
+  min-height:42px!important;
+  max-height:42px!important;
+  overflow:hidden!important;
+}
+html body #root .auth-modal .auth-modal-panel .profile-setup-card:not(:has(.setup-error))::before{
+  content:''!important;
+  display:block!important;
+  grid-row:3!important;
+  height:42px!important;
+  min-height:42px!important;
+}
 html body #root .auth-modal .auth-modal-panel .profile-setup-card>.setup-grid,
 html body #root .auth-modal .auth-modal-panel .profile-setup-card>.setup-stack,
 html body #root .auth-modal .auth-modal-panel .profile-setup-card>.terms-box{
+  grid-row:4!important;
   height:100%!important;
   min-height:0!important;
   max-height:100%!important;
-  overflow:hidden!important;
+  overflow:auto!important;
   align-content:start!important;
   gap:10px!important;
 }
@@ -237,10 +254,11 @@ html body #root .auth-modal .auth-modal-panel .terms-box p{
   line-height:1.5!important;
 }
 html body #root .auth-modal .auth-modal-panel .profile-setup-actions{
+  grid-row:5!important;
   height:58px!important;
   min-height:58px!important;
   max-height:58px!important;
-  overflow:hidden!important;
+  overflow:visible!important;
   margin:0!important;
   padding:10px 0 0!important;
   display:flex!important;
@@ -248,10 +266,16 @@ html body #root .auth-modal .auth-modal-panel .profile-setup-actions{
   justify-content:flex-end!important;
   gap:8px!important;
   border-top:1px solid var(--line,#e7e0d8)!important;
+  background:var(--paper,#fffdf9)!important;
+  position:relative!important;
+  z-index:3!important;
 }
 html body #root .auth-modal .auth-modal-panel .profile-setup-actions button{
   min-height:38px!important;
   padding:9px 13px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
 }
 
 /* Matching page: place received likes below the main swipe actions. */
@@ -278,14 +302,16 @@ html body #root .auth-modal .auth-modal-panel .profile-setup-actions button{
     grid-template-columns:1fr!important;
   }
   html body #root .auth-modal .auth-modal-panel .profile-setup-card{
-    grid-template-rows:7px 42px auto minmax(0,1fr) 62px!important;
+    grid-template-rows:7px 42px 40px minmax(0,1fr) 62px!important;
   }
   html body #root .auth-modal .auth-modal-panel .profile-setup-card>.setup-grid,
   html body #root .auth-modal .auth-modal-panel .profile-setup-card>.setup-stack,
   html body #root .auth-modal .auth-modal-panel .profile-setup-card>.terms-box{
+    grid-row:4!important;
     overflow:auto!important;
   }
   html body #root .auth-modal .auth-modal-panel .profile-setup-actions{
+    grid-row:5!important;
     justify-content:center!important;
     flex-wrap:wrap!important;
     height:62px!important;
