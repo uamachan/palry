@@ -5,7 +5,7 @@
 # そのため npm run build をコンテナ起動時に実行し、
 # env vars が揃った状態でビルドしてからサーバーを起動する。
 
-FROM node:20-slim
+FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
 

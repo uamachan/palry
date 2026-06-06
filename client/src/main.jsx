@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { api } from './api.js';
 import AppDashboard from './AppDashboard.jsx';
@@ -84,6 +84,7 @@ function App() {
   const [pendingFirebaseUser, setPendingFirebaseUser] = useState(null);
   const [profileSetupPrompt, setProfileSetupPrompt] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [pendingScrollId, setPendingScrollId] = useState(null);
 
   const toastTimerRef = useRef(null);
 
@@ -108,9 +109,11 @@ function App() {
             const idToken = await fbUser.getIdToken();
             const payload = await api.login({ idToken });
             completeAuth(payload.user, '保存済みプロフィールでログインしました');
-          } catch {
-            setPendingFirebaseUser({ uid: fbUser.uid, email: fbUser.email, emailVerified: true });
-            setProfileSetupPrompt(true);
+          } catch (error) {
+            if (error?.httpStatus === 404) {
+              setPendingFirebaseUser({ uid: fbUser.uid, email: fbUser.email, emailVerified: true });
+              setProfileSetupPrompt(true);
+            }
           }
         });
       });
@@ -118,6 +121,14 @@ function App() {
   }, []);
 
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
+
+  useLayoutEffect(() => {
+    if (view === 'site' && pendingScrollId) {
+      const el = document.getElementById(pendingScrollId);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setPendingScrollId(null);
+    }
+  }, [view, pendingScrollId]);
 
   function completeAuth(nextUser, message) {
     setUser(nextUser);
@@ -357,6 +368,11 @@ function App() {
     if (!user) return;
     api.entitlements(user.id).then((payload) => setEntitlements(payload.entitlements || entitlements)).catch(() => null);
   }, [user?.id]);
+  useEffect(() => {
+    if (activeTab === 'admin' && user) {
+      api.reports().then((p) => setReports(p.reports || [])).catch(() => null);
+    }
+  }, [activeTab, user?.id]);
 
   const current = profiles[index] || null;
   const stats = useMemo(() => ({ likes: receivedLikes.length, matches: matches.length, footprints: footprints.length }), [receivedLikes.length, matches.length, footprints.length]);
@@ -426,7 +442,6 @@ function App() {
   function selectDmThread(matchId) {
     setActiveThreadId(matchId);
     setActiveTab('dm');
-    markDmRead(matchId);
   }
 
   async function sendDm(e) {
@@ -436,7 +451,8 @@ function App() {
     try {
       const payload = await api.sendDm({ matchId: activeThreadId, body: dmDraft.trim() });
       setDmDraft('');
-      setDmThreads((threads) => threads.map((thread) => thread.match.id === activeThreadId ? { ...thread, messages: [...thread.messages, payload.message], updatedAt: payload.message.createdAt } : thread));
+      const sentMessage = { ...payload.message, readAt: payload.message.readAt || payload.message.createdAt };
+      setDmThreads((threads) => threads.map((thread) => thread.match.id === activeThreadId ? { ...thread, messages: [...thread.messages, sentMessage], updatedAt: sentMessage.createdAt } : thread));
       showToast('メッセージを送信しました');
     } catch (error) {
       showToast(error.message || '送信に失敗しました');
@@ -445,33 +461,46 @@ function App() {
     }
   }
 
-  function blockCurrent() {
+  async function blockCurrent() {
     if (!current) return;
+    const blocked = current;
     nextCard();
-    showToast(`${current.name}を非表示にしました`);
+    try {
+      await api.block({ profileId: blocked.id });
+      showToast(`${blocked.name}を非表示にしました`);
+    } catch (error) {
+      showToast(error.message || 'ブロックに失敗しました');
+    }
   }
 
   function reportCurrent() {
     if (!current) return;
-    api.report({ userId: user.id, profileId: current.id, reason: 'プロフィールでの迷惑行為/不適切な内容' }).catch(() => null);
-    setReports((r) => [{ id: Date.now(), profileId: current.id, reason: 'プロフィール通報', status: 'open' }, ...r]);
-    showToast(`${current.name}を通報しました`);
+    const reported = current;
+    nextCard();
+    api.report({ profileId: reported.id, reason: 'プロフィールでの迷惑行為/不適切な内容' }).catch(() => null);
+    showToast(`${reported.name}を通報しました`);
   }
 
   async function reportProfile(profileId, profileName = '相手') {
     if (!isAuthed || !profileId) return;
-    await api.report({ userId: user.id, profileId, reason: 'DMでの迷惑行為/不適切な内容' }).catch(() => null);
-    const payload = await api.reports().catch(() => ({ reports: [] }));
-    setReports(payload.reports || []);
-    showToast(`${profileName}さんを通報しました`);
+    try {
+      await api.report({ profileId, reason: 'DMでの迷惑行為/不適切な内容' });
+      showToast(`${profileName}さんを通報しました`);
+    } catch (error) {
+      showToast(error.message || '通報に失敗しました');
+    }
   }
 
   async function blockProfile(profileId, profileName = '相手') {
     if (!isAuthed || !profileId) return;
-    await api.block({ userId: user.id, profileId }).catch(() => null);
-    setDmThreads((threads) => threads.filter((thread) => thread.match.profileId !== profileId));
-    await refreshDmThreads();
-    showToast(`${profileName}さんをブロックしました`);
+    try {
+      await api.block({ profileId });
+      setDmThreads((threads) => threads.filter((thread) => thread.match.profileId !== profileId));
+      await refreshDmThreads();
+      showToast(`${profileName}さんをブロックしました`);
+    } catch (error) {
+      showToast(error.message || 'ブロックに失敗しました');
+    }
   }
 
   async function buyPlan(nextPlan) {
@@ -538,7 +567,7 @@ function App() {
       confirmEmailVerified={confirmEmailVerified}
       resetPassword={resetPassword}
     />
-    {view === 'app' && user ? <AppDashboard {...shared} onBackSite={() => setView('site')} /> : <>
+    {view === 'app' && user ? <AppDashboard {...shared} onBackSite={(sectionId) => { setView('site'); if (sectionId) setPendingScrollId(sectionId); }} /> : <>
       <SiteHeader isAuthed={isAuthed} user={user} plan={plan} notificationCount={notificationCount} onAuth={() => showAuth('entry')} onOpenApp={() => openApp('match')} openProfileEditor={openProfileEditor} logout={logout} onGoApp={() => { openApp('match'); }} onGoNotifications={() => { openApp('notifications'); }} />
       <main className="site-page">
         <Hero onSignup={() => showAuth('register')} onOpenApp={() => openApp('match')} />

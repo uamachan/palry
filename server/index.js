@@ -213,6 +213,18 @@ function cleanText(value, max = 160) {
   return String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
 }
 
+function cleanAge(value) {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 2);
+  const age = Number(digits);
+  if (!Number.isInteger(age) || age < 13 || age > 80) return '';
+  return String(age);
+}
+
+// 本番環境では ENABLE_DEMO_PURCHASE=true を明示しないと決済を通さない（フェイルクローズ）。
+function isDemoPaymentAllowed() {
+  return !isProduction || process.env.ENABLE_DEMO_PURCHASE === 'true';
+}
+
 // プロフィール写真/ボイスはユーザー入力をそのまま src として配信するため、
 // 安全な media data URL（または https URL）以外は弾く。
 // data:text/html や javascript: などのスキーム混入・ストレージ悪用を防ぐ。
@@ -571,9 +583,10 @@ app.post('/api/register', authLimiter, async (req, res) => {
   if (!payload.gender) return res.status(400).json({ message: '性別選択が必要です。' });
   if (!payload.name) return res.status(400).json({ message: '表示名が必要です。' });
   if (!payload.riotId) return res.status(400).json({ message: 'Riot IDが必要です。' });
-  if (!payload.age) return res.status(400).json({ message: '年齢が必要です。' });
   if (!payload.region) return res.status(400).json({ message: '地域が必要です。' });
   if (!payload.agreed) return res.status(400).json({ message: '利用規約への同意が必要です。' });
+  const safeAge = cleanAge(payload.age);
+  if (!safeAge) return res.status(400).json({ message: '年齢は13〜80歳で入力してください。' });
 
   const riotId = cleanText(payload.riotId, 60);
   const result = await updateJson('users.json', [], (users) => {
@@ -590,7 +603,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
       name: cleanText(payload.name, 40),
       gender: cleanText(payload.gender, 20),
       riotId,
-      age: cleanText(payload.age, 10),
+      age: safeAge,
       region: cleanText(payload.region, 40),
       profilePhoto: sanitizeMedia(payload.profilePhoto, 'image', 2000000),
       rank: cleanText(payload.rank || 'Gold', 30),
@@ -631,8 +644,9 @@ app.put('/api/profile', requireAuth, async (req, res) => {
   if (!payload.gender) return res.status(400).json({ message: '性別選択が必要です。' });
   if (!payload.name) return res.status(400).json({ message: '表示名が必要です。' });
   if (!payload.riotId) return res.status(400).json({ message: 'Riot IDが必要です。' });
-  if (!payload.age) return res.status(400).json({ message: '年齢が必要です。' });
   if (!payload.region) return res.status(400).json({ message: '地域が必要です。' });
+  const safeAge = cleanAge(payload.age);
+  if (!safeAge) return res.status(400).json({ message: '年齢は13〜80歳で入力してください。' });
 
   const riotId = cleanText(payload.riotId, 60);
   const result = await updateJson('users.json', [], (users) => {
@@ -647,7 +661,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
       name: cleanText(payload.name, 40),
       gender: cleanText(payload.gender, 20),
       riotId,
-      age: cleanText(payload.age, 10),
+      age: safeAge,
       region: cleanText(payload.region, 40),
       profilePhoto: sanitizeMedia(payload.profilePhoto, 'image', 2000000),
       rank: cleanText(payload.rank || users[index].rank || 'Gold', 30),
@@ -674,22 +688,21 @@ app.get('/api/profiles', requireAuth, async (req, res) => {
   const planName = String(req.authedUser.plan || 'FREE').toUpperCase();
   const targetGender = String(req.query.targetGender || 'all');
   const userId = req.authedUser.id;
-  const [profiles, likes, blocks, matches, singlePurchases] = await Promise.all([
+  const [profiles, blocks, singlePurchases] = await Promise.all([
     readCandidateProfiles(userId),
-    readJson('likes.json', []),
     readJson('blocks.json', []),
-    readJson('matches.json', []),
     readJson('single_purchases.json', [])
   ]);
   const plan = plans[planName] || plans.FREE;
   const entitlements = activeEntitlements(singlePurchases, userId);
-  // 性別フィルターはプラン特典 or 単発購入（7日）で有効。
+  // 小規模公開では、登録済み実アカウントは自分以外すべて候補に出す。
+  // LIKE済み・マッチ済みは除外しない。ブロック済みだけ非表示にする。
   const genderFilterAllowed = plan.genderFilter || entitlements.genderFilter;
-  const hiddenIds = new Set([
-    ...likes.filter((like) => like.userId === userId).map((like) => like.profileId),
-    ...blocks.filter((block) => block.userId === userId || block.profileId === userId).map((block) => block.userId === userId ? block.profileId : block.userId),
-    ...matches.filter((match) => match.userId === userId).map((match) => match.profileId)
-  ]);
+  const hiddenIds = new Set(
+    blocks
+      .filter((block) => block.userId === userId || block.profileId === userId)
+      .map((block) => block.userId === userId ? block.profileId : block.userId)
+  );
   let results = profiles.filter((profile) => !hiddenIds.has(profile.id));
   const targetGenderApplied = targetGender !== 'all' && genderFilterAllowed;
   if (targetGenderApplied) {
@@ -774,24 +787,30 @@ app.post('/api/like', requireAuth, async (req, res) => {
     return res.json({ ok: true, like: null, already_liked: true, matched: false });
   }
 
-  // 初回いいねでまだ片方だけ → 相手に「いいねが届いた」状態を1件積む。
+  // 初回いいねでまだ片方だけ → 相手に「いいねが届いた」状態を1件積み、送信者にも返す。
   const myProfile = userToProfile(me);
-  await updateJson('received_likes.json', [], (received) => {
+  const receivedLike = buildReceivedLikeEntry(myProfile, profileId, selectedType);
+  const pendingResult = await updateJson('received_likes.json', [], (received) => {
     const exists = received.some((r) => r.forUserId === profileId && r.fromProfileId === userId && r.status === 'pending');
     if (exists) return { value: undefined, result: false };
-    return { value: [buildReceivedLikeEntry(myProfile, profileId, selectedType), ...received], result: true };
+    return { value: [receivedLike, ...received], result: true };
   });
-  return res.json({ ok: true, like, matched: false, pending_sent: true });
+  return res.json({ ok: true, like, matched: false, pending_sent: Boolean(pendingResult), receivedLike: pendingResult ? receivedLike : null });
 });
 
-app.get('/api/received-likes/:userId', requireAuth, async (req, res) => {
+async function sendReceivedLikesForCurrentUser(req, res) {
   const [received, users] = await Promise.all([
     readJson('received_likes.json', []),
     readJson('users.json', [])
   ]);
   const realUserIds = new Set(users.map((user) => user.id));
   res.json({ receivedLikes: received.filter((r) => r.forUserId === req.authedUser.id && r.status === 'pending' && realUserIds.has(r.fromProfileId)) });
-});
+}
+
+// /me は明示的な現在ユーザー専用エンドポイント。
+// /:userId は旧互換で残すが req.params.userId は信用せず req.authedUser.id を使う。
+app.get('/api/received-likes/me', requireAuth, sendReceivedLikesForCurrentUser);
+app.get('/api/received-likes/:userId', requireAuth, sendReceivedLikesForCurrentUser);
 
 app.post('/api/accept-like', requireAuth, async (req, res) => {
   const { receivedLikeId } = req.body || {};
@@ -975,6 +994,9 @@ app.get('/api/admin/reports', requireAuth, async (req, res) => {
 });
 
 app.post('/api/purchase', requireAuth, async (req, res) => {
+  if (!isDemoPaymentAllowed()) {
+    return res.status(503).json({ message: '決済機能は現在準備中です。しばらくお待ちください。' });
+  }
   const userId = req.authedUser.id;
   const selected = String(req.body?.plan || 'PLUS').toUpperCase();
   const validPlan = plans[selected] ? selected : 'PLUS';
@@ -998,6 +1020,9 @@ app.get('/api/entitlements/:userId', requireAuth, async (req, res) => {
 
 // 単発課金（性別フィルター7日 / ブースト / SUPER LIKE 3回 / 目立たせ）を購入する。
 app.post('/api/purchase-item', requireAuth, async (req, res) => {
+  if (!isDemoPaymentAllowed()) {
+    return res.status(503).json({ message: '決済機能は現在準備中です。しばらくお待ちください。' });
+  }
   const userId = req.authedUser.id;
   const itemName = cleanText(req.body?.item, 60);
   const config = singleItemConfig[itemName];
