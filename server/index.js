@@ -148,6 +148,15 @@ const singleItems = [
   { name: 'プロフィール目立たせ7日', price: 700, detail: '検索・候補カードで視認性を上げます。' }
 ];
 
+// 単発課金の効果定義。timed = 期限付き特典 / consumable = 回数消費型。
+const DAY_MS = 24 * 60 * 60 * 1000;
+const singleItemConfig = {
+  '性別指定フィルター7日': { perk: 'genderFilter', kind: 'timed', durationMs: 7 * DAY_MS },
+  'ブースト24時間': { perk: 'boost', kind: 'timed', durationMs: DAY_MS },
+  'SUPER LIKE 3回': { perk: 'superCredits', kind: 'consumable', count: 3 },
+  'プロフィール目立たせ7日': { perk: 'spotlight', kind: 'timed', durationMs: 7 * DAY_MS }
+};
+
 const valorantRoles = ['デュエリスト', 'イニシエーター', 'コントローラー', 'センチネル'];
 
 function normalizeRole(role) {
@@ -186,12 +195,14 @@ function quotaFor(planName, type) {
   return plan.likeLimit;
 }
 
-function weightedShuffle(profiles, planName) {
+function weightedShuffle(profiles, planName, boostedIds = new Set()) {
   const planBonus = planName === 'VIP' ? 0.08 : planName === 'PLUS' ? 0.04 : 0;
   return [...profiles]
     .map((profile) => {
       const femaleGuard = profile.gender === '女性' ? 0.22 : 0;
-      const score = Math.random() + Number(profile.matchScore || 70) / 100 + planBonus - femaleGuard;
+      // ブースト/目立たせ購入者は候補上位に出やすくする。
+      const boostBonus = boostedIds.has(profile.id) ? 0.5 : 0;
+      const score = Math.random() + Number(profile.matchScore || 70) / 100 + planBonus - femaleGuard + boostBonus;
       return { profile, score };
     })
     .sort((a, b) => b.score - a.score)
@@ -311,6 +322,36 @@ async function readCandidateProfiles(excludeUserId = '') {
   return users
     .filter((user) => user.firebaseUid && user.id !== excludeUserId)
     .map((user) => ({ ...userToProfile(user), isRealUser: true }));
+}
+
+// --- 単発課金の特典（エンタイトルメント） ---
+
+// あるユーザーの有効な特典を集計する。timed は期限内、consumable は残数を合算。
+function activeEntitlements(singlePurchases, userId, now = Date.now()) {
+  const result = { genderFilter: false, boost: false, spotlight: false, superCredits: 0 };
+  for (const p of singlePurchases) {
+    if (p.userId !== userId) continue;
+    if (p.kind === 'timed') {
+      if (p.expiresAt && new Date(p.expiresAt).getTime() > now && (p.perk in result)) {
+        result[p.perk] = true;
+      }
+    } else if (p.kind === 'consumable' && p.perk === 'superCredits') {
+      result.superCredits += Math.max(0, Number(p.remaining || 0));
+    }
+  }
+  return result;
+}
+
+// boost / spotlight が有効なユーザーID集合（候補ランキングの優先表示用）。
+function boostedUserIds(singlePurchases, now = Date.now()) {
+  const ids = new Set();
+  for (const p of singlePurchases) {
+    if (p.kind === 'timed' && (p.perk === 'boost' || p.perk === 'spotlight')
+      && p.expiresAt && new Date(p.expiresAt).getTime() > now) {
+      ids.add(p.userId);
+    }
+  }
+  return ids;
 }
 
 // --- 実プレイヤー同士の接続（双方向マッチング）ヘルパー ---
@@ -633,23 +674,29 @@ app.get('/api/profiles', requireAuth, async (req, res) => {
   const planName = String(req.authedUser.plan || 'FREE').toUpperCase();
   const targetGender = String(req.query.targetGender || 'all');
   const userId = req.authedUser.id;
-  const [profiles, likes, blocks, matches] = await Promise.all([
+  const [profiles, likes, blocks, matches, singlePurchases] = await Promise.all([
     readCandidateProfiles(userId),
     readJson('likes.json', []),
     readJson('blocks.json', []),
-    readJson('matches.json', [])
+    readJson('matches.json', []),
+    readJson('single_purchases.json', [])
   ]);
   const plan = plans[planName] || plans.FREE;
+  const entitlements = activeEntitlements(singlePurchases, userId);
+  // 性別フィルターはプラン特典 or 単発購入（7日）で有効。
+  const genderFilterAllowed = plan.genderFilter || entitlements.genderFilter;
   const hiddenIds = new Set([
     ...likes.filter((like) => like.userId === userId).map((like) => like.profileId),
     ...blocks.filter((block) => block.userId === userId || block.profileId === userId).map((block) => block.userId === userId ? block.profileId : block.userId),
     ...matches.filter((match) => match.userId === userId).map((match) => match.profileId)
   ]);
   let results = profiles.filter((profile) => !hiddenIds.has(profile.id));
-  if (targetGender !== 'all' && plan.genderFilter) {
+  const targetGenderApplied = targetGender !== 'all' && genderFilterAllowed;
+  if (targetGenderApplied) {
     results = results.filter((profile) => profile.gender === targetGender);
   }
-  res.json({ profiles: weightedShuffle(results, planName), plan, targetGenderApplied: targetGender !== 'all' && plan.genderFilter });
+  const boosted = boostedUserIds(singlePurchases);
+  res.json({ profiles: weightedShuffle(results, planName, boosted), plan, entitlements, genderFilterAllowed, targetGenderApplied });
 });
 
 app.post('/api/like', requireAuth, async (req, res) => {
