@@ -260,28 +260,70 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
     } catch { showToast?.('画像の読み込みに失敗しました'); }
   }
 
-  const progress = Math.round(((tabs.indexOf(activeSetupTab) + 1) / tabs.length) * 100);
+  const activeIndex = Math.max(0, tabs.indexOf(activeSetupTab));
+  const progress = Math.round(((activeIndex + 1) / tabs.length) * 100);
+
+  function canLeaveTab(tab = activeSetupTab) {
+    if (tab === '基本情報') {
+      if (!form.name?.trim()) return '表示名を入力してください';
+      if (!form.riotId?.trim()) return 'Riot IDを入力してください';
+      if (!form.age) return '年齢を入力してください';
+      if (!form.region) return '地域を選択してください';
+      if (!form.gender) return '性別を選択してください';
+    }
+    if (tab === 'ランク') {
+      if (!form.rank) return '現在ランクを選択してください';
+      if (!form.role) return 'メインロールを選択してください';
+    }
+    if (tab === 'プレイスタイル' && (!form.tags?.length && !form.agents?.length)) return '目的タグかよく使うエージェントを1つ以上選んでください';
+    if (tab === '規約' && showAgreement && !form.agreed) return '利用規約へ同意してください';
+    return '';
+  }
+
+  function goToStep(index) {
+    if (index <= activeIndex) return setActiveSetupTab(tabs[index]);
+    const blocker = canLeaveTab();
+    if (blocker) return showToast?.(blocker);
+    if (index === activeIndex + 1) return setActiveSetupTab(tabs[index]);
+    showToast?.('項目を一つずつ設定してください');
+  }
+
   const goNext = () => {
-    const i = tabs.indexOf(activeSetupTab);
-    if (i < tabs.length - 1) setActiveSetupTab(tabs[i + 1]);
+    const blocker = canLeaveTab();
+    if (blocker) return showToast?.(blocker);
+    if (activeIndex < tabs.length - 1) setActiveSetupTab(tabs[activeIndex + 1]);
   };
   const goPrev = () => {
-    const i = tabs.indexOf(activeSetupTab);
-    if (i > 0) setActiveSetupTab(tabs[i - 1]);
+    if (activeIndex > 0) setActiveSetupTab(tabs[activeIndex - 1]);
   };
+
+  function handleSubmit(e) {
+    const blocker = canLeaveTab();
+    if (blocker) {
+      e.preventDefault();
+      showToast?.(blocker);
+      return;
+    }
+    if (showAgreement && !form.agreed) {
+      e.preventDefault();
+      setActiveSetupTab('規約');
+      setSubmitAfterAgree(true);
+      showToast?.('最後に利用規約へ同意してください');
+    }
+  }
 
   return (
     <section className="email-signup-panel profile-setup-panel">
       <div className="email-signup-header profile-setup-heading">
         <span className="eyebrow">プロフィール設定</span>
         <h2 id="auth-modal-title">プロフィールを作成</h2>
-        <p>入力内容はあとから編集できます。性別選択は必須です。</p>
+        <p>上から順番に1つずつ設定します。写真は任意ですが、設定するとマッチしやすくなります。</p>
       </div>
 
       <form className="email-signup-form signup-card profile-setup-card" onSubmit={onSubmit}>
         <div className="setup-progress" aria-label={`プロフィール設定の進捗 ${progress}%`}><span style={{ width: `${progress}%` }} /></div>
         <div className="setup-tabs" role="tablist" aria-label="プロフィール設定ステップ">
-          {tabs.map((tab) => <button key={tab} type="button" className={activeSetupTab === tab ? 'active' : ''} onClick={() => setActiveSetupTab(tab)}>{tab}</button>)}
+          {tabs.map((tab, i) => <button key={tab} type="button" className={cx(activeSetupTab === tab && 'active', i > activeIndex + 1 && 'locked')} onClick={() => goToStep(i)}>{i + 1}. {tab}</button>)}
         </div>
 
         {activeSetupTab === '基本情報' && <div className="setup-grid two">
@@ -292,7 +334,11 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
           <div className="gender-select-block"><span>性別（必須）</span><div className="gender-options">
             {['男性', '女性', 'その他/未設定'].map((gender) => <button key={gender} type="button" className={form.gender === gender ? 'selected' : ''} onClick={() => setForm({ ...form, gender })}>{gender}</button>)}
           </div></div>
-          <label className="email-field-label"><span>プロフィール写真</span><input type="file" accept="image/*" onChange={selectPhoto} /></label>
+          <label className="photo-upload-card">
+            <span className="photo-upload-preview">{form.profilePhoto ? <img src={form.profilePhoto} alt="プロフィール写真プレビュー" /> : <b>{form.name?.slice(0, 1) || '+'}</b>}</span>
+            <span className="photo-upload-copy"><strong>プロフィール写真</strong><em>{form.profilePhoto ? '写真を変更する' : '写真を追加する'}</em><small>JPG/PNG推奨・自動で軽量化します</small></span>
+            <input type="file" accept="image/*" onChange={selectPhoto} />
+          </label>
         </div>}
 
         {activeSetupTab === 'ランク' && <div className="setup-grid two">
@@ -319,9 +365,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
         <div className="email-signup-actions profile-setup-actions">
           <button type="button" className="secondary" onClick={goPrev} disabled={activeSetupTab === tabs[0]}>戻る</button>
           {activeSetupTab !== tabs[tabs.length - 1] && <button type="button" className="secondary" onClick={goNext}>次へ</button>}
-          <button type="submit" className="primary" onClick={(e) => {
-            if (showAgreement && !form.agreed) { e.preventDefault(); setActiveSetupTab('規約'); setSubmitAfterAgree(true); showToast?.('最後に利用規約へ同意してください'); }
-          }}>{submitLabel}</button>
+          <button type="submit" className="primary" onClick={handleSubmit}>{submitLabel}</button>
           <button type="button" className="plain reset-password-link" onClick={onShowLogin}>{cancelLabel}</button>
         </div>
       </form>
