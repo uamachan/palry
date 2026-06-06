@@ -100,5 +100,34 @@ if (!source.includes(originalReceivedLikeBlock)) {
 }
 source = source.replace(originalReceivedLikeBlock, patchedReceivedLikeBlock);
 
+// 新フロントは /api/received-likes/me を使う。
+// 既存の /api/received-likes/:userId は Express 上で me も受けられるが、
+// runtime生成後のコードにも明示的に /me を追加してAPIの意図を固定する。
+const receivedLikesRoute = `app.get('/api/received-likes/:userId', requireAuth, async (req, res) => {
+  const [received, users] = await Promise.all([
+    readJson('received_likes.json', []),
+    readJson('users.json', [])
+  ]);
+  const realUserIds = new Set(users.map((user) => user.id));
+  res.json({ receivedLikes: received.filter((r) => r.forUserId === req.authedUser.id && r.status === 'pending' && realUserIds.has(r.fromProfileId)) });
+});`;
+
+const receivedLikesRoutes = `async function sendReceivedLikesForCurrentUser(req, res) {
+  const [received, users] = await Promise.all([
+    readJson('received_likes.json', []),
+    readJson('users.json', [])
+  ]);
+  const realUserIds = new Set(users.map((user) => user.id));
+  res.json({ receivedLikes: received.filter((r) => r.forUserId === req.authedUser.id && r.status === 'pending' && realUserIds.has(r.fromProfileId)) });
+}
+
+app.get('/api/received-likes/me', requireAuth, sendReceivedLikesForCurrentUser);
+app.get('/api/received-likes/:userId', requireAuth, sendReceivedLikesForCurrentUser);`;
+
+if (!source.includes(receivedLikesRoute)) {
+  throw new Error('index-runtime patch failed: /api/received-likes route block not found. Update server/index-runtime.js to match server/index.js.');
+}
+source = source.replace(receivedLikesRoute, receivedLikesRoutes);
+
 await fs.writeFile(runtimePath, source, 'utf8');
 await import(pathToFileURL(runtimePath).href);
