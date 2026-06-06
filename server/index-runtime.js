@@ -59,7 +59,7 @@ source = source.replace(
 }
 
 function cleanAge(value) {
-  const digits = String(value || '').replace(/\\D/g, '').slice(0, 2);
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 2);
   const age = Number(digits);
   if (!Number.isInteger(age) || age < 13 || age > 80) return '';
   return String(age);
@@ -77,6 +77,28 @@ source = source.replace(
   if (!safeAge) return res.status(400).json({ message: '年齢は13〜80歳で入力してください。' });`
 );
 source = source.replaceAll(`age: cleanText(payload.age, 10),`, `age: safeAge,`);
+
+const originalReceivedLikeBlock = `  const myProfile = userToProfile(me);
+  await updateJson('received_likes.json', [], (received) => {
+    const exists = received.some((r) => r.forUserId === profileId && r.fromProfileId === userId && r.status === 'pending');
+    if (exists) return { value: undefined, result: false };
+    return { value: [buildReceivedLikeEntry(myProfile, profileId, selectedType), ...received], result: true };
+  });
+  return res.json({ ok: true, like, matched: false, pending_sent: true });`;
+
+const patchedReceivedLikeBlock = `  const myProfile = userToProfile(me);
+  const receivedLike = buildReceivedLikeEntry(myProfile, profileId, selectedType);
+  const pendingResult = await updateJson('received_likes.json', [], (received) => {
+    const exists = received.some((r) => r.forUserId === profileId && r.fromProfileId === userId && r.status === 'pending');
+    if (exists) return { value: undefined, result: false };
+    return { value: [receivedLike, ...received], result: true };
+  });
+  return res.json({ ok: true, like, matched: false, pending_sent: Boolean(pendingResult), receivedLike: pendingResult ? receivedLike : null });`;
+
+if (!source.includes(originalReceivedLikeBlock)) {
+  throw new Error('index-runtime patch failed: /api/like received-like block not found. Update server/index-runtime.js to match server/index.js.');
+}
+source = source.replace(originalReceivedLikeBlock, patchedReceivedLikeBlock);
 
 await fs.writeFile(runtimePath, source, 'utf8');
 await import(pathToFileURL(runtimePath).href);
