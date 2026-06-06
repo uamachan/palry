@@ -818,22 +818,25 @@ function SiteHeader({ isAuthed, user, plan, notificationCount, onAuth, onOpenApp
 function AuthModal({ children, onClose, size }) {
   const panelRef = useRef(null);
 
-  // フォーカストラップ: モーダル内に留まらせる
+  // フォーカストラップ: モーダル内に留まらせる。
+  // フォーカス可能要素はタブ切替などで増減するため、Tab ごとに都度取得する。
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
-    const focusable = panel.querySelectorAll(
-      'button,input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])'
+    const getFocusable = () => panel.querySelectorAll(
+      'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])'
     );
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    first?.focus();
+    getFocusable()[0]?.focus();
     function trap(e) {
       if (e.key !== 'Tab') return;
+      const focusable = getFocusable();
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
       if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
       } else {
-        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
       }
     }
     function esc(e) { if (e.key === 'Escape') onClose(); }
@@ -891,7 +894,7 @@ function AuthEntrySection({ onShowRegister, onShowLogin, onGoogle }) {
   return <section className="email-signup-panel auth-entry-panel">
     <div className="email-signup-header">
       <span className="eyebrow">ようこそ</span>
-      <h2>Pairlyへようこそ</h2>
+      <h2 id="auth-modal-title">Pairlyへようこそ</h2>
       <p>VALORANTの相方を見つけよう</p>
     </div>
     <div className="email-signup-actions">
@@ -981,14 +984,14 @@ function EmailVerificationSection({ pendingEmail, onCheck, onResend, onShowLogin
 }
 
 function SignupSection({ form, setForm, pendingEmail, onSubmit, onShowLogin, showToast }) {
-  return <section className="setup-profile-section"><div className="setup-title"><span>プロフィール設定</span><h2>プロフィール設定</h2>{pendingEmail && <p className="registered-email">登録メール: {pendingEmail}</p>}</div><SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onShowLogin} showToast={showToast} /></section>;
+  return <section className="setup-profile-section"><div className="setup-title"><span>プロフィール設定</span><h2 id="auth-modal-title">プロフィール設定</h2>{pendingEmail && <p className="registered-email">登録メール: {pendingEmail}</p>}</div><SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onShowLogin} showToast={showToast} /></section>;
 }
 
 function ProfileEditSection({ form, setForm, user, onSubmit, onCancel, showToast }) {
   return <section className="setup-profile-section profile-edit-section">
     <div className="setup-title">
       <span>アカウント</span>
-      <h2>プロフィール編集</h2>
+      <h2 id="auth-modal-title">プロフィール編集</h2>
       <p className="registered-email">ログイン中: {user.email || user.name}</p>
     </div>
     <SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onCancel} showToast={showToast} submitLabel="変更を保存" cancelLabel="キャンセル" showAgreement={false} />

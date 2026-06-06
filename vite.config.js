@@ -39,10 +39,13 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
-          // Firebase と React を独立チャンクに分割して初期バンドルを軽量化
-          manualChunks: {
-            'vendor-react': ['react', 'react-dom'],
-            'vendor-firebase': ['firebase/app', 'firebase/auth'],
+          // Firebase と React を独立チャンクに分割して初期バンドルを軽量化。
+          // Vite 8 / Rolldown では manualChunks は「関数」でなければならない
+          // （オブジェクト形式は Rollup 専用で、Rolldown ではビルドが失敗する）。
+          manualChunks(id) {
+            if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'vendor-react';
+            if (/[\\/]node_modules[\\/](firebase|@firebase)[\\/]/.test(id)) return 'vendor-firebase';
+            return undefined;
           }
         }
       }
