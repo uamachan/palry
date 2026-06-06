@@ -850,16 +850,22 @@ function SiteHeader({ isAuthed, user, plan, notificationCount, onAuth, onOpenApp
 
 function AuthModal({ children, onClose, size }) {
   const panelRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   // フォーカストラップ: モーダル内に留まらせる。
-  // フォーカス可能要素はタブ切替などで増減するため、Tab ごとに都度取得する。
+  // 初回だけフォーカスし、入力中の再レンダーではフォーカスを奪わない。
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
     const getFocusable = () => panel.querySelectorAll(
       'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])'
     );
-    getFocusable()[0]?.focus();
+    const preferredFocus = panel.querySelector('input:not([type="hidden"]):not([disabled]),textarea:not([disabled]),select:not([disabled])');
+    (preferredFocus || getFocusable()[0])?.focus();
     function trap(e) {
       if (e.key !== 'Tab') return;
       const focusable = getFocusable();
@@ -872,14 +878,14 @@ function AuthModal({ children, onClose, size }) {
         if (document.activeElement === last) { e.preventDefault(); first.focus(); }
       }
     }
-    function esc(e) { if (e.key === 'Escape') onClose(); }
+    function esc(e) { if (e.key === 'Escape') onCloseRef.current(); }
     panel.addEventListener('keydown', trap);
     document.addEventListener('keydown', esc);
     return () => {
       panel.removeEventListener('keydown', trap);
       document.removeEventListener('keydown', esc);
     };
-  }, [onClose]);
+  }, []);
 
   return <div className={cx('auth-modal', size === 'profile' && 'auth-modal--profile')} role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
     <button className="auth-scrim" type="button" aria-label="モーダルを閉じる" onClick={onClose}></button>
