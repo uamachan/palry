@@ -10,6 +10,7 @@ import { appTabs, defaultRole, planLabel, roles } from './constants.jsx';
 import './styles.css';
 import './profile-setup.css';
 import './profile-validation.css';
+import './design-polish.css';
 
 let firebaseModsPromise = null;
 function getFirebaseMods() {
