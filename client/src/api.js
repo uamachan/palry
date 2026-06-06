@@ -2,7 +2,10 @@
 // 静的インポートにすると vendor-firebase チャンクが起動時に同期ロードされ
 // FCP/LCP が大幅に遅れてしまうため使わない。
 
-const API_BASE = '';
+// フロントを静的サイト、APIを別Renderサービスで出す場合に使う。
+// 未設定なら同一オリジンの /api を叩く。
+// 例: VITE_API_BASE_URL=https://palry-api.onrender.com
+const API_BASE = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 /** 現在ユーザーの Firebase ID トークンを取得する。未ログイン時は null。 */
 async function getToken() {
