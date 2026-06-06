@@ -74,29 +74,42 @@ export function planLabel(name) {
   return name === 'FREE' ? '無料' : name === 'PLUS' ? 'プラス' : name === 'VIP' ? 'VIP' : name;
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('画像ファイルを読み込めませんでした'));
+    reader.readAsDataURL(file);
+  });
+}
+
 /**
  * 画像ファイルを指定サイズにリサイズして JPEG の DataURL で返す。
- * サーバー転送量を削減するために使用する。
+ * 本番CSPで blob: が許可されていない環境でも動くよう、URL.createObjectURL は使わない。
  */
-export function resizePhoto(file, maxSize = 900, quality = 0.82) {
+export async function resizePhoto(file, maxSize = 720, quality = 0.72) {
+  if (!file?.type?.startsWith('image/')) throw new Error('画像ファイルを選択してください');
+  if (file.size > 8 * 1024 * 1024) throw new Error('画像サイズは8MB以下にしてください');
+
+  const sourceDataUrl = await readFileAsDataUrl(file);
+
   return new Promise((resolve, reject) => {
     const image = new Image();
-    const objectUrl = URL.createObjectURL(file);
     image.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(image.width * scale));
-      canvas.height = Math.max(1, Math.round(image.height * scale));
-      const context = canvas.getContext('2d');
-      if (!context) return reject(new Error('画像を処理できませんでした'));
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', quality));
+      try {
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext('2d');
+        if (!context) return reject(new Error('画像を処理できませんでした'));
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } catch (error) {
+        reject(error);
+      }
     };
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('画像を読み込めませんでした'));
-    };
-    image.src = objectUrl;
+    image.onerror = () => reject(new Error('画像を読み込めませんでした'));
+    image.src = sourceDataUrl;
   });
 }
