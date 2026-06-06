@@ -315,7 +315,7 @@ function App() {
 
   async function refreshReceivedLikes() {
     if (!user) return;
-    const payload = await api.receivedLikes(user.id).catch(() => ({ receivedLikes: [] }));
+    const payload = await api.receivedLikes().catch(() => ({ receivedLikes: [] }));
     setReceivedLikes(payload.receivedLikes || []);
   }
 
@@ -333,6 +333,26 @@ function App() {
 
   useEffect(() => { if (user) refreshProfiles(); }, [user?.id, plan, targetGender, entitlements.genderFilter]);
   useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); } }, [user?.id]);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const refreshNotifications = () => {
+      if (cancelled || document.hidden) return;
+      refreshReceivedLikes();
+      refreshDmThreads();
+    };
+    const intervalId = window.setInterval(refreshNotifications, 15000);
+    const handleFocus = () => refreshNotifications();
+    const handleVisibility = () => { if (!document.hidden) refreshNotifications(); };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [user?.id]);
   useEffect(() => {
     if (!user) return;
     api.entitlements(user.id).then((payload) => setEntitlements(payload.entitlements || entitlements)).catch(() => null);
@@ -362,7 +382,7 @@ function App() {
         showToast(`${current.name}さんとマッチしました！`);
         await refreshMatches();
         await refreshDmThreads(payload.match.id);
-      } else if (payload.receivedLike) {
+      } else if (payload.receivedLike || payload.pending_sent) {
         showToast(`${directionLabel} を送りました。相手の通知に表示されます。`);
       } else {
         showToast(`${directionLabel} しました`);
