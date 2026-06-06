@@ -31,12 +31,12 @@ Pairly は Firebase Authentication のログインアカウントと、サーバ
 ### 本番で消えない保存先にする
 
 ローカル開発では `server/data/users.json` に保存します。これは開発用です。
-Render / Railway / VPS などで本番運用する場合、再デプロイやコンテナ再起動でデータが消えないように、永続ディスクを用意して `DATA_DIR` を設定してください。
+本番環境では、プロフィール・DM・マッチ履歴などを永続ディスクへ保存します。
 
-例:
+本番の既定保存先は以下です。
 
 ```bash
-DATA_DIR=/var/pairly-data
+DATA_DIR=/var/data/pairly
 ```
 
 `DATA_DIR` の中に以下のようなデータが保存されます。
@@ -49,6 +49,24 @@ received_likes.json
 messages.json
 single_purchases.json
 ```
+
+### Renderでの設定例
+
+Renderで運用する場合は、サービスに **Persistent Disk** を追加してください。
+
+推奨設定:
+
+```txt
+Mount Path: /var/data
+DATA_DIR: /var/data/pairly
+```
+
+`DATA_DIR` を設定しない場合でも本番では `/var/data/pairly` を使いますが、永続ディスクが `/var/data` にマウントされていないと、再デプロイや再起動でデータが消える可能性があります。
+
+再ログインしてプロフィールが消える場合は、ほぼ以下のどちらかです。
+
+1. RenderのPersistent Diskが未作成
+2. Persistent DiskのMount Pathと `DATA_DIR` が一致していない
 
 完全に長期運用する場合は、JSONファイル保存ではなく Supabase / PostgreSQL / Firebase Firestore などのDB化を推奨します。
 ただし現在の構成でも、`DATA_DIR` を永続ディスクに向ければプロフィールデータはアカウントに紐づいたまま保存されます。
