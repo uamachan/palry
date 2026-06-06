@@ -198,15 +198,6 @@ function weightedShuffle(profiles, planName) {
     .map((entry) => entry.profile);
 }
 
-function calculateMatch(profile, type, planName) {
-  const base = Number(profile.matchChance ?? 0.34);
-  const typeBoost = type === 'dual' ? 0.32 : type === 'super' ? 0.22 : 0;
-  const planBoost = planName === 'VIP' ? 0.12 : planName === 'PLUS' ? 0.06 : 0;
-  const femaleGuard = profile.gender === '女性' ? 0.2 : 0;
-  const chance = Math.max(0.08, Math.min(0.9, base + typeBoost + planBoost - femaleGuard));
-  return Math.random() < chance;
-}
-
 function cleanText(value, max = 160) {
   return String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
 }
