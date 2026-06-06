@@ -752,14 +752,15 @@ function App() {
     {isAuthed && profileEditorOpen && <AuthModal onClose={() => setProfileEditorOpen(false)} size="profile">
       <ProfileEditSection form={editForm} setForm={setEditForm} user={user} onSubmit={saveProfileEdit} onCancel={() => setProfileEditorOpen(false)} showToast={showToast} />
     </AuthModal>}
-    {!isAuthed && authMode && <AuthModal onClose={() => setAuthMode(null)} size={authMode === 'profileSetup' ? 'profile' : ['register', 'login', 'emailVerification'].includes(authMode) ? 'narrow' : undefined}>
+    {!isAuthed && authMode && <AuthModal onClose={() => setAuthMode(null)} size={authMode === 'profileSetup' ? 'profile' : ['register', 'login', 'emailVerification', 'entry'].includes(authMode) ? 'narrow' : undefined}>
+      {authMode === 'entry' && <AuthEntrySection onShowRegister={() => showAuth('register')} onShowLogin={() => showAuth('login')} onGoogle={continueWithGoogle} />}
       {authMode === 'register' && <AccountSignupSection form={form} setForm={setForm} onSubmit={createAccount} onGoogle={continueWithGoogle} onShowLogin={() => showAuth('login')} />}
       {authMode === 'emailVerification' && <EmailVerificationSection pendingEmail={pendingFirebaseUser?.email} onCheck={confirmEmailVerified} onResend={resendVerificationEmail} onShowLogin={() => showAuth('login')} />}
       {authMode === 'profileSetup' && <SignupSection form={form} setForm={setForm} pendingEmail={pendingFirebaseUser?.email} onSubmit={register} onShowLogin={() => showAuth('login')} showToast={showToast} />}
       {authMode === 'login' && <LoginSection form={form} setForm={setForm} onLogin={loginWithFirebase} onGoogle={continueWithGoogle} onResetPassword={resetPassword} onShowRegister={() => showAuth('register')} />}
     </AuthModal>}
     {view === 'app' && user ? <AppDashboard {...shared} onBackSite={() => setView('site')} /> : <>
-      <SiteHeader isAuthed={isAuthed} user={user} plan={plan} notificationCount={notificationCount} onSignup={() => showAuth('register')} onLogin={() => showAuth('login')} onOpenApp={() => openApp('match')} openProfileEditor={openProfileEditor} logout={logout} onGoApp={() => { openApp('match'); }} onGoNotifications={() => { openApp('notifications'); }} />
+      <SiteHeader isAuthed={isAuthed} user={user} plan={plan} notificationCount={notificationCount} onAuth={() => showAuth('entry')} onOpenApp={() => openApp('match')} openProfileEditor={openProfileEditor} logout={logout} onGoApp={() => { openApp('match'); }} onGoNotifications={() => { openApp('notifications'); }} />
       <main>
         <Hero onSignup={() => showAuth('register')} onOpenApp={() => openApp('match')} />
         {isAuthed && <ReturnToAppCard user={user} openApp={openApp} />}
@@ -771,7 +772,7 @@ function App() {
   </>;
 }
 
-function SiteHeader({ isAuthed, user, plan, notificationCount, onSignup, onLogin, onOpenApp, openProfileEditor, logout, onGoApp, onGoNotifications, brandHref, onBrandClick, activeTab, setActiveTab }) {
+function SiteHeader({ isAuthed, user, plan, notificationCount, onAuth, onOpenApp, openProfileEditor, logout, onGoApp, onGoNotifications, brandHref, onBrandClick, activeTab, setActiveTab }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const brandEl = onBrandClick
     ? <button className="brand app-brand-button" type="button" onClick={onBrandClick} aria-label="Pairlyトップへ"><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" /></button>
@@ -788,8 +789,7 @@ function SiteHeader({ isAuthed, user, plan, notificationCount, onSignup, onLogin
       </>}
     </nav>
     <div className="header-actions">
-      {isAuthed ? <span className="plan-pill">{planLabel(plan)}</span> : <button className="plain" onClick={onLogin}>ログイン</button>}
-      {!isAuthed && <button className="primary small" onClick={onSignup}>無料登録</button>}
+      {isAuthed ? <span className="plan-pill">{planLabel(plan)}</span> : <button className="primary small" onClick={onAuth}>ログイン / 登録</button>}
       {isAuthed && user && <>
         <button className={cx('appv2-notification-btn', activeTab === 'notifications' && 'active', notificationCount > 0 && 'has-unread')} type="button" onClick={onGoNotifications || (() => setActiveTab?.('notifications'))} aria-label="通知">
           {TAB_ICONS.notifications}
@@ -855,6 +855,21 @@ function MockIcon({ name }) {
   if (name === 'user') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.2a4.3 4.3 0 1 0-4.3-4.3 4.3 4.3 0 0 0 4.3 4.3Zm0 2c-4 0-7.2 2.2-7.2 5v.6h14.4v-.6c0-2.8-3.2-5-7.2-5Z" /></svg>;
   if (name === 'open') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 5.5h7v2h-5v9h9v-5h2v7h-13v-13Zm9.1-.2h4.1v4.1h-2V8.7l-5.4 5.4-1.4-1.4 5.4-5.4h-.7v-2Z" /></svg>;
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.7 4.8 14C2.8 12.1 2.6 9 4.3 7a4.7 4.7 0 0 1 6.8-.2l.9.9.9-.9a4.7 4.7 0 0 1 6.8.2c1.7 2 1.5 5.1-.5 7L12 20.7Z" /></svg>;
+}
+
+function AuthEntrySection({ onShowRegister, onShowLogin, onGoogle }) {
+  return <section className="email-signup-panel auth-entry-panel">
+    <div className="email-signup-header">
+      <span className="eyebrow">ようこそ</span>
+      <h2>Pairlyへようこそ</h2>
+      <p>VALORANTの相方を見つけよう</p>
+    </div>
+    <div className="email-signup-actions">
+      <button className="primary" onClick={onShowRegister}>無料で新規登録</button>
+      <button className="secondary google-button" onClick={onGoogle}>Googleで続ける</button>
+      <button className="secondary" onClick={onShowLogin}>ログイン（登録済みの方）</button>
+    </div>
+  </section>;
 }
 
 function LoginSection({ form, setForm, onLogin, onGoogle, onResetPassword, onShowRegister }) {
