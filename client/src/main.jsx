@@ -451,8 +451,7 @@ function App() {
     try {
       const payload = await api.sendDm({ matchId: activeThreadId, body: dmDraft.trim() });
       setDmDraft('');
-      const sentMessage = { ...payload.message, readAt: payload.message.readAt || payload.message.createdAt };
-      setDmThreads((threads) => threads.map((thread) => thread.match.id === activeThreadId ? { ...thread, messages: [...thread.messages, sentMessage], updatedAt: sentMessage.createdAt } : thread));
+      setDmThreads((threads) => threads.map((thread) => thread.match.id === activeThreadId ? { ...thread, messages: [...thread.messages, payload.message], updatedAt: payload.message.createdAt } : thread));
       showToast('メッセージを送信しました');
     } catch (error) {
       showToast(error.message || '送信に失敗しました');
