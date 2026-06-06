@@ -84,6 +84,50 @@ body,
   width:100%;
 }
 
+.mp-received-section{
+  display:grid;
+  justify-items:center;
+  text-align:center;
+}
+.mp-received-header{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  text-align:center;
+}
+.mp-received-header span{
+  display:inline-grid;
+  place-items:center;
+  min-width:24px;
+  height:24px;
+}
+.mp-received-list{
+  width:100%;
+  display:grid;
+  justify-items:center;
+  gap:8px;
+}
+.mp-received-card{
+  width:min(100%,460px);
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  text-align:left;
+}
+.mp-received-info{
+  min-width:0;
+  text-align:left;
+}
+.mp-received-empty{
+  width:100%;
+  margin:0;
+  text-align:center;
+}
+
 .mp-filter-row{
   display:flex;
   align-items:center;
@@ -246,6 +290,14 @@ body,
   .mp-filter-row::-webkit-scrollbar{display:none}
   .mp-filter-select{
     min-width:138px;
+  }
+  .mp-received-card{
+    grid-template-columns:1fr;
+    justify-items:center;
+    text-align:center;
+  }
+  .mp-received-info{
+    text-align:center;
   }
   .mp-card{
     width:min(100%,390px);
