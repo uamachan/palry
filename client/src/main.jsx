@@ -245,7 +245,11 @@ function App() {
       return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
     }
     function blockClipboard(e) {
-      if (!isInputTarget(e.target)) e.preventDefault();
+      // 入力欄、および [data-copyable] 配下（DMメッセージ・Riot ID 等）はコピー許可。
+      // それ以外のページ本文のコピー/カット/ペーストは禁止。
+      if (isInputTarget(e.target)) return;
+      if (e.target?.closest?.('[data-copyable]')) return;
+      e.preventDefault();
     }
     document.addEventListener('copy', blockClipboard);
     document.addEventListener('cut', blockClipboard);
@@ -1194,7 +1198,7 @@ function AppDashboard(props) {
 }
 
 function ProfileSummary({ user, plan, stats, receivedLikes = [] }) {
-  return <div className="side-card"><h3>自分の状態</h3><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0,1) || 'P'}</div><b>{user.name}</b><p>{user.riotId}</p><div className="mini-list"><span>{user.gender}</span><span>{user.age ? `${user.age}歳` : '年齢未設定'}</span><span>{user.region || '地域未設定'}</span><span>{user.rank}</span><span>{user.role}</span>{user.tags?.map((tag) => <span key={tag}>{tag}</span>)}</div><div className="statline"><span>好意あり {receivedLikes.length}</span><span>マッチ {stats.matches}</span></div><span className="plan-pill">{planLabel(plan)}</span></div>;
+  return <div className="side-card"><h3>自分の状態</h3><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0,1) || 'P'}</div><b>{user.name}</b><p data-copyable>{user.riotId}</p><div className="mini-list"><span>{user.gender}</span><span>{user.age ? `${user.age}歳` : '年齢未設定'}</span><span>{user.region || '地域未設定'}</span><span>{user.rank}</span><span>{user.role}</span>{user.tags?.map((tag) => <span key={tag}>{tag}</span>)}</div><div className="statline"><span>好意あり {receivedLikes.length}</span><span>マッチ {stats.matches}</span></div><span className="plan-pill">{planLabel(plan)}</span></div>;
 }
 
 function GenderFilter({ targetGender, setTargetGender, genderFilterLocked }) {
@@ -1325,9 +1329,6 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, stats, plan, 
 
       {/* アクションボタン */}
       <div className="mp-actions">
-        <button className="mp-btn mp-btn-undo" aria-label="元に戻す" onClick={() => {}} disabled={actionBusy}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-        </button>
         <button className="mp-btn mp-btn-pass mp-btn-lg" onClick={() => handleSwipe('pass')} aria-label="見送る" disabled={actionBusy || !current}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -1530,7 +1531,7 @@ function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraf
             <button type="button" className="danger" onClick={() => blockProfile(activeThread.match.profileId, activeThread.match.profileName)}>ブロック</button>
           </div>
         </div>
-        <div className="dm-messages">
+        <div className="dm-messages" data-copyable>
           {activeThread.messages.map((message) => <div className={cx('dm-bubble', message.sender === 'user' && 'mine')} key={message.id}>
             <p>{message.body}</p>
             <div className="dm-message-meta">
@@ -1560,7 +1561,7 @@ function PublicPricing({ plansData, pricingTab, setPricingTab, onSignup, appMode
   return <section id="pricing" className={cx('section pricing-section', appMode && 'inside')}><div className="section-head"><span>料金</span><h2>料金</h2><p>男女で特典差はありません。VIPは全制限解除です。</p></div><div className="price-tabs"><button className={pricingTab === 'monthly' ? 'active' : ''} onClick={() => setPricingTab('monthly')}>月額プラン</button><button className={pricingTab === 'single' ? 'active' : ''} onClick={() => setPricingTab('single')}>単発課金</button><button className={pricingTab === 'compare' ? 'active' : ''} onClick={() => setPricingTab('compare')}>比較表</button></div>{pricingTab === 'monthly' && <div className="price-grid">{monthly.map((p) => <article className={cx('price-card', p.name === 'VIP' && 'featured')} key={p.name}><h3>{planLabel(p.name)}</h3><div className="price">¥{p.price.toLocaleString()}<span>/月</span></div><ul>{p.features?.map((f) => <li key={f}>{f}</li>)}</ul><button className="primary" onClick={buyPlan ? () => buyPlan(p.name) : onSignup}>{p.name === 'FREE' ? '無料で始める' : `${planLabel(p.name)}にする`}</button></article>)}</div>}{pricingTab === 'single' && <div className="single-grid">{(plansData.singleItems || []).map((item) => <article key={item.name} className="single-card"><h3>{item.name}</h3><b>¥{item.price}</b><p>{item.detail}</p></article>)}</div>}{pricingTab === 'compare' && <div className="compare"><table><thead><tr><th>機能</th><th>無料</th><th>プラス</th><th>VIP</th></tr></thead><tbody><tr><td>いいね</td><td>10回/日</td><td>40回/日</td><td>無制限</td></tr><tr><td>スーパーいいね</td><td>1回/日</td><td>5回/日</td><td>無制限</td></tr><tr><td>両いいね</td><td>5回</td><td>10回</td><td>無制限</td></tr><tr><td>性別指定</td><td>×</td><td>○</td><td>○</td></tr><tr><td>制限解除</td><td>×</td><td>一部</td><td>全解除</td></tr></tbody></table></div>}</section>;
 }
 
-function ProfilePanel({ user }) { return <div className="list-panel"><h3>プロフィール</h3><div className="profile-preview expanded"><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0,1) || 'P'}</div><b>{user.name}</b><span>{user.gender} / {user.age ? `${user.age}歳` : '年齢未設定'} / {user.region || '地域未設定'}</span><span>{user.riotId} / {user.rank} / {user.role}</span>{Boolean(user.tags?.length) && <div className="tag-row">{user.tags.map((tag) => <span className="intent-tag" key={tag}>{tag}</span>)}</div>}<p>{user.bio || '自己紹介は未入力です。'}</p><VoiceIntroPlayer src={user.voiceIntro} /></div></div>; }
+function ProfilePanel({ user }) { return <div className="list-panel"><h3>プロフィール</h3><div className="profile-preview expanded"><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0,1) || 'P'}</div><b>{user.name}</b><span>{user.gender} / {user.age ? `${user.age}歳` : '年齢未設定'} / {user.region || '地域未設定'}</span><span data-copyable>{user.riotId} / {user.rank} / {user.role}</span>{Boolean(user.tags?.length) && <div className="tag-row">{user.tags.map((tag) => <span className="intent-tag" key={tag}>{tag}</span>)}</div>}<p>{user.bio || '自己紹介は未入力です。'}</p><VoiceIntroPlayer src={user.voiceIntro} /></div></div>; }
 function SafetyCompact() { return <div className="list-panel"><h3>安全・規約</h3><TermsList /></div>; }
 function Safety() { return <section id="safety" className="section narrow"><div className="section-head"><span>安全</span><h2>安全・規約</h2></div><TermsList /></section>; }
 function TermsList() { return <div className="terms-list"><article><h3>利用開始による同意</h3><p>本サービスを閲覧、登録、ログイン、いいね、マッチング、メッセージ、通報、課金、外部SNS連携などで使用した時点で、利用規約に同意したものとみなします。</p></article><article><h3>免責</h3><p>ユーザー間のメッセージ、ボイスチャット、ゲームプレイ、外部SNS、金銭・人間関係トラブルは原則ユーザー同士で解決するものとします。ただし法令上免責できない場合、運営の故意または重大な過失は除きます。</p></article><article><h3>禁止事項</h3><p>暴言、脅迫、差別、セクハラ、恋愛/性的関係やオフライン接触の強要、年齢詐称、なりすまし、チート、アカウント売買、晒し、詐欺、外部決済誘導を禁止します。</p></article><article><h3>非公式表記</h3><p>PairlyはRiot Games公式サービスではありません。VALORANTおよび関連商標はRiot Games, Inc.に帰属します。</p></article></div>; }
