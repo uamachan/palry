@@ -84,8 +84,8 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "script-src 'self' https://apis.google.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https:",
-  "media-src 'self' data: blob: https:",
+  "img-src 'self' data:",
+  "media-src 'self' data: blob:",
   "font-src 'self' data:",
   "connect-src 'self' https://*.googleapis.com",
   `frame-src 'self' ${firebaseAuthDomain ? `https://${firebaseAuthDomain} ` : ''}https://*.firebaseapp.com https://accounts.google.com https://apis.google.com`,
@@ -215,9 +215,11 @@ function cleanText(value, max = 160) {
 }
 
 function cleanAge(value) {
-  const digits = String(value || '').replace(/\D/g, '').slice(0, 2);
+  // slice(0,2) で先頭2桁だけ採るのは誤り（"21213"→"21" として通ってしまう）。
+  // 数字以外を除去した全体を数値化し、13〜80 の範囲外は拒否する。
+  const digits = String(value || '').replace(/\D/g, '');
   const age = Number(digits);
-  if (!Number.isInteger(age) || age < 13 || age > 80) return '';
+  if (!digits || !Number.isInteger(age) || age < 13 || age > 80) return '';
   return String(age);
 }
 
@@ -234,12 +236,15 @@ function sanitizeMedia(value, kind, max) {
   if (!v || v.length > max) return '';
   if (kind === 'image' && /^data:image\/(png|jpe?g|webp|gif|avif);base64,[A-Za-z0-9+/=\s]+$/.test(v)) return v;
   if (kind === 'audio' && /^data:audio\/(webm|ogg|mpeg|mp3|wav|mp4|x-m4a);base64,[A-Za-z0-9+/=\s]+$/.test(v)) return v;
-  if (/^https:\/\/[^\s"'<>]+$/.test(v)) return v;
+  // クライアントは写真/音声を常に data URL（resizePhoto / MediaRecorder→readAsDataURL）で送る。
+  // 任意の https URL を許すとトラッキングや外部リソース埋め込みの面を増やすため弾く。
   return '';
 }
 
 function publicUser(user) {
-  const { authCode, authCodeHash, authCodeSalt, otpSecret, ...safeUser } = user;
+  // 内部識別子・認証関連の秘密はクライアントへ返さない。
+  // firebaseUid はサーバー内部の紐付け専用でフロントは使用しない。
+  const { authCode, authCodeHash, authCodeSalt, otpSecret, firebaseUid, ...safeUser } = user;
   return safeUser;
 }
 
@@ -682,7 +687,7 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     return res.status(result.status).json({ message: result.message });
   }
   const updated = result.user;
-  res.json({ user: publicUser(updated), message: 'プロフィールを更新しました。' });
+  res.json({ user: { ...publicUser(updated), isAdmin: isAdmin(updated) }, message: 'プロフィールを更新しました。' });
 });
 
 app.get('/api/profiles', requireAuth, async (req, res) => {
