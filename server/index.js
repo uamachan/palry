@@ -534,37 +534,40 @@ app.post('/api/register', authLimiter, async (req, res) => {
   if (!payload.region) return res.status(400).json({ message: '地域が必要です。' });
   if (!payload.agreed) return res.status(400).json({ message: '利用規約への同意が必要です。' });
 
-  const users = await readJson('users.json', []);
-  if (users.some((user) => user.firebaseUid === firebaseUser.uid || user.email === firebaseUser.email)) {
-    return res.status(409).json({ message: 'このメールアドレスは登録済みです。ログインしてください。' });
-  }
-  if (users.some((user) => user.riotId === cleanText(payload.riotId, 60))) {
-    return res.status(409).json({ message: 'このRiot IDは登録済みです。Firebaseログインしてください。' });
-  }
-  const user = {
-    id: uid('user'),
-    firebaseUid: firebaseUser.uid,
-    email: firebaseUser.email,
-    name: cleanText(payload.name, 40),
-    gender: cleanText(payload.gender, 20),
-    riotId: cleanText(payload.riotId, 60),
-    age: cleanText(payload.age, 10),
-    region: cleanText(payload.region, 40),
-    profilePhoto: sanitizeMedia(payload.profilePhoto, 'image', 2000000),
-    rank: cleanText(payload.rank || 'Gold', 30),
-    role: normalizeRole(payload.role || 'デュエリスト'),
-    tags: Array.isArray(payload.tags) ? payload.tags.map((v) => cleanText(v, 30)).slice(0, 4) : [],
-    agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
-    xHandle: cleanText(payload.xHandle, 40),
-    bio: cleanText(payload.bio, 240),
-    voiceIntro: sanitizeMedia(payload.voiceIntro, 'audio', 1500000),
-    plan: 'FREE',
-    verified: true,
-    agreedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString()
-  };
-  users.push(user);
-  await writeJson('users.json', users);
+  const riotId = cleanText(payload.riotId, 60);
+  const result = await updateJson('users.json', [], (users) => {
+    if (users.some((user) => user.firebaseUid === firebaseUser.uid || emailKey(user.email) === emailKey(firebaseUser.email))) {
+      return { value: undefined, result: { status: 409, message: 'このメールアドレスは登録済みです。ログインしてください。' } };
+    }
+    if (users.some((user) => user.riotId === riotId)) {
+      return { value: undefined, result: { status: 409, message: 'このRiot IDは登録済みです。Firebaseログインしてください。' } };
+    }
+    const user = {
+      id: uid('user'),
+      firebaseUid: firebaseUser.uid,
+      email: firebaseUser.email,
+      name: cleanText(payload.name, 40),
+      gender: cleanText(payload.gender, 20),
+      riotId,
+      age: cleanText(payload.age, 10),
+      region: cleanText(payload.region, 40),
+      profilePhoto: sanitizeMedia(payload.profilePhoto, 'image', 2000000),
+      rank: cleanText(payload.rank || 'Gold', 30),
+      role: normalizeRole(payload.role || 'デュエリスト'),
+      tags: Array.isArray(payload.tags) ? payload.tags.map((v) => cleanText(v, 30)).slice(0, 4) : [],
+      agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
+      xHandle: cleanText(payload.xHandle, 40),
+      bio: cleanText(payload.bio, 240),
+      voiceIntro: sanitizeMedia(payload.voiceIntro, 'audio', 1500000),
+      plan: 'FREE',
+      verified: true,
+      agreedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+    return { value: [...users, user], result: { user } };
+  });
+  if (result?.status) return res.status(result.status).json({ message: result.message });
+  const user = result.user;
   res.status(201).json({ user: publicUser(user), message: 'アカウントを作成しました。' });
 });
 
@@ -590,34 +593,39 @@ app.put('/api/profile', requireAuth, async (req, res) => {
   if (!payload.age) return res.status(400).json({ message: '年齢が必要です。' });
   if (!payload.region) return res.status(400).json({ message: '地域が必要です。' });
 
-  const users = await readJson('users.json', []);
-  const index = users.findIndex((user) => user.id === userId);
-  if (index < 0) return res.status(404).json({ message: 'プロフィールが見つかりません。' });
-
   const riotId = cleanText(payload.riotId, 60);
-  if (users.some((user) => user.id !== userId && user.riotId === riotId)) {
-    return res.status(409).json({ message: 'このRiot IDは別のアカウントで使用されています。' });
-  }
+  const result = await updateJson('users.json', [], (users) => {
+    const index = users.findIndex((user) => user.id === userId);
+    if (index < 0) return { value: undefined, result: { status: 404, message: 'プロフィールが見つかりません。' } };
+    if (users.some((user) => user.id !== userId && user.riotId === riotId)) {
+      return { value: undefined, result: { status: 409, message: 'このRiot IDは別のアカウントで使用されています。' } };
+    }
 
-  const updated = {
-    ...users[index],
-    name: cleanText(payload.name, 40),
-    gender: cleanText(payload.gender, 20),
-    riotId,
-    age: cleanText(payload.age, 10),
-    region: cleanText(payload.region, 40),
-    profilePhoto: sanitizeMedia(payload.profilePhoto, 'image', 2000000),
-    rank: cleanText(payload.rank || users[index].rank || 'Gold', 30),
-    role: normalizeRole(payload.role || users[index].role || 'デュエリスト'),
-    tags: Array.isArray(payload.tags) ? payload.tags.map((v) => cleanText(v, 30)).slice(0, 4) : [],
-    agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
-    xHandle: cleanText(payload.xHandle, 40),
-    bio: cleanText(payload.bio, 240),
-    voiceIntro: sanitizeMedia(payload.voiceIntro, 'audio', 1500000),
-    updatedAt: new Date().toISOString()
-  };
-  users[index] = updated;
-  await writeJson('users.json', users);
+    const updated = {
+      ...users[index],
+      name: cleanText(payload.name, 40),
+      gender: cleanText(payload.gender, 20),
+      riotId,
+      age: cleanText(payload.age, 10),
+      region: cleanText(payload.region, 40),
+      profilePhoto: sanitizeMedia(payload.profilePhoto, 'image', 2000000),
+      rank: cleanText(payload.rank || users[index].rank || 'Gold', 30),
+      role: normalizeRole(payload.role || users[index].role || 'デュエリスト'),
+      tags: Array.isArray(payload.tags) ? payload.tags.map((v) => cleanText(v, 30)).slice(0, 4) : [],
+      agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
+      xHandle: cleanText(payload.xHandle, 40),
+      bio: cleanText(payload.bio, 240),
+      voiceIntro: sanitizeMedia(payload.voiceIntro, 'audio', 1500000),
+      updatedAt: new Date().toISOString()
+    };
+    const next = [...users];
+    next[index] = updated;
+    return { value: next, result: { user: updated } };
+  });
+  if (result?.status) {
+    return res.status(result.status).json({ message: result.message });
+  }
+  const updated = result.user;
   res.json({ user: publicUser(updated), message: 'プロフィールを更新しました。' });
 });
 
@@ -805,21 +813,26 @@ app.post('/api/dm/read', requireAuth, async (req, res) => {
   const convId = match.conversationId || match.id;
 
   const readAt = new Date().toISOString();
-  matches[matchIndex] = { ...match, readAt };
-  await writeJson('matches.json', matches);
-
-  const messages = await readJson('messages.json', []);
-  let changed = false;
-  const nextMessages = messages.map((message) => {
-    const belongs = message.conversationId ? message.conversationId === convId : message.matchId === matchId;
-    const incoming = senderFor(message, viewerId) !== 'user';
-    if (belongs && incoming && !message.readAt) {
-      changed = true;
-      return { ...message, readAt };
-    }
-    return message;
+  await updateJson('matches.json', [], (currentMatches) => {
+    const currentIndex = currentMatches.findIndex((item) => item.id === matchId && item.userId === viewerId && item.dmUnlocked);
+    if (currentIndex < 0) return { value: undefined, result: false };
+    const nextMatches = [...currentMatches];
+    nextMatches[currentIndex] = { ...nextMatches[currentIndex], readAt };
+    return { value: nextMatches, result: true };
   });
-  if (changed) await writeJson('messages.json', nextMessages);
+  await updateJson('messages.json', [], (messages) => {
+    let changed = false;
+    const nextMessages = messages.map((message) => {
+      const belongs = message.conversationId ? message.conversationId === convId : message.matchId === matchId;
+      const incoming = senderFor(message, viewerId) !== 'user';
+      if (belongs && incoming && !message.readAt) {
+        changed = true;
+        return { ...message, readAt };
+      }
+      return message;
+    });
+    return { value: changed ? nextMessages : undefined, result: changed };
+  });
 
   res.json({ ok: true, matchId, readAt });
 });
@@ -838,17 +851,13 @@ app.post('/api/dm', requireAuth, async (req, res) => {
   const conversationId = match.conversationId || match.id;
   const createdAt = new Date().toISOString();
   const message = { id: uid('msg'), conversationId, matchId: match.id, senderUserId: viewerId, profileId: match.profileId, body, createdAt, readAt: null };
-  const messages = await readJson('messages.json', []);
-  messages.push(message);
-  await writeJson('messages.json', messages);
+  await updateJson('messages.json', [], (messages) => ({ value: [...messages, message], result: message }));
   res.status(201).json({ message: { ...message, sender: 'user' } });
 });
 
 app.post('/api/report', requireAuth, async (req, res) => {
-  const reports = await readJson('reports.json', []);
   const report = { id: uid('report'), userId: req.authedUser.id, profileId: cleanText(req.body.profileId, 80), reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
-  reports.unshift(report);
-  await writeJson('reports.json', reports);
+  await updateJson('reports.json', [], (reports) => ({ value: [report, ...reports], result: report }));
   res.status(201).json({ report });
 });
 
@@ -904,12 +913,15 @@ app.post('/api/purchase', requireAuth, async (req, res) => {
   const userId = req.authedUser.id;
   const selected = String(req.body?.plan || 'PLUS').toUpperCase();
   const validPlan = plans[selected] ? selected : 'PLUS';
-  const [purchases, users] = await Promise.all([readJson('purchases.json', []), readJson('users.json', [])]);
   const purchase = { id: uid('purchase'), userId, plan: validPlan, amount: plans[validPlan].price, status: 'demo_paid', createdAt: new Date().toISOString() };
-  purchases.unshift(purchase);
-  const userIdx = users.findIndex((u) => u.id === userId);
-  if (userIdx >= 0) users[userIdx] = { ...users[userIdx], plan: validPlan };
-  await Promise.all([writeJson('purchases.json', purchases), userIdx >= 0 ? writeJson('users.json', users) : Promise.resolve()]);
+  await updateJson('purchases.json', [], (purchases) => ({ value: [purchase, ...purchases], result: purchase }));
+  await updateJson('users.json', [], (users) => {
+    const userIdx = users.findIndex((u) => u.id === userId);
+    if (userIdx < 0) return { value: undefined, result: false };
+    const next = [...users];
+    next[userIdx] = { ...next[userIdx], plan: validPlan };
+    return { value: next, result: true };
+  });
   res.status(201).json({ purchase });
 });
 
