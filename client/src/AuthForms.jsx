@@ -56,7 +56,6 @@ function AuthEntrySection({ onShowRegister, onShowLogin, onGoogle }) {
   return (
     <section className="email-signup-panel auth-entry-panel">
       <div className="email-signup-header">
-        <span className="eyebrow">ようこそ</span>
         <h2 id="auth-modal-title">Pairlyへようこそ</h2>
         <p>VALORANTの相方を見つけよう</p>
       </div>
@@ -201,10 +200,12 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
   const recordTimerRef = useRef(null);
 
   const toggleAgent = (agent) => setForm((f) => ({
-    ...f, agents: f.agents.includes(agent) ? f.agents.filter((a) => a !== agent) : [...f.agents, agent].slice(0, 5)
+    ...f,
+    agents: f.agents.includes(agent) ? f.agents.filter((a) => a !== agent) : [...f.agents, agent].slice(0, 5)
   }));
   const toggleTag = (tag) => setForm((f) => ({
-    ...f, tags: f.tags.includes(tag) ? f.tags.filter((item) => item !== tag) : [...f.tags, tag].slice(0, 4)
+    ...f,
+    tags: f.tags.includes(tag) ? f.tags.filter((item) => item !== tag) : [...f.tags, tag].slice(0, 4)
   }));
 
   // クリーンアップ: コンポーネントアンマウント時に録音を停止
@@ -253,168 +254,104 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const photo = await resizePhoto(file);
-      setForm((c) => ({ ...c, profilePhoto: photo }));
-    } catch { alert('写真の読み込みに失敗しました。別の画像を選んでください。'); }
+      const dataUrl = await resizePhoto(file);
+      setForm((c) => ({ ...c, profilePhoto: dataUrl }));
+      showToast?.('プロフィール写真を設定しました');
+    } catch { showToast?.('画像の読み込みに失敗しました'); }
   }
 
-  const currentTabIndex = tabs.indexOf(activeSetupTab);
-  const isLastTab = currentTabIndex === tabs.length - 1;
-  const isAgreementTab = activeSetupTab === '規約';
-  const basicInfoComplete = Boolean(form.name && form.gender && form.riotId && form.age && form.region);
-
-  function goToTab(label) {
-    if (tabs.indexOf(label) > 0 && !basicInfoComplete) {
-      showToast?.('基本情報（表示名・性別・Riot ID・年齢・地域）をすべて入力してください');
-      return;
-    }
-    setActiveSetupTab(label);
-  }
-  function goNext() { if (!isLastTab) goToTab(tabs[currentTabIndex + 1]); }
-  function handleAgreementChange(e) {
-    const agreed = e.target.checked;
-    setForm({ ...form, agreed });
-    setSubmitAfterAgree(agreed);
-  }
+  const progress = Math.round(((tabs.indexOf(activeSetupTab) + 1) / tabs.length) * 100);
+  const goNext = () => {
+    const i = tabs.indexOf(activeSetupTab);
+    if (i < tabs.length - 1) setActiveSetupTab(tabs[i + 1]);
+  };
+  const goPrev = () => {
+    const i = tabs.indexOf(activeSetupTab);
+    if (i > 0) setActiveSetupTab(tabs[i - 1]);
+  };
 
   return (
-    <form className="signup-card profile-setup-card" onSubmit={onSubmit}>
-      <div className="setup-tabs" role="tablist">
-        {tabs.map((label) => (
-          <button type="button" role="tab" key={label} className={activeSetupTab === label ? 'active' : ''} aria-selected={activeSetupTab === label} onClick={() => goToTab(label)}>{label}</button>
-        ))}
+    <section className="email-signup-panel profile-setup-panel">
+      <div className="email-signup-header profile-setup-heading">
+        <span className="eyebrow">プロフィール設定</span>
+        <h2 id="auth-modal-title">プロフィールを作成</h2>
+        <p>入力内容はあとから編集できます。性別選択は必須です。</p>
       </div>
-      <div className="setup-pane">
-        {activeSetupTab === '基本情報' && (
-          <div className="profile-setup-grid">
-            <label className="photo-uploader">
-              <span>プロフィール写真</span>
-              <input type="file" accept="image/*" onChange={selectPhoto} />
-              <div className="photo-preview">{form.profilePhoto ? <img src={form.profilePhoto} alt="" /> : <b>写真を追加</b>}</div>
-            </label>
-            <div className="setup-fields basic-fields">
-              <label>表示名<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="yamada" /></label>
-              <label>性別<select required value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}><option value="">選択してください</option><option>女性</option><option>男性</option><option>その他/未設定</option></select></label>
-              <label>RIOT ID<input required value={form.riotId} onChange={(e) => setForm({ ...form, riotId: e.target.value })} placeholder="name#JP1" /></label>
-              <label>年齢<input required inputMode="numeric" maxLength="2" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value.replace(/\D/g, '').slice(0, 2) })} placeholder="20" /></label>
-              <label>地域<select required value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}><option value="">選択してください</option>{regions.map((r) => <option key={r}>{r}</option>)}</select></label>
-              <label>X<input value={form.xHandle} onChange={(e) => setForm({ ...form, xHandle: e.target.value })} placeholder="@pairly_user" /></label>
-            </div>
-          </div>
-        )}
-        {activeSetupTab === 'ランク' && (
-          <div className="setup-fields setup-tab-grid">
-            <CustomSelect label="ランク" value={form.rank} options={ranks} onChange={(rank) => setForm({ ...form, rank })} />
-            <CustomSelect label="メインロール" value={form.role} options={roles} onChange={(role) => setForm({ ...form, role })} />
-          </div>
-        )}
-        {activeSetupTab === 'プレイスタイル' && (
-          <>
-            <fieldset className="intent-fieldset"><legend>目的タグ（4つまで）</legend><div className="chip-list intent-chip-list">{intentTags.map((tag) => <button type="button" key={tag} className={form.tags.includes(tag) ? 'selected' : ''} onClick={() => toggleTag(tag)}>{tag}</button>)}</div></fieldset>
-            <fieldset className="agent-fieldset"><legend>よく使うキャラクター（5体まで）</legend><div className="chip-list">{agents.map((agent) => <button type="button" key={agent} className={form.agents.includes(agent) ? 'selected' : ''} onClick={() => toggleAgent(agent)}>{agent}</button>)}</div></fieldset>
-          </>
-        )}
-        {activeSetupTab === '自己紹介' && (
-          <div className="setup-intro-pane">
-            <label className="setup-bio">自己紹介<textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="プレイ時間、VC、雰囲気、NGなことなど" /></label>
-            <div className="voice-recorder">
-              <div><b>声の自己紹介</b><span>最大20秒。カード上で相手が再生できます。</span></div>
-              <div className="voice-actions">
-                {!isRecordingVoice
-                  ? <button type="button" className="secondary" onClick={startVoiceRecording}>{form.voiceIntro ? '録り直す' : '録音する'}</button>
-                  : <button type="button" className="primary" onClick={stopVoiceRecording}>録音停止</button>}
-                {form.voiceIntro && <button type="button" className="secondary" onClick={() => setForm((c) => ({ ...c, voiceIntro: '' }))}>削除</button>}
-              </div>
-              {isRecordingVoice && <p className="voice-status">録音中...</p>}
-              {form.voiceIntro && <audio className="voice-player" src={form.voiceIntro} controls />}
-            </div>
-          </div>
-        )}
-        {activeSetupTab === '規約' && showAgreement && (
-          <label className="check">
-            <input type="checkbox" checked={form.agreed} onChange={handleAgreementChange} />
-            本サービスを閲覧・登録・ログイン・いいね・マッチング・メッセージ・通報・課金・外部SNS連携などで使用した時点で利用規約に同意したものとみなします。登録時にも規約へ同意します。
-          </label>
-        )}
-      </div>
-      <div className="form-actions">
-        {!isAgreementTab && !isLastTab && <button type="button" className="primary" onClick={goNext}>次へ</button>}
-        {(!showAgreement || isLastTab) && !isAgreementTab && <button className="primary" type="submit">{submitLabel}</button>}
-        <button type="button" className="secondary" onClick={onShowLogin}>{cancelLabel}</button>
-      </div>
-    </form>
-  );
-}
 
-// ─── SignupSection ────────────────────────────────────────────────
-function SignupSection({ form, setForm, pendingEmail, onSubmit, onShowLogin, showToast }) {
-  return (
-    <section className="setup-profile-section">
-      <div className="setup-title">
-        <span>プロフィール設定</span>
-        <h2 id="auth-modal-title">プロフィール設定</h2>
-        {pendingEmail && <p className="registered-email">登録メール: {pendingEmail}</p>}
-      </div>
-      <SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onShowLogin} showToast={showToast} />
+      <form className="email-signup-form signup-card profile-setup-card" onSubmit={onSubmit}>
+        <div className="setup-progress" aria-label={`プロフィール設定の進捗 ${progress}%`}><span style={{ width: `${progress}%` }} /></div>
+        <div className="setup-tabs" role="tablist" aria-label="プロフィール設定ステップ">
+          {tabs.map((tab) => <button key={tab} type="button" className={activeSetupTab === tab ? 'active' : ''} onClick={() => setActiveSetupTab(tab)}>{tab}</button>)}
+        </div>
+
+        {activeSetupTab === '基本情報' && <div className="setup-grid two">
+          <label className="email-field-label"><span>表示名</span><input required value={form.name} maxLength="40" onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="例：Pairlyちゃん" /></label>
+          <label className="email-field-label"><span>Riot ID</span><input required value={form.riotId} maxLength="60" onChange={(e) => setForm({ ...form, riotId: e.target.value })} placeholder="例：name#JP1" data-copyable /></label>
+          <label className="email-field-label"><span>年齢</span><input required type="number" min="13" max="80" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} placeholder="例：20" /></label>
+          <label className="email-field-label"><span>地域</span><select required value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}><option value="">選択してください</option>{regions.map((region) => <option key={region} value={region}>{region}</option>)}</select></label>
+          <div className="gender-select-block"><span>性別（必須）</span><div className="gender-options">
+            {['男性', '女性', 'その他/未設定'].map((gender) => <button key={gender} type="button" className={form.gender === gender ? 'selected' : ''} onClick={() => setForm({ ...form, gender })}>{gender}</button>)}
+          </div></div>
+          <label className="email-field-label"><span>プロフィール写真</span><input type="file" accept="image/*" onChange={selectPhoto} /></label>
+        </div>}
+
+        {activeSetupTab === 'ランク' && <div className="setup-grid two">
+          <CustomSelect label="現在ランク" value={form.rank} options={ranks} onChange={(rank) => setForm({ ...form, rank })} />
+          <CustomSelect label="メインロール" value={form.role} options={roles} onChange={(role) => setForm({ ...form, role })} />
+        </div>}
+
+        {activeSetupTab === 'プレイスタイル' && <div className="setup-stack">
+          <div><span className="field-caption">目的タグ（最大4つ）</span><div className="tag-choice-grid">{intentTags.map((tag) => <button type="button" key={tag} className={form.tags.includes(tag) ? 'selected' : ''} onClick={() => toggleTag(tag)}>{tag}</button>)}</div></div>
+          <div><span className="field-caption">よく使うエージェント（最大5つ）</span><div className="tag-choice-grid compact">{agents.map((agent) => <button type="button" key={agent} className={form.agents.includes(agent) ? 'selected' : ''} onClick={() => toggleAgent(agent)}>{agent}</button>)}</div></div>
+        </div>}
+
+        {activeSetupTab === '自己紹介' && <div className="setup-stack">
+          <label className="email-field-label"><span>Xアカウント（任意）</span><input value={form.xHandle} maxLength="40" onChange={(e) => setForm({ ...form, xHandle: e.target.value })} placeholder="@pairly" /></label>
+          <label className="email-field-label"><span>自己紹介</span><textarea value={form.bio} maxLength="240" onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="遊ぶ時間、VC、募集したい相手など" /></label>
+          <div className="voice-record-box"><div><b>声の自己紹介</b><p>任意で20秒まで録音できます。声を載せると雰囲気が伝わりやすくなります。</p></div><button type="button" className={isRecordingVoice ? 'danger' : 'secondary'} onClick={isRecordingVoice ? stopVoiceRecording : startVoiceRecording}>{isRecordingVoice ? '録音停止' : '録音する'}</button>{form.voiceIntro && <span>録音済み</span>}</div>
+        </div>}
+
+        {activeSetupTab === '規約' && <div className="setup-stack terms-box">
+          <h3>利用ルール</h3><p>迷惑行為、なりすまし、外部誘導、Riot Gamesの規約に反する行為は禁止です。PairlyはRiot Games公式サービスではありません。</p>
+          <label className="terms-check"><input type="checkbox" checked={form.agreed} onChange={(e) => setForm({ ...form, agreed: e.target.checked })} /> <span>利用規約と禁止事項に同意します</span></label>
+        </div>}
+
+        <div className="email-signup-actions profile-setup-actions">
+          <button type="button" className="secondary" onClick={goPrev} disabled={activeSetupTab === tabs[0]}>戻る</button>
+          {activeSetupTab !== tabs[tabs.length - 1] && <button type="button" className="secondary" onClick={goNext}>次へ</button>}
+          <button type="submit" className="primary" onClick={(e) => {
+            if (showAgreement && !form.agreed) { e.preventDefault(); setActiveSetupTab('規約'); setSubmitAfterAgree(true); showToast?.('最後に利用規約へ同意してください'); }
+          }}>{submitLabel}</button>
+          <button type="button" className="plain reset-password-link" onClick={onShowLogin}>{cancelLabel}</button>
+        </div>
+      </form>
     </section>
   );
 }
 
-// ─── ProfileEditSection ───────────────────────────────────────────
-function ProfileEditSection({ form, setForm, user, onSubmit, onCancel, showToast }) {
-  return (
-    <section className="setup-profile-section profile-edit-section">
-      <div className="setup-title">
-        <span>アカウント</span>
-        <h2 id="auth-modal-title">プロフィール編集</h2>
-        <p className="registered-email">ログイン中: {user.email || user.name}</p>
-      </div>
-      <SignupForm form={form} setForm={setForm} onSubmit={onSubmit} onShowLogin={onCancel} showToast={showToast} submitLabel="変更を保存" cancelLabel="キャンセル" showAgreement={false} />
-    </section>
-  );
-}
+export default function AuthFormsContainer(props) {
+  const {
+    isAuthed, profileEditorOpen, setProfileEditorOpen, user, editForm, setEditForm,
+    saveProfileEdit, showToast, authMode, setAuthMode, showAuth, form, setForm,
+    pendingFirebaseUser, createAccount, register, continueWithGoogle, loginWithFirebase,
+    resendVerificationEmail, confirmEmailVerified, resetPassword
+  } = props;
 
-// ─── AuthFormsContainer（デフォルトエクスポート）──────────────────
-/**
- * 認証モーダル群をまとめたコンテナ。
- * React.lazy で遅延読み込みされるため、ユーザーがログインボタンを押すまで
- * このファイルのコードがダウンロードされない。
- */
-export default function AuthFormsContainer({
-  isAuthed, profileEditorOpen, setProfileEditorOpen,
-  user, editForm, setEditForm, saveProfileEdit, showToast,
-  authMode, setAuthMode, showAuth,
-  form, setForm,
-  pendingFirebaseUser,
-  createAccount, register, continueWithGoogle, loginWithFirebase,
-  resendVerificationEmail, confirmEmailVerified, resetPassword,
-}) {
-  // プロフィール編集モーダル（ログイン済みユーザーが自分の情報を変更するとき）
-  if (isAuthed && profileEditorOpen) {
-    return (
-      <AuthModal onClose={() => setProfileEditorOpen(false)} size="profile">
-        <ProfileEditSection form={editForm} setForm={setEditForm} user={user} onSubmit={saveProfileEdit} onCancel={() => setProfileEditorOpen(false)} showToast={showToast} />
+  return <>
+    {profileEditorOpen && isAuthed && (
+      <AuthModal size="profile" onClose={() => setProfileEditorOpen(false)}>
+        <SignupForm form={editForm} setForm={setEditForm} onSubmit={saveProfileEdit} onShowLogin={() => setProfileEditorOpen(false)} showToast={showToast} submitLabel="プロフィールを保存" cancelLabel="閉じる" showAgreement={false} />
       </AuthModal>
-    );
-  }
+    )}
 
-  // 認証フロー各ステップのモーダル
-  if (!isAuthed && authMode) {
-    const modalSize = authMode === 'profileSetup'
-      ? 'profile'
-      : ['register', 'login', 'emailVerification', 'entry'].includes(authMode)
-        ? 'narrow'
-        : undefined;
-    return (
-      <AuthModal onClose={() => setAuthMode(null)} size={modalSize}>
+    {authMode && !profileEditorOpen && (
+      <AuthModal size={authMode === 'profileSetup' ? 'profile' : 'narrow'} onClose={() => setAuthMode(null)}>
         {authMode === 'entry' && <AuthEntrySection onShowRegister={() => showAuth('register')} onShowLogin={() => showAuth('login')} onGoogle={continueWithGoogle} />}
         {authMode === 'register' && <AccountSignupSection form={form} setForm={setForm} onSubmit={createAccount} onGoogle={continueWithGoogle} onShowLogin={() => showAuth('login')} />}
         {authMode === 'emailVerification' && <EmailVerificationSection pendingEmail={pendingFirebaseUser?.email} onCheck={confirmEmailVerified} onResend={resendVerificationEmail} onShowLogin={() => showAuth('login')} />}
-        {authMode === 'profileSetup' && <SignupSection form={form} setForm={setForm} pendingEmail={pendingFirebaseUser?.email} onSubmit={register} onShowLogin={() => showAuth('login')} showToast={showToast} />}
+        {authMode === 'profileSetup' && <SignupForm form={form} setForm={setForm} onSubmit={register} onShowLogin={() => showAuth('login')} showToast={showToast} />}
         {authMode === 'login' && <LoginSection form={form} setForm={setForm} onLogin={loginWithFirebase} onGoogle={continueWithGoogle} onResetPassword={resetPassword} onShowRegister={() => showAuth('register')} />}
       </AuthModal>
-    );
-  }
-
-  return null;
+    )}
+  </>;
 }
