@@ -36,15 +36,7 @@
     <link rel="apple-touch-icon" href="/assets/pairly-app-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
-    <!-- Google Fonts: preconnect で接続を先取り -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- フォント読み込み。display=swap でフォント取得中もテキスト表示。
-         CSP が inline ハンドラを禁止しているため media=print + onload トリックは使わない。 -->
-    <link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Outfit:wght@500;700;900&display=swap" />
-    <!-- ロゴ SVG を LCP 前に取得 -->
-    <link rel="preload" href="/assets/pairly-logo-wide-transparent.svg" as="image" type="image/svg+xml" />
+    <!-- 初期表示を優先するため外部フォント通信は使わず、OS標準フォントで描画する。 -->
 
     <!-- JSON-LD 構造化データ -->
     <script type="application/ld+json">

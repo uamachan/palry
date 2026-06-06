@@ -83,10 +83,10 @@ const contentSecurityPolicy = [
   "frame-ancestors 'none'",
   "form-action 'self'",
   "script-src 'self' https://apis.google.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "media-src 'self' data: blob: https:",
-  "font-src 'self' data: https://fonts.gstatic.com",
+  "font-src 'self' data:",
   "connect-src 'self' https://*.googleapis.com",
   `frame-src 'self' ${firebaseAuthDomain ? `https://${firebaseAuthDomain} ` : ''}https://*.firebaseapp.com https://accounts.google.com https://apis.google.com`,
   "worker-src 'self' blob:"

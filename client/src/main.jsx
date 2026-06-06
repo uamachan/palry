@@ -744,10 +744,21 @@ function App() {
       showAuth('login');
       return;
     }
+    const prevPlan = plan;
+    // 楽観的に切替。失敗時は元のプランへ戻す。
     setPlan(nextPlan);
     setUser((u) => ({ ...u, plan: nextPlan }));
-    await api.purchase({ userId: user.id, plan: nextPlan }).catch(() => null);
-      showToast(`${planLabel(nextPlan)} に切り替えました（デモ）`);
+    try {
+      const payload = await api.purchase({ userId: user.id, plan: nextPlan });
+      const confirmedPlan = payload?.purchase?.plan || payload?.plan || nextPlan;
+      setPlan(confirmedPlan);
+      setUser((u) => ({ ...u, plan: confirmedPlan }));
+      showToast(`${planLabel(confirmedPlan)} に切り替えました（デモ）`);
+    } catch (e) {
+      setPlan(prevPlan);
+      setUser((u) => ({ ...u, plan: prevPlan }));
+      showToast(e.message || 'プラン変更に失敗しました');
+    }
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -767,7 +778,7 @@ function App() {
     </AuthModal>}
     {view === 'app' && user ? <AppDashboard {...shared} onBackSite={() => setView('site')} /> : <>
       <SiteHeader isAuthed={isAuthed} user={user} plan={plan} notificationCount={notificationCount} onAuth={() => showAuth('entry')} onOpenApp={() => openApp('match')} openProfileEditor={openProfileEditor} logout={logout} onGoApp={() => { openApp('match'); }} onGoNotifications={() => { openApp('notifications'); }} />
-      <main>
+      <main className="site-page">
         <Hero onSignup={() => showAuth('register')} onOpenApp={() => openApp('match')} />
         {isAuthed && <ReturnToAppCard user={user} openApp={openApp} />}
         <PublicPricing plansData={plansData} pricingTab={pricingTab} setPricingTab={setPricingTab} onSignup={() => showAuth('register')} buyPlan={buyPlan} />
@@ -780,9 +791,10 @@ function App() {
 
 function SiteHeader({ isAuthed, user, plan, notificationCount, onAuth, onOpenApp, openProfileEditor, logout, onGoApp, onGoNotifications, brandHref, onBrandClick, activeTab, setActiveTab }) {
   const [accountOpen, setAccountOpen] = useState(false);
+  const logo = <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" width="132" height="44" decoding="async" fetchPriority="high" />;
   const brandEl = onBrandClick
-    ? <button className="brand app-brand-button" type="button" onClick={onBrandClick} aria-label="Pairlyトップへ"><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" /></button>
-    : <a className="brand" href={brandHref || '#top'}><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" /></a>;
+    ? <button className="brand app-brand-button" type="button" onClick={onBrandClick} aria-label="Pairlyトップへ">{logo}</button>
+    : <a className="brand" href={brandHref || '#top'}>{logo}</a>;
   return <header className="site-header">
     {brandEl}
     <nav className="site-nav">
@@ -1564,6 +1576,6 @@ function SafetyCompact() { return <div className="list-panel"><h3>安全・規�
 function Safety() { return <section id="safety" className="section narrow"><div className="section-head"><span>安全</span><h2>安全・規約</h2></div><TermsList /></section>; }
 function TermsList() { return <div className="terms-list"><article><h3>利用開始による同意</h3><p>本サービスを閲覧、登録、ログイン、いいね、マッチング、メッセージ、通報、課金、外部SNS連携などで使用した時点で、利用規約に同意したものとみなします。</p></article><article><h3>免責</h3><p>ユーザー間のメッセージ、ボイスチャット、ゲームプレイ、外部SNS、金銭・人間関係トラブルは原則ユーザー同士で解決するものとします。ただし法令上免責できない場合、運営の故意または重大な過失は除きます。</p></article><article><h3>禁止事項</h3><p>暴言、脅迫、差別、セクハラ、恋愛/性的関係やオフライン接触の強要、年齢詐称、なりすまし、チート、アカウント売買、晒し、詐欺、外部決済誘導を禁止します。</p></article><article><h3>非公式表記</h3><p>PairlyはRiot Games公式サービスではありません。VALORANTおよび関連商標はRiot Games, Inc.に帰属します。</p></article></div>; }
 function AdminPanel({ reports }) { return <div className="list-panel"><h3>通報管理</h3>{reports.length ? reports.map((r) => <div className="list-row" key={r.id}><b>{r.reason}</b><p>プロフィール: {r.profileId || '-'}</p><span>{r.status}</span></div>) : <p className="empty-text">通報はありません。</p>}</div>; }
-function Footer() { return <footer className="footer"><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" /><p>使用した時点で利用規約に同意したものとみなします。PairlyはRiot Games公式サービスではありません。</p></footer>; }
+function Footer() { return <footer className="footer"><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" width="110" height="37" loading="lazy" decoding="async" /><p>使用した時点で利用規約に同意したものとみなします。PairlyはRiot Games公式サービスではありません。</p></footer>; }
 
 createRoot(document.getElementById('root')).render(<App />);
