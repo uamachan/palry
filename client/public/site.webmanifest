@@ -1,0 +1,24 @@
+{
+  "name": "Pairly — VALORANTの相方探し",
+  "short_name": "Pairly",
+  "description": "VALORANTのデュオ・フルパ・固定メンバーを探せるゲーム恋人マッチングアプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffdf9",
+  "theme_color": "#fffdf9",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "/assets/favicon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/pairly-app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

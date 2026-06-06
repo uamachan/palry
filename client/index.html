@@ -3,9 +3,39 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="PairlyはVALORANTのデュオ・フルパ・固定メンバーを探せるマッチングサービスです。" />
+
+    <!-- Primary Meta Tags -->
+    <title>Pairly | VALORANTの相方・パーティー募集マッチング</title>
+    <meta name="title" content="Pairly | VALORANTの相方・パーティー募集マッチング" />
+    <meta name="description" content="PairlyはVALORANTのデュオ・フルパ・固定メンバーを探せるゲーム恋人マッチングアプリです。ランク・ロール・地域で絞り込み、いいね・メッセージ・足あとで相方を見つけよう。" />
+    <meta name="keywords" content="VALORANT,ヴァロラント,相方募集,デュオ,パーティー募集,マッチング,固定メンバー,ゲーム恋人,フルパ,ランク" />
+    <meta name="author" content="Pairly" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://pairly.gg/" />
     <meta name="theme-color" content="#fffdf9" />
+
+    <!-- Open Graph / Facebook / LINE -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://pairly.gg/" />
+    <meta property="og:site_name" content="Pairly" />
+    <meta property="og:locale" content="ja_JP" />
+    <meta property="og:title" content="Pairly | VALORANTの相方・パーティー募集マッチング" />
+    <meta property="og:description" content="PairlyはVALORANTのデュオ・フルパ・固定メンバーを探せるゲーム恋人マッチングアプリです。ランク・ロール・地域で絞り込み、いいね・メッセージ・足あとで相方を見つけよう。" />
+    <meta property="og:image" content="https://pairly.gg/assets/pairly-logo-wide.png" />
+    <meta property="og:image:alt" content="Pairly — VALORANTの相方探しマッチングアプリ" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://pairly.gg/" />
+    <meta name="twitter:title" content="Pairly | VALORANTの相方・パーティー募集マッチング" />
+    <meta name="twitter:description" content="PairlyはVALORANTのデュオ・フルパ・固定メンバーを探せるゲーム恋人マッチングアプリです。ランク・ロール・地域で絞り込み、いいね・メッセージ・足あとで相方を見つけよう。" />
+    <meta name="twitter:image" content="https://pairly.gg/assets/pairly-logo-wide.png" />
+
+    <!-- Icons & Manifest -->
     <link rel="icon" href="/assets/favicon.png" />
+    <link rel="apple-touch-icon" href="/assets/pairly-app-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
     <!-- Google Fonts: preconnect で接続を先取り -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,7 +49,55 @@
     </noscript>
     <!-- ロゴ SVG を LCP 前に取得 -->
     <link rel="preload" href="/assets/pairly-logo-wide-transparent.svg" as="image" type="image/svg+xml" />
-    <title>Pairly | VALORANTの相方探し</title>
+
+    <!-- JSON-LD 構造化データ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://pairly.gg/#website",
+          "url": "https://pairly.gg/",
+          "name": "Pairly",
+          "description": "VALORANTの相方・パーティー募集マッチングアプリ",
+          "inLanguage": "ja",
+          "publisher": {
+            "@id": "https://pairly.gg/#organization"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://pairly.gg/#organization",
+          "name": "Pairly",
+          "url": "https://pairly.gg/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://pairly.gg/assets/pairly-logo-wide.png"
+          }
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://pairly.gg/#app",
+          "name": "Pairly",
+          "url": "https://pairly.gg/",
+          "description": "PairlyはVALORANTのデュオ・フルパ・固定メンバーを探せるゲーム恋人マッチングアプリです。ランク・ロール・地域で絞り込み、いいね・メッセージ・足あとで相方を見つけよう。",
+          "applicationCategory": "SocialNetworkingApplication",
+          "operatingSystem": "Web",
+          "inLanguage": "ja",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "JPY",
+            "description": "無料プランあり"
+          },
+          "publisher": {
+            "@id": "https://pairly.gg/#organization"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
