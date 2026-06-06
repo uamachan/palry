@@ -150,10 +150,9 @@ function TinderProfileCard({ profile, onReport, onBlock, swipeDir, onOpenProfile
   );
 }
 
-function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike, plan, plansData, entitlements }) {
+function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, genderFilterLocked, plan, plansData, entitlements }) {
   const [swipeDir, setSwipeDir] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
-  const [acceptingLikeId, setAcceptingLikeId] = useState('');
   const [detailProfile, setDetailProfile] = useState(null);
   const genderFilterAllowed = Boolean(plansData?.plans?.[plan]?.genderFilter || entitlements?.genderFilter);
   const isGenderFilterLocked = genderFilterLocked || !genderFilterAllowed;
@@ -178,13 +177,6 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender,
     }
   }
 
-  async function handleAcceptLike(id) {
-    if (acceptingLikeId) return;
-    setAcceptingLikeId(id);
-    try { await acceptLike(id); }
-    finally { setAcceptingLikeId(''); }
-  }
-
   function handleGenderChange(event) {
     if (isGenderFilterLocked) return setTargetGender('all');
     setTargetGender(event.target.value);
@@ -192,19 +184,6 @@ function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender,
 
   return (
     <div className="mp-wrap">
-      <div className={cx('mp-received-section', !receivedLikes?.length && 'empty')}>
-        <div className="mp-received-header">届いたいいね <span>{receivedLikes.length}</span></div>
-        <div className="mp-received-list">
-          {receivedLikes?.length ? receivedLikes.map((rl) => (
-            <div key={rl.id} className="mp-received-card">
-              <div className="mp-received-avatar">{rl.fromPhoto ? <img src={rl.fromPhoto} alt={rl.fromProfileName} /> : rl.fromProfileName?.slice(0, 1) || '?'}</div>
-              <div className="mp-received-info"><b>{rl.fromProfileName}</b><span>{rl.fromRank} · {rl.fromRole}</span></div>
-              <button className="mp-accept-btn" onClick={() => handleAcceptLike(rl.id)} disabled={acceptingLikeId === rl.id}>{acceptingLikeId === rl.id ? '送信中' : 'いいねを返す'}</button>
-            </div>
-          )) : <p className="mp-received-empty">まだ届いたいいねはありません。</p>}
-        </div>
-      </div>
-
       <div className={cx('mp-filter-row', isGenderFilterLocked && 'locked')}>
         <label htmlFor="gender-filter" className="mp-filter-label">表示</label>
         <select id="gender-filter" className="mp-filter-select" disabled={isGenderFilterLocked} value={safeTargetGender} onChange={handleGenderChange} aria-label="表示する性別を選択">
