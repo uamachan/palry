@@ -185,6 +185,14 @@
 .appv2-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:0}
 @keyframes tabFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .appv2-content>*{animation:tabFadeIn .22s ease-out both;will-change:transform,opacity}
+.appv2-bottom-nav{flex-shrink:0;height:64px;display:flex;align-items:stretch;background:rgba(255,253,249,.97);border-top:1px solid var(--line);backdrop-filter:blur(14px)}
+.appv2-nav-btn{flex:1;min-width:0;border:0;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-weight:900;transition:color .15s,background .15s}
+.appv2-nav-btn:hover{color:var(--ink);background:#fff8fb}
+.appv2-nav-btn.active{color:var(--pink)}
+.appv2-nav-icon{position:relative;display:grid;place-items:center;font-size:22px;line-height:1}
+.appv2-nav-icon svg{width:22px;height:22px}
+.appv2-nav-label{font-size:10px;letter-spacing:.04em;line-height:1}
+.appv2-nav-badge{position:absolute;right:-10px;top:-8px;min-width:18px;height:18px;border-radius:999px;background:var(--pink);color:#fff;display:grid;place-items:center;border:2px solid #fff;font-style:normal;font-size:10px;font-weight:900;line-height:1}
 
 /* ══════════════════════════════════════════════════
    Match Panel (mp-*)
@@ -335,8 +343,8 @@
 }
 
 /* Layout alignment pass */
-:root{--app-surface-w:400px;--app-gap:14px;--app-control-h:40px;--app-topbar-h:72px}
-.appv2-content .list-panel{min-height:calc(100dvh - var(--app-topbar-h));height:calc(100dvh - var(--app-topbar-h))}
+:root{--app-surface-w:400px;--app-gap:14px;--app-control-h:40px;--app-topbar-h:72px;--app-bottombar-h:64px}
+.appv2-content .list-panel{min-height:calc(100dvh - var(--app-topbar-h) - var(--app-bottombar-h));height:calc(100dvh - var(--app-topbar-h) - var(--app-bottombar-h))}
 .mp-wrap{width:100%;max-width:calc(var(--app-surface-w) + 32px);gap:var(--app-gap);padding:16px}
 .mp-filter-row,.mp-card-wrap,.mp-actions,.mp-action-labels,.mp-empty,.mp-received-section{width:100%;max-width:var(--app-surface-w)}
 .mp-filter-row{min-height:var(--app-control-h);gap:10px}
