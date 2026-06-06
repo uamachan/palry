@@ -245,17 +245,15 @@ function App() {
       return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
     }
     function blockClipboard(e) {
-      // 入力欄、および [data-copyable] 配下（DMメッセージ・Riot ID 等）はコピー許可。
-      // それ以外のページ本文のコピー/カット/ペーストは禁止。
+      // コピーは全面許可（Riot ID や DM 本文を相手とやり取りできるようにするため）。
+      // 入力欄・[data-copyable] 配下以外でのカット/ペーストのみ抑止する。
       if (isInputTarget(e.target)) return;
       if (e.target?.closest?.('[data-copyable]')) return;
       e.preventDefault();
     }
-    document.addEventListener('copy', blockClipboard);
     document.addEventListener('cut', blockClipboard);
     document.addEventListener('paste', blockClipboard);
     return () => {
-      document.removeEventListener('copy', blockClipboard);
       document.removeEventListener('cut', blockClipboard);
       document.removeEventListener('paste', blockClipboard);
     };
