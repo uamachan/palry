@@ -9,6 +9,7 @@ import SiteHeader from './SiteHeader.jsx';
 import { appTabs, defaultRole, planLabel, roles } from './constants.jsx';
 import './styles.css';
 import './profile-setup.css';
+import './profile-validation.css';
 
 let firebaseModsPromise = null;
 function getFirebaseMods() {
