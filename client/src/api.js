@@ -1,16 +1,26 @@
-import { firebaseAuth } from './firebase.js';
+// firebase.js は動的インポートで遅延ロードする。
+// 静的インポートにすると vendor-firebase チャンクが起動時に同期ロードされ
+// FCP/LCP が大幅に遅れてしまうため使わない。
 
 const API_BASE = '';
+
+/** 現在ユーザーの Firebase ID トークンを取得する。未ログイン時は null。 */
+async function getToken() {
+  try {
+    const { firebaseAuth } = await import('./firebase.js');
+    return await firebaseAuth?.currentUser?.getIdToken() ?? null;
+  } catch { return null; }
+}
 
 async function request(path, options = {}) {
   let authHeader = {};
   try {
-    const token = await firebaseAuth?.currentUser?.getIdToken();
+    const token = await getToken();
     if (token) authHeader = { Authorization: `Bearer ${token}` };
   } catch { /* no auth token */ }
   const response = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...authHeader, ...(options.headers || {}) },
-    ...options
+    ...options,
   });
   let payload = {};
   try { payload = await response.json(); } catch { /* non-JSON body (HTML error pages etc.) */ }
@@ -38,5 +48,5 @@ export const api = {
   report: (body) => request('/api/report', { method: 'POST', body: JSON.stringify(body) }),
   block: (body) => request('/api/block', { method: 'POST', body: JSON.stringify(body) }),
   purchase: (body) => request('/api/purchase', { method: 'POST', body: JSON.stringify(body) }),
-  reports: () => request('/api/admin/reports')
+  reports: () => request('/api/admin/reports'),
 };

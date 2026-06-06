@@ -36,15 +36,15 @@
     <link rel="apple-touch-icon" href="/assets/pairly-app-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
-    <!-- Google Fonts: preconnect で接続を先取り -->
+    <!-- Google Fonts: preconnect で接続を先取り。
+         フォント CSS 本体は main.jsx の module script 内（defer 扱い）で非同期追加する。
+         これにより <link rel="stylesheet"> のレンダリングブロックを回避できる。 -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- フォント読み込み。display=swap でフォント取得中もテキスト表示。
-         CSP が inline ハンドラを禁止しているため media=print + onload トリックは使わない。 -->
-    <link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Outfit:wght@500;700;900&display=swap" />
-    <!-- ロゴ SVG を LCP 前に取得 -->
-    <link rel="preload" href="/assets/pairly-logo-wide-transparent.svg" as="image" type="image/svg+xml" />
+    <!-- ロゴ SVG を高優先で先取り（LCP 候補） -->
+    <link rel="preload" href="/assets/pairly-logo-wide-transparent.svg" as="image" type="image/svg+xml" fetchpriority="high" />
+    <!-- スピナーアニメーション（スケルトン用） -->
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
     <!-- JSON-LD 構造化データ -->
     <script type="application/ld+json">
@@ -96,7 +96,16 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- JS 実行前に表示されるスケルトン。React がマウントされると自動的に置き換わる。
+         ホワイトフラッシュ（白画面）を防ぎ、体感速度を改善する。 -->
+    <div id="root">
+      <div id="app-skeleton" style="display:flex;align-items:center;justify-content:center;height:100dvh;background:#fffdf9">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1rem">
+          <div style="width:44px;height:44px;border:3px solid #e8e0d6;border-top-color:#c4b09a;border-radius:50%;animation:spin 0.9s linear infinite"></div>
+          <span style="color:#c4b09a;font-size:0.85rem;font-family:sans-serif">Pairly</span>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
