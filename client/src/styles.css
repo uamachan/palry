@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Outfit:wght@500;700;900&display=swap');
+/* Google Fonts は index.html の <link> で非同期読み込みするため @import を削除 */
 :root{
   --bg:#f7f5f2; --paper:#fffdf9; --ink:#181614; --muted:#77706a; --line:#e7e0d8; --line2:#d7cec4;
   --pink:#ff4f83; --pink2:#e83f70; --dark:#22201e; --soft:#f0ebe5; --green:#1f9d72; --blue:#3478f6;
@@ -182,7 +182,7 @@
 
 .appv2-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:0}
 @keyframes tabFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.appv2-content>*{animation:tabFadeIn .22s ease-out both}
+.appv2-content>*{animation:tabFadeIn .22s ease-out both;will-change:transform,opacity}
 
 /* ══════════════════════════════════════════════════
    Match Panel (mp-*)
@@ -207,8 +207,8 @@
 @keyframes swipeUp{to{transform:translateY(-120%) scale(.9);opacity:0}}
 @keyframes stampIn{from{opacity:0;transform:scale(.5) rotate(-10deg)}to{opacity:1;transform:scale(1) rotate(-12deg)}}
 
-/* Card */
-.mp-card{position:relative;border-radius:24px;overflow:hidden;aspect-ratio:3/4;background:#181311;box-shadow:0 18px 48px rgba(31,25,20,.24);display:block;animation:cardIn .28s cubic-bezier(.22,1,.36,1) both}
+/* Card — will-change で GPU レイヤーに昇格しスワイプアニメを合成処理 */
+.mp-card{position:relative;border-radius:24px;overflow:hidden;aspect-ratio:3/4;background:#181311;box-shadow:0 18px 48px rgba(31,25,20,.24);display:block;animation:cardIn .28s cubic-bezier(.22,1,.36,1) both;will-change:transform,opacity}
 .mp-swipe-left{animation:swipeLeft .3s cubic-bezier(.4,0,1,1) forwards!important}
 .mp-swipe-right{animation:swipeRight .3s cubic-bezier(.4,0,1,1) forwards!important}
 .mp-swipe-up{animation:swipeUp .3s cubic-bezier(.4,0,1,1) forwards!important}

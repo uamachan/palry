@@ -1298,7 +1298,7 @@ function TinderProfileCard({ profile, onReport, onBlock, swipeDir, onOpenProfile
   return (
     <article className={cx('mp-card', swipeDir && `mp-swipe-${swipeDir}`)}>
       {profile.profilePhoto
-        ? <img className="mp-photo" src={profile.profilePhoto} alt={profile.name} />
+        ? <img className="mp-photo" src={profile.profilePhoto} alt={profile.name} loading="lazy" decoding="async" />
         : <div className={cx('mp-photo-placeholder', `role-${roleTone}`)}>
           <div className="mp-placeholder-frame">
             <span>{profile.name.slice(0,1).toUpperCase()}</span>
@@ -1361,7 +1361,7 @@ function ProfileDetailModal({ profile, onClose }) {
       <button className="profile-detail-close" type="button" onClick={onClose}>×</button>
       <div className="profile-detail-hero">
         {profile.profilePhoto
-          ? <img src={profile.profilePhoto} alt={profile.name} />
+          ? <img src={profile.profilePhoto} alt={profile.name} loading="lazy" decoding="async" />
           : <div className="profile-detail-fallback">{profile.name?.slice(0, 1) || 'P'}</div>}
       </div>
       <div className="profile-detail-body">
@@ -1470,7 +1470,7 @@ function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraf
     <section className="dm-conversation">
       {activeThread ? <>
         <div className="dm-conversation-head">
-          <div className="avatar small">{activeThread.match.profilePhoto ? <img src={activeThread.match.profilePhoto} alt="" /> : activeThread.match.profileName?.slice(0, 1) || 'P'}</div>
+          <div className="avatar small">{activeThread.match.profilePhoto ? <img src={activeThread.match.profilePhoto} alt="" loading="lazy" decoding="async" /> : activeThread.match.profileName?.slice(0, 1) || 'P'}</div>
           <div><h3>{activeThread.match.profileName}</h3><span>メッセージ解放済み</span></div>
           <div className="dm-head-actions">
             <button type="button" onClick={() => setDetailProfile(profileFromMatch(activeThread.match))}>プロフィール</button>
