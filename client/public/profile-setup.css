@@ -1,7 +1,7 @@
-/* Profile setup / auth modal production overrides */
-.eyebrow{
-  display:none!important;
-}
+/* Production auth/profile form overrides */
+.eyebrow{display:none!important}
+
+/* Auth modal shell */
 .auth-modal{
   position:fixed;
   inset:0;
@@ -14,44 +14,47 @@
   position:absolute;
   inset:0;
   border:0;
-  background:rgba(24,22,20,.58);
+  background:rgba(24,22,20,.56);
   backdrop-filter:blur(10px);
 }
 .auth-modal-panel{
   position:relative;
   z-index:1;
-  width:min(520px,calc(100vw - 28px));
+  width:min(500px,calc(100vw - 28px));
   max-height:calc(100dvh - 28px);
   overflow:auto;
   background:var(--paper,#fffdf9);
   border:1px solid var(--line,#e7e0d8);
   border-radius:26px;
-  box-shadow:0 28px 90px rgba(24,22,20,.28);
-  padding:0;
+  box-shadow:0 28px 90px rgba(24,22,20,.26);
 }
 .auth-modal-panel--profile{
-  width:min(920px,calc(100vw - 28px));
+  width:min(860px,calc(100vw - 28px));
 }
 .auth-modal-panel--narrow{
   width:min(500px,calc(100vw - 28px));
 }
 .auth-close{
-  position:sticky;
-  top:12px;
-  left:calc(100% - 50px);
-  z-index:5;
+  position:absolute;
+  top:14px;
+  right:14px;
+  z-index:10;
   width:38px;
   height:38px;
-  margin:12px 12px -50px auto;
   border:1px solid var(--line,#e7e0d8);
   background:#fff;
+  color:var(--ink,#181614);
   border-radius:50%;
+  display:grid;
+  place-items:center;
   font-size:22px;
   font-weight:900;
   line-height:1;
-  color:var(--ink,#181614);
-  box-shadow:0 8px 24px rgba(24,22,20,.12);
+  box-shadow:0 8px 22px rgba(24,22,20,.12);
 }
+.auth-close:hover{background:#f9f5f0}
+
+/* Generic auth pages */
 .email-signup-panel{
   padding:34px;
 }
@@ -59,7 +62,7 @@
   display:grid;
   gap:8px;
   margin:0 0 22px;
-  padding-right:42px;
+  padding-right:48px;
 }
 .email-signup-header h2{
   margin:0;
@@ -70,26 +73,50 @@
 .email-signup-header p{
   margin:0;
   color:var(--muted,#77706a);
-  line-height:1.8;
+  line-height:1.75;
   font-weight:700;
 }
+.email-signup-form{
+  display:grid;
+  gap:14px;
+}
+.email-signup-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  margin-top:4px;
+}
+.email-signup-actions .primary,
+.email-signup-actions .secondary{
+  min-height:46px;
+}
+.reset-password-link{padding:10px 12px}
+
+/* Profile creation page only */
 .profile-setup-panel{
-  padding:30px;
+  padding:28px;
 }
 .profile-setup-heading{
-  margin-bottom:18px;
+  margin:0 0 18px;
 }
-.email-signup-form.profile-setup-card,
-.profile-setup-card{
+.profile-setup-heading h2{
+  font-size:clamp(28px,3.4vw,40px);
+}
+.email-signup-form.profile-setup-card{
   display:grid;
   gap:18px;
+  width:100%;
+  margin:0;
   padding:22px;
   background:#fff;
   border:1px solid var(--line,#e7e0d8);
   border-radius:24px;
   box-shadow:0 10px 30px rgba(31,25,20,.06);
 }
+.profile-setup-card *{box-sizing:border-box}
 .setup-progress{
+  width:100%;
   height:8px;
   border-radius:999px;
   background:#f0ebe5;
@@ -126,6 +153,7 @@
 .setup-grid{
   display:grid;
   gap:14px;
+  width:100%;
 }
 .setup-grid.two{
   grid-template-columns:repeat(2,minmax(0,1fr));
@@ -133,8 +161,11 @@
 .setup-stack{
   display:grid;
   gap:16px;
+  width:100%;
 }
-.email-field-label{
+.email-field-label,
+.custom-select-field,
+.gender-select-block{
   display:grid;
   gap:8px;
   min-width:0;
@@ -142,6 +173,7 @@
   font-weight:900;
 }
 .email-field-label span,
+.custom-select-field>span,
 .field-caption,
 .gender-select-block>span{
   color:var(--ink,#181614);
@@ -154,12 +186,18 @@
 .custom-select-trigger{
   width:100%;
   min-width:0;
+  min-height:48px;
   border:1px solid var(--line2,#d7cec4);
   background:#fff;
   color:var(--ink,#181614);
   border-radius:16px;
   padding:13px 14px;
   outline:none;
+  box-shadow:none;
+}
+.email-field-label input[type="file"]{
+  padding:11px 14px;
+  cursor:pointer;
 }
 .email-field-label textarea{
   min-height:120px;
@@ -172,11 +210,8 @@
   border-color:var(--pink,#ff4f83);
   box-shadow:0 0 0 4px rgba(255,79,131,.12);
 }
-.gender-select-block{
-  display:grid;
-  gap:8px;
-}
-.gender-options{
+.gender-options,
+.tag-choice-grid{
   display:flex;
   flex-wrap:wrap;
   gap:8px;
@@ -196,30 +231,21 @@
   background:#fff1f6;
   color:var(--pink2,#e83f70);
 }
-.tag-choice-grid{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-top:8px;
-}
+.tag-choice-grid{margin-top:8px}
 .tag-choice-grid.compact button{
   padding:8px 11px;
   font-size:12px;
 }
-.custom-select-field{
-  position:relative;
-  display:grid;
-  gap:8px;
-  font-size:13px;
-  font-weight:900;
-}
+.custom-select-field{position:relative}
 .custom-select-trigger{
   display:flex;
   align-items:center;
   justify-content:space-between;
   cursor:pointer;
+  text-align:left;
 }
 .custom-select-trigger b{
+  min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -231,10 +257,11 @@
   border-bottom:2px solid currentColor;
   transform:rotate(45deg) translateY(-2px);
   opacity:.6;
+  flex:0 0 auto;
 }
 .custom-select-menu{
   position:absolute;
-  z-index:10;
+  z-index:20;
   top:100%;
   left:0;
   right:0;
@@ -277,9 +304,7 @@
   flex-wrap:wrap;
 }
 .voice-record-box b,
-.terms-box h3{
-  margin:0 0 5px;
-}
+.terms-box h3{margin:0 0 5px}
 .voice-record-box p,
 .terms-box p{
   margin:0;
@@ -301,27 +326,22 @@
   flex:0 0 20px;
   margin-top:2px;
 }
-.profile-setup-actions,
-.email-signup-actions{
+.profile-setup-actions{
   display:flex;
   flex-wrap:wrap;
   gap:10px;
   align-items:center;
-}
-.profile-setup-actions{
   justify-content:flex-end;
   border-top:1px solid var(--line,#e7e0d8);
   padding-top:16px;
+  margin-top:0;
 }
-.email-signup-actions .primary,
-.email-signup-actions .secondary{
-  min-height:46px;
-}
-.reset-password-link{
-  padding:10px 12px;
-}
+
 @media(max-width:760px){
-  .auth-modal{padding:10px;place-items:end center;}
+  .auth-modal{
+    padding:10px;
+    place-items:end center;
+  }
   .auth-modal-panel,
   .auth-modal-panel--profile,
   .auth-modal-panel--narrow{
@@ -329,14 +349,33 @@
     max-height:calc(100dvh - 20px);
     border-radius:24px 24px 0 0;
   }
+  .auth-close{
+    top:10px;
+    right:10px;
+  }
   .email-signup-panel,
-  .profile-setup-panel{padding:24px 16px 18px;}
-  .email-signup-header{padding-right:46px;}
-  .profile-setup-card{padding:16px;}
-  .setup-grid.two{grid-template-columns:1fr;}
-  .profile-setup-actions{justify-content:stretch;}
+  .profile-setup-panel{
+    padding:24px 16px 18px;
+  }
+  .email-signup-header{
+    padding-right:46px;
+  }
+  .email-signup-form.profile-setup-card{
+    padding:16px;
+    border-radius:20px;
+  }
+  .setup-grid.two{
+    grid-template-columns:1fr;
+  }
+  .profile-setup-actions{
+    justify-content:stretch;
+  }
   .profile-setup-actions .primary,
   .profile-setup-actions .secondary,
-  .profile-setup-actions .plain{width:100%;}
-  .voice-record-box{display:grid;}
+  .profile-setup-actions .plain{
+    width:100%;
+  }
+  .voice-record-box{
+    display:grid;
+  }
 }
