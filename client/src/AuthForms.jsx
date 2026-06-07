@@ -350,9 +350,9 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
             </button>
           ))}
         </div>
-        {setupError && <div className="setup-error" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
 
         {activeSetupTab === '基本情報' && <div className="setup-grid two">
+          {setupError && <div className="setup-error span-all" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
           <label className="email-field-label"><span>表示名</span><input required value={form.name} maxLength="40" aria-invalid={Boolean(setupError) && !form.name?.trim()} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="例：Pairlyちゃん" /></label>
           <label className="email-field-label"><span>Riot ID</span><input required value={form.riotId} maxLength="60" aria-invalid={Boolean(setupError) && !form.riotId?.trim()} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, riotId: e.target.value })} placeholder="例：name#JP1" data-copyable /></label>
           <label className="email-field-label"><span>年齢帯</span><select required value={form.age} aria-invalid={Boolean(setupError) && !isValidAgeRange(form.age)} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, age: e.target.value })}><option value="">選択してください</option>{AGE_RANGES.map((range) => <option key={range} value={range}>{range}</option>)}</select></label>
@@ -368,11 +368,13 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
         </div>}
 
         {activeSetupTab === 'ランク' && <div className="setup-grid two">
+          {setupError && <div className="setup-error span-all" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
           <CustomSelect label="現在ランク" value={form.rank} options={ranks} onChange={(rank) => setForm({ ...form, rank })} />
           <CustomSelect label="メインロール" value={form.role} options={roles} onChange={(role) => setForm({ ...form, role })} />
         </div>}
 
         {activeSetupTab === 'プレイスタイル' && <div className="setup-stack">
+          {setupError && <div className="setup-error" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
           <div><span className="field-caption">目的タグ（最大4つ）</span><div className="tag-choice-grid">{intentTags.map((tag) => <button type="button" key={tag} className={form.tags.includes(tag) ? 'selected' : ''} onClick={() => toggleTag(tag)}>{tag}</button>)}</div></div>
           <div><span className="field-caption">よく使うエージェント（最大5つ）</span><div className="tag-choice-grid compact">{agents.map((agent) => <button type="button" key={agent} className={form.agents.includes(agent) ? 'selected' : ''} onClick={() => toggleAgent(agent)}>{agent}</button>)}</div></div>
         </div>}
