@@ -1025,9 +1025,14 @@ app.post('/api/like', requireAuth, async (req, res) => {
     });
   }
 
+  // スーパーいいね枠を消費した可能性があるため、最新のエンタイトルメントを返し、
+  // クライアント側の残数表示（superCredits 等）を即時更新できるようにする。
+  const latestPurchases = usedSuperCredit ? await readJson('single_purchases.json', []) : singlePurchases;
+  const updatedEntitlements = activeEntitlements(latestPurchases, userId);
+
   // 候補は実ユーザー限定。念のため非実ユーザーは安全に返す。
   if (!isRealUserId(profileId, users)) {
-    return res.json({ ok: true, like: likeResult === 'created' ? like : null, already_liked: likeResult === 'duplicate', matched: false });
+    return res.json({ ok: true, like: likeResult === 'created' ? like : null, already_liked: likeResult === 'duplicate', matched: false, entitlements: updatedEntitlements });
   }
 
   const me = req.authedUser;
@@ -1039,12 +1044,12 @@ app.post('/api/like', requireAuth, async (req, res) => {
   const myMatch = matchRows.find((m) => m.userId === userId) || null;
   if (myMatch) {
     await resolvePendingBetween(userId, profileId);
-    return res.json({ ok: true, like: likeResult === 'created' ? like : null, already_liked: likeResult === 'duplicate', matched: true, match: myMatch });
+    return res.json({ ok: true, like: likeResult === 'created' ? like : null, already_liked: likeResult === 'duplicate', matched: true, match: myMatch, entitlements: updatedEntitlements });
   }
 
   // 既にいいね済みでまだ相互でない → 何もせず終了（pending は初回に作成済み）。
   if (likeResult === 'duplicate') {
-    return res.json({ ok: true, like: null, already_liked: true, matched: false });
+    return res.json({ ok: true, like: null, already_liked: true, matched: false, entitlements: updatedEntitlements });
   }
 
   // 初回いいねでまだ片方だけ → 相手に「いいねが届いた」状態を1件積み、送信者にも返す。
@@ -1055,7 +1060,7 @@ app.post('/api/like', requireAuth, async (req, res) => {
     if (exists) return { value: undefined, result: false };
     return { value: [receivedLike, ...received], result: true };
   });
-  return res.json({ ok: true, like, matched: false, pending_sent: Boolean(pendingResult), receivedLike: pendingResult ? receivedLike : null });
+  return res.json({ ok: true, like, matched: false, pending_sent: Boolean(pendingResult), receivedLike: pendingResult ? receivedLike : null, entitlements: updatedEntitlements });
 });
 
 async function sendReceivedLikesForCurrentUser(req, res) {
