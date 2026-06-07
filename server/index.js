@@ -894,6 +894,35 @@ app.get('/api/matches/:userId', requireAuth, async (req, res) => {
   res.json({ matches: matches.filter((match) => match.userId === req.authedUser.id) });
 });
 
+// 足あと（自分の操作履歴）をサーバーに永続化する。リロードしても残る。
+app.get('/api/footprints/me', requireAuth, async (req, res) => {
+  const footprints = await readJson('footprints.json', []);
+  res.json({ footprints: footprints.filter((f) => f.userId === req.authedUser.id).slice(0, 50) });
+});
+
+app.post('/api/footprint', requireAuth, async (req, res) => {
+  const userId = req.authedUser.id;
+  const profileId = cleanText(req.body?.profileId, 80);
+  const action = cleanText(req.body?.action, 20) || '見送り';
+  if (!profileId) return res.status(400).json({ message: '対象が必要です。' });
+  const users = await readJson('users.json', []);
+  const target = users.find((u) => u.id === profileId);
+  if (!target) return res.status(404).json({ message: '対象ユーザーが見つかりません。' });
+  const entry = {
+    id: uid('fp'), userId, profileId,
+    name: target.name, rank: target.rank || '', gender: target.gender || '',
+    action, createdAt: new Date().toISOString()
+  };
+  // ユーザーごとに直近50件だけ保持する（無制限肥大を防ぐ）。
+  const saved = await updateJson('footprints.json', [], (footprints) => {
+    const mine = footprints.filter((f) => f.userId === userId);
+    const others = footprints.filter((f) => f.userId !== userId);
+    const nextMine = [entry, ...mine].slice(0, 50);
+    return { value: [...nextMine, ...others], result: entry };
+  });
+  res.status(201).json({ footprint: saved });
+});
+
 app.get('/api/dm/:userId', requireAuth, async (req, res) => {
   const viewerId = req.authedUser.id;
   const [matches, messages] = await Promise.all([
