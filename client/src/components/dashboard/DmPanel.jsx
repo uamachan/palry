@@ -25,8 +25,10 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
   const [detailProfile, setDetailProfile] = useState(null);
 
   useEffect(() => {
-    if (activeThread?.match.id) markDmRead(activeThread.match.id);
-  }, [activeThread?.match.id]);
+    if (!activeThread?.match?.id) return;
+    const threadId = activeThread.match.id;
+    markDmRead(threadId);
+  }, [activeThread?.match?.id, markDmRead]);
 
   const hasUserMessage = Boolean(activeThread?.messages?.some((m) => m.sender === 'user' && !m.system));
 
