@@ -3,12 +3,8 @@ import cors from 'cors';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-<<<<<<< HEAD
 import { readJson, updateJson, uid } from './lib/jsonStore.js';
-=======
-import { readJson, writeJson, updateJson, uid } from './lib/jsonStore.js';
 import { cleanText, cleanAge, sanitizeMedia, emailKey } from './lib/validation.js';
->>>>>>> 80a049a97dc08ab3b1aed97508ddaa9519abfb95
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -338,7 +334,6 @@ function publicUser(user) {
   return safeUser;
 }
 
-<<<<<<< HEAD
 function isVisibleUser(user) {
   return Boolean(user?.firebaseUid) && !user.autoHidden;
 }
@@ -350,12 +345,6 @@ function pairBlocked(blocks, aId, bId) {
   );
 }
 
-function emailKey(email) {
-  return cleanText(email, 120).toLowerCase();
-}
-
-=======
->>>>>>> 80a049a97dc08ab3b1aed97508ddaa9519abfb95
 // 管理者メール許可リスト（ADMIN_EMAILS=a@x.com,b@y.com）。
 // 未設定なら誰も管理者でない（管理APIは全拒否＝フェイルクローズ）。
 const adminEmails = new Set(
@@ -430,19 +419,11 @@ function userToProfile(user) {
   return {
     id: user.id,
     name: user.name,
-<<<<<<< HEAD
     gender: normalizeGender(user.gender),
-    ageRange: user.age ? `${user.age}歳` : '年齢未設定',
+    ageRange: user.age || '年齢未設定',
     region: normalizeRegion(user.region),
     rank: normalizeRank(user.rank),
     peakRank: normalizeRank(user.peakRank || user.rank),
-=======
-    gender: user.gender,
-    ageRange: user.age || '年齢未設定',
-    region: user.region || '',
-    rank: user.rank || 'Gold',
-    peakRank: user.peakRank || user.rank || '',
->>>>>>> 80a049a97dc08ab3b1aed97508ddaa9519abfb95
     role: normalizeRole(user.role),
     tags: Array.isArray(user.tags) ? user.tags : [],
     modes: Array.isArray(user.modes) ? user.modes : [],

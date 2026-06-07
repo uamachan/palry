@@ -10,18 +10,14 @@
     "prebuild": "node scripts/generate-sitemap.mjs",
     "build": "vite build",
     "sitemap": "node scripts/generate-sitemap.mjs",
-<<<<<<< HEAD
     "db:validate": "prisma validate --schema prisma/schema.prisma",
     "db:generate": "prisma generate --schema prisma/schema.prisma",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:import-json": "node scripts/import-json-to-db.mjs",
     "db:import-json:dry-run": "node scripts/import-json-to-db.mjs --dry-run",
-    "release:check": "npm run build && npm run db:validate && node --check server/index.js && node --check server/start-production.js && node --check server/index-runtime.js && node --check scripts/import-json-to-db.mjs",
-=======
     "test": "node --test",
-    "release:check": "npm run build && node --check server/index.js && node --check server/index-runtime.js && node --test",
->>>>>>> 80a049a97dc08ab3b1aed97508ddaa9519abfb95
+    "release:check": "npm run build && npm run db:validate && node --check server/index.js && node --check server/start-production.js && node --check scripts/import-json-to-db.mjs && node --test",
     "start": "node server/start-production.js",
     "reset-data": "node server/reset-data.js",
     "backup-data": "node scripts/backup-data.mjs"
