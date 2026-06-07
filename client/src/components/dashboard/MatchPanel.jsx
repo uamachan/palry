@@ -12,7 +12,7 @@ function useIsMounted() {
   return isMounted;
 }
 
-export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike, profilesLoading }) {
+export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike, profilesLoading, refreshProfiles }) {
   const [swipeDir, setSwipeDir] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [acceptingLikeId, setAcceptingLikeId] = useState('');
@@ -87,7 +87,8 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
         ) : (
           <div className="mp-empty" role="status" aria-live="polite">
             <h3>候補がなくなりました</h3>
-            <p>条件を変えるか、時間をおいて再読み込みしてください。</p>
+            <p>新しい候補を自動で読み込みます…</p>
+            <button type="button" className="secondary" onClick={refreshProfiles} style={{ marginTop: '0.75rem' }}>今すぐ再読み込み</button>
           </div>
         )}
       </div>
