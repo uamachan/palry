@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readJson, updateJson, uid } from './lib/jsonStore.js';
-import { cleanText, cleanAge, sanitizeMedia, emailKey } from './lib/validation.js';
+import { cleanText, cleanAge, cleanRiotId, sanitizeMedia, emailKey } from './lib/validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -814,7 +814,8 @@ app.post('/api/register', authLimiter, async (req, res) => {
   const profileEnums = validateProfileEnums(payload);
   if (profileEnums.status) return res.status(profileEnums.status).json({ message: profileEnums.message });
 
-  const riotId = cleanText(payload.riotId, 60);
+  const riotId = cleanRiotId(payload.riotId);
+  if (!riotId) return res.status(400).json({ message: 'Riot IDはGameName#Tagline形式で入力してください（例：たろう#JP1）。' });
   const result = await updateJson('users.json', [], (users) => {
     if (users.some((user) => user.firebaseUid === firebaseUser.uid || emailKey(user.email) === emailKey(firebaseUser.email))) {
       return { value: undefined, result: { status: 409, message: 'このメールアドレスは登録済みです。ログインしてください。' } };
@@ -874,7 +875,8 @@ app.put('/api/profile', requireAuth, async (req, res) => {
   const safeAge = cleanAgeField(payload.age);
   if (!safeAge) return res.status(400).json({ message: '年齢帯を選択してください。' });
 
-  const riotId = cleanText(payload.riotId, 60);
+  const riotId = cleanRiotId(payload.riotId);
+  if (!riotId) return res.status(400).json({ message: 'Riot IDはGameName#Tagline形式で入力してください（例：たろう#JP1）。' });
   const result = await updateJson('users.json', [], (users) => {
     const index = users.findIndex((user) => user.id === userId);
     if (index < 0) return { value: undefined, result: { status: 404, message: 'プロフィールが見つかりません。' } };
