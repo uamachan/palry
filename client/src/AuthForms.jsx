@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { cx, ranks, roles, agents, intentTags, regions, resizePhoto } from './constants.jsx';
+import { cx, ranks, roles, agents, intentTags, regions, resizePhoto, vcOptions, maps as mapList, favoriteWeapons } from './constants.jsx';
 
 function AuthModal({ children, onClose, size }) {
   const panelRef = useRef(null);
@@ -154,45 +154,34 @@ function EmailVerificationSection({ pendingEmail, onCheck, onResend, onShowLogin
   );
 }
 
-function CustomSelect({ label, value, options, onChange }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className={cx('custom-select-field', open && 'open')} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}>
-      <span>{label}</span>
-      <button type="button" className="custom-select-trigger" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((c) => !c)}>
-        <b>{value}</b>
-        <i></i>
-      </button>
-      {open && (
-        <div className="custom-select-menu" role="listbox" tabIndex={-1}>
-          {options.map((option) => (
-            <button
-              type="button"
-              key={option}
-              role="option"
-              aria-selected={option === value}
-              className={option === value ? 'selected' : ''}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { onChange(option); setOpen(false); }}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// 年齢帯の選択肢
 const AGE_RANGES = ['10代', '20代', '30代', '40代', '50代', '60代', '70代', '80代', '90代'];
 
 function isValidAgeRange(value) {
   return AGE_RANGES.includes(value);
 }
 
+const ROLE_INFO = {
+  'デュエリスト':   { icon: '⚡', desc: '撃ち合い・エントリー' },
+  'イニシエーター': { icon: '🔍', desc: '情報・フラッシュ補助' },
+  'コントローラー': { icon: '💨', desc: '煙幕・陣地支配' },
+  'センチネル':     { icon: '🛡️', desc: '守り・ヒーリング' },
+};
+
+const RANK_TIERS = [
+  { tier: 'Unranked',  color: '#8a8a8a', rankList: ['Unranked'] },
+  { tier: 'Iron',      color: '#7e6b6b', rankList: ['Iron 1', 'Iron 2', 'Iron 3'] },
+  { tier: 'Bronze',    color: '#9c6535', rankList: ['Bronze 1', 'Bronze 2', 'Bronze 3'] },
+  { tier: 'Silver',    color: '#748e9e', rankList: ['Silver 1', 'Silver 2', 'Silver 3'] },
+  { tier: 'Gold',      color: '#b88a10', rankList: ['Gold 1', 'Gold 2', 'Gold 3'] },
+  { tier: 'Platinum',  color: '#00a898', rankList: ['Platinum 1', 'Platinum 2', 'Platinum 3'] },
+  { tier: 'Diamond',   color: '#3858d0', rankList: ['Diamond 1', 'Diamond 2', 'Diamond 3'] },
+  { tier: 'Ascendant', color: '#169855', rankList: ['Ascendant 1', 'Ascendant 2', 'Ascendant 3'] },
+  { tier: 'Immortal',  color: '#c0204a', rankList: ['Immortal 1', 'Immortal 2', 'Immortal 3'] },
+  { tier: 'Radiant',   color: '#c8a000', rankList: ['Radiant'] },
+];
+
 function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLabel = 'プロフィールを完成する', cancelLabel = 'ログインに戻る', showAgreement = true }) {
-  const tabs = ['基本情報', 'ランク', 'プレイスタイル', '自己紹介', ...(showAgreement ? ['規約'] : [])];
+  const tabs = ['基本情報', 'ランク/ロール', 'プレイスタイル', '追加情報', '自己紹介', ...(showAgreement ? ['規約'] : [])];
   const [activeSetupTab, setActiveSetupTab] = useState(tabs[0]);
   const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(0);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
@@ -213,6 +202,10 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
     ...f,
     tags: f.tags.includes(tag) ? f.tags.filter((item) => item !== tag) : [...f.tags, tag].slice(0, 4)
   }));
+  const toggleMap = (map) => setForm((f) => {
+    const current = f.maps || [];
+    return { ...f, maps: current.includes(map) ? current.filter((m) => m !== map) : [...current, map].slice(0, 12) };
+  });
 
   useEffect(() => () => {
     clearTimeout(recordTimerRef.current);
@@ -233,12 +226,13 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
     if (tab === '基本情報') {
       if (!form.name?.trim()) return '表示名';
       if (!form.riotId?.trim()) return 'Riot ID';
+      if (!/^[^#]{1,16}#[^#]{1,5}$/u.test(form.riotId.trim())) return 'Riot IDはGameName#Tagline形式で入力してください（例：たろう#JP1）';
       if (!form.age) return '年齢帯';
       if (!isValidAgeRange(form.age)) return '年齢帯を選択してください';
       if (!form.region) return '地域';
       if (!form.gender) return '性別';
     }
-    if (tab === 'ランク') {
+    if (tab === 'ランク/ロール') {
       if (!form.rank) return '現在ランク';
       if (!form.role) return 'メインロール';
     }
@@ -336,9 +330,8 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
   return (
     <section className="email-signup-panel profile-setup-panel">
       <div className="email-signup-header profile-setup-heading">
-        <span className="eyebrow">プロフィール設定</span>
         <h2 id="auth-modal-title">プロフィールを作成</h2>
-        <p>上から順番に1つずつ設定します。未入力のまま次へ進むと、必要な項目を通知します。</p>
+        <p>ステップに沿って設定しましょう</p>
       </div>
 
       <form className="email-signup-form signup-card profile-setup-card" onSubmit={handleProfileSubmit} noValidate>
@@ -351,44 +344,262 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
           ))}
         </div>
 
-        {activeSetupTab === '基本情報' && <div className="setup-grid two">
-          {setupError && <div className="setup-error span-all" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
-          <label className="email-field-label"><span>表示名</span><input required value={form.name} maxLength="16" aria-invalid={Boolean(setupError) && !form.name?.trim()} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="例：Pairlyちゃん" /></label>
-          <label className="email-field-label"><span>Riot ID</span><input required value={form.riotId} maxLength="60" aria-invalid={Boolean(setupError) && !form.riotId?.trim()} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, riotId: e.target.value })} placeholder="例：name#JP1" data-copyable /></label>
-          <label className="email-field-label"><span>年齢帯</span><select required value={form.age} aria-invalid={Boolean(setupError) && !isValidAgeRange(form.age)} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, age: e.target.value })}><option value="">選択してください</option>{AGE_RANGES.map((range) => <option key={range} value={range}>{range}</option>)}</select></label>
-          <label className="email-field-label"><span>地域</span><select required value={form.region} aria-invalid={Boolean(setupError) && !form.region} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, region: e.target.value })}><option value="">選択してください</option>{regions.map((region) => <option key={region} value={region}>{region}</option>)}</select></label>
-          <div className="gender-select-block"><span>性別（必須）</span><div className="gender-options">
-            {['男性', '女性', 'その他/未設定'].map((gender) => <button key={gender} type="button" className={form.gender === gender ? 'selected' : ''} onClick={() => setForm({ ...form, gender })}>{gender}</button>)}
-          </div></div>
-          <label className="photo-upload-card">
-            <span className="photo-upload-preview">{form.profilePhoto ? <img src={form.profilePhoto} alt="プロフィール写真プレビュー" /> : <b>{form.name?.slice(0, 1) || '+'}</b>}</span>
-            <span className="photo-upload-copy"><strong>プロフィール写真</strong><em>{form.profilePhoto ? '写真を変更する' : '写真を追加する'}</em><small>JPG/PNG推奨・自動で軽量化します</small></span>
-            <input type="file" accept="image/*" onChange={selectPhoto} />
-          </label>
-        </div>}
+        {/* ── 基本情報 ── */}
+        {activeSetupTab === '基本情報' && (
+          <div className="pv-basic-grid">
+            {setupError && <div className="setup-error pv-span-all" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
 
-        {activeSetupTab === 'ランク' && <div className="setup-grid two">
-          {setupError && <div className="setup-error span-all" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
-          <CustomSelect label="現在ランク" value={form.rank} options={ranks} onChange={(rank) => setForm({ ...form, rank })} />
-          <CustomSelect label="メインロール" value={form.role} options={roles} onChange={(role) => setForm({ ...form, role })} />
-        </div>}
+            {/* Photo card */}
+            <label className="pv-photo-card">
+              <input type="file" accept="image/*" onChange={selectPhoto} className="pv-photo-input" />
+              <div className="pv-photo-preview">
+                {form.profilePhoto
+                  ? <img src={form.profilePhoto} alt="プロフィール写真プレビュー" />
+                  : <div className="pv-photo-placeholder">
+                      <span className="pv-photo-plus">＋</span>
+                      <span className="pv-photo-hint">写真を追加</span>
+                    </div>
+                }
+              </div>
+              <div className="pv-photo-footer">
+                <span className="pv-photo-btn">{form.profilePhoto ? '📷 写真を変更' : '📷 写真を選択'}</span>
+                <small>JPG/PNG・自動で最適化</small>
+              </div>
+            </label>
 
-        {activeSetupTab === 'プレイスタイル' && <div className="setup-stack">
-          {setupError && <div className="setup-error" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
-          <div><span className="field-caption">目的タグ（最大4つ）</span><div className="tag-choice-grid">{intentTags.map((tag) => <button type="button" key={tag} className={form.tags.includes(tag) ? 'selected' : ''} onClick={() => toggleTag(tag)}>{tag}</button>)}</div></div>
-          <div><span className="field-caption">よく使うエージェント（最大5つ）</span><div className="tag-choice-grid compact">{agents.map((agent) => <button type="button" key={agent} className={form.agents.includes(agent) ? 'selected' : ''} onClick={() => toggleAgent(agent)}>{agent}</button>)}</div></div>
-        </div>}
+            {/* Name + Riot ID */}
+            <div className="pv-text-fields">
+              <label className="pv-field">
+                <span className="pv-label">表示名 <small>(最大16文字)</small></span>
+                <input required value={form.name} maxLength="16"
+                  aria-invalid={Boolean(setupError) && !form.name?.trim()}
+                  aria-describedby={setupError ? 'setup-error' : undefined}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="例：Pairlyちゃん" />
+              </label>
+              <label className="pv-field">
+                <span className="pv-label">Riot ID</span>
+                <input required value={form.riotId} maxLength="22" data-copyable
+                  aria-invalid={Boolean(setupError) && (!form.riotId?.trim() || !/^[^#]{1,16}#[^#]{1,5}$/u.test(form.riotId.trim()))}
+                  aria-describedby={setupError ? 'setup-error' : undefined}
+                  onChange={(e) => setForm({ ...form, riotId: e.target.value })}
+                  placeholder="例：たろう#JP1" />
+                <span className="pv-hint">GameName#Tagline（日本語・英語・韓国語OK）</span>
+              </label>
+            </div>
 
-        {activeSetupTab === '自己紹介' && <div className="setup-stack">
-          <label className="email-field-label"><span>Xアカウント（任意）</span><input value={form.xHandle} maxLength="40" onChange={(e) => setForm({ ...form, xHandle: e.target.value })} placeholder="@pairly" /></label>
-          <label className="email-field-label"><span>自己紹介</span><textarea value={form.bio} maxLength="240" onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="遊ぶ時間、VC、募集したい相手など" /></label>
-          <div className="voice-record-box"><div><b>声の自己紹介</b><p>任意で20秒まで録音できます。声を載せると雰囲気が伝わりやすくなります。</p></div><button type="button" className={isRecordingVoice ? 'danger' : 'secondary'} onClick={isRecordingVoice ? stopVoiceRecording : startVoiceRecording}>{isRecordingVoice ? '録音停止' : '録音する'}</button>{form.voiceIntro && <span>録音済み</span>}</div>
-        </div>}
+            {/* Age chips */}
+            <div className="pv-field-group pv-span-all">
+              <span className="pv-label">年齢帯 <span className="pv-req">必須</span></span>
+              <div className="pv-chip-row">
+                {AGE_RANGES.map((age) => (
+                  <button type="button" key={age}
+                    className={cx('pv-chip', form.age === age && 'pv-chip--on')}
+                    aria-pressed={form.age === age}
+                    onClick={() => setForm({ ...form, age })}>
+                    {age}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {activeSetupTab === '規約' && <div className="setup-stack terms-box">
-          <h3>利用ルール</h3><p>迷惑行為、なりすまし、外部誘導、Riot Gamesの規約に反する行為は禁止です。PairlyはRiot Games公式サービスではありません。</p>
-          <label className="terms-check"><input type="checkbox" checked={form.agreed} onChange={(e) => setForm({ ...form, agreed: e.target.checked })} /> <span>利用規約と禁止事項に同意します</span></label>
-        </div>}
+            {/* Region */}
+            <label className="pv-field">
+              <span className="pv-label">地域 <span className="pv-req">必須</span></span>
+              <select required value={form.region}
+                aria-invalid={Boolean(setupError) && !form.region}
+                aria-describedby={setupError ? 'setup-error' : undefined}
+                onChange={(e) => setForm({ ...form, region: e.target.value })}>
+                <option value="">選択してください</option>
+                {regions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </label>
+
+            {/* Gender */}
+            <div className="pv-field-group">
+              <span className="pv-label">性別 <span className="pv-req">必須</span></span>
+              <div className="pv-gender-row">
+                {['男性', '女性', 'その他/未設定'].map((g) => (
+                  <button type="button" key={g}
+                    className={cx('pv-gender-btn', form.gender === g && 'pv-gender-btn--on')}
+                    aria-pressed={form.gender === g}
+                    onClick={() => setForm({ ...form, gender: g })}>
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── ランク/ロール ── */}
+        {activeSetupTab === 'ランク/ロール' && (
+          <div className="pv-rank-section">
+            {setupError && <div className="setup-error pv-span-all" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
+
+            <div className="pv-field-group">
+              <span className="pv-label">現在のランク <span className="pv-req">必須</span></span>
+              <div className="pv-rank-tiers">
+                {RANK_TIERS.map(({ tier, color, rankList }) => (
+                  <div key={tier} className="pv-rank-tier-row">
+                    <span className="pv-rank-tier-name" style={{ color }}>{tier}</span>
+                    <div className="pv-rank-badge-group">
+                      {rankList.map((rank) => (
+                        <button type="button" key={rank}
+                          className={cx('pv-rank-badge', form.rank === rank && 'pv-rank-badge--on')}
+                          style={{ '--rc': color }}
+                          aria-pressed={form.rank === rank}
+                          onClick={() => setForm({ ...form, rank })}>
+                          {rank.replace(tier !== 'Unranked' ? tier + ' ' : '', '') || rank}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pv-field-group">
+              <span className="pv-label">メインロール <span className="pv-req">必須</span></span>
+              <div className="pv-role-grid">
+                {roles.map((role) => {
+                  const info = ROLE_INFO[role] || { icon: '🎮', desc: '' };
+                  return (
+                    <button type="button" key={role}
+                      className={cx('pv-role-card', form.role === role && 'pv-role-card--on')}
+                      aria-pressed={form.role === role}
+                      onClick={() => setForm({ ...form, role })}>
+                      <span className="pv-role-icon">{info.icon}</span>
+                      <span className="pv-role-name">{role}</span>
+                      <span className="pv-role-desc">{info.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── プレイスタイル ── */}
+        {activeSetupTab === 'プレイスタイル' && (
+          <div className="setup-stack">
+            {setupError && <div className="setup-error" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
+            <div className="pv-field-group">
+              <span className="pv-label">目的タグ（最大4つ）<span className="pv-req">いずれか必須</span></span>
+              <div className="pv-chip-grid">
+                {intentTags.map((tag) => (
+                  <button type="button" key={tag}
+                    className={cx('pv-chip pv-chip--tag', form.tags.includes(tag) && 'pv-chip--on')}
+                    aria-pressed={form.tags.includes(tag)}
+                    onClick={() => toggleTag(tag)}>
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="pv-field-group">
+              <span className="pv-label">よく使うエージェント（最大5つ）</span>
+              <div className="pv-chip-grid pv-chip-grid--compact">
+                {agents.map((agent) => (
+                  <button type="button" key={agent}
+                    className={cx('pv-chip pv-chip--agent', form.agents.includes(agent) && 'pv-chip--on')}
+                    aria-pressed={form.agents.includes(agent)}
+                    onClick={() => toggleAgent(agent)}>
+                    {agent}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 追加情報 ── */}
+        {activeSetupTab === '追加情報' && (
+          <div className="setup-stack">
+            <div className="pv-field-group">
+              <span className="pv-label">VC（任意）</span>
+              <div className="pv-chip-row">
+                {vcOptions.map((vc) => (
+                  <button type="button" key={vc}
+                    className={cx('pv-chip', form.vc === vc && 'pv-chip--on')}
+                    aria-pressed={form.vc === vc}
+                    onClick={() => setForm({ ...form, vc: form.vc === vc ? '' : vc })}>
+                    {vc}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="pv-field-group">
+              <span className="pv-label">得意MAP（複数選択OK）</span>
+              <div className="pv-chip-grid">
+                {mapList.map((map) => (
+                  <button type="button" key={map}
+                    className={cx('pv-chip pv-chip--map', (form.maps || []).includes(map) && 'pv-chip--on')}
+                    aria-pressed={(form.maps || []).includes(map)}
+                    onClick={() => toggleMap(map)}>
+                    {map}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="pv-field-group">
+              <span className="pv-label">好きな武器（任意）</span>
+              <div className="pv-chip-row">
+                {favoriteWeapons.map((weapon) => (
+                  <button type="button" key={weapon}
+                    className={cx('pv-chip pv-chip--weapon', form.favoriteWeapon === weapon && 'pv-chip--on')}
+                    aria-pressed={form.favoriteWeapon === weapon}
+                    onClick={() => setForm({ ...form, favoriteWeapon: form.favoriteWeapon === weapon ? '' : weapon })}>
+                    {weapon}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 自己紹介 ── */}
+        {activeSetupTab === '自己紹介' && (
+          <div className="setup-stack">
+            <label className="pv-field">
+              <span className="pv-label">Xアカウント（任意）</span>
+              <input value={form.xHandle} maxLength="40"
+                onChange={(e) => setForm({ ...form, xHandle: e.target.value })}
+                placeholder="@pairly" />
+            </label>
+            <div className="pv-field">
+              <span className="pv-label">自己紹介 <small>(最大240文字)</small></span>
+              <textarea className="pv-bio-area" value={form.bio} maxLength="240"
+                onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                placeholder="遊ぶ時間、VC、募集したい相手、得意なことなど" rows={5} />
+              <span className="pv-char-count">{(form.bio || '').length} / 240</span>
+            </div>
+            <div className="voice-record-box">
+              <div>
+                <b>声の自己紹介</b>
+                <p>任意で20秒まで録音できます。声を載せると雰囲気が伝わりやすくなります。</p>
+              </div>
+              <button type="button" className={isRecordingVoice ? 'danger' : 'secondary'}
+                onClick={isRecordingVoice ? stopVoiceRecording : startVoiceRecording}>
+                {isRecordingVoice ? '■ 録音停止' : '🎙 録音する'}
+              </button>
+              {form.voiceIntro && <span className="pv-voice-done">✓ 録音済み</span>}
+            </div>
+          </div>
+        )}
+
+        {/* ── 規約 ── */}
+        {activeSetupTab === '規約' && (
+          <div className="setup-stack terms-box">
+            <h3>利用ルール</h3>
+            <p>迷惑行為、なりすまし、外部誘導、Riot Gamesの規約に反する行為は禁止です。PairlyはRiot Games公式サービスではありません。</p>
+            <label className="terms-check">
+              <input type="checkbox" checked={form.agreed}
+                onChange={(e) => setForm({ ...form, agreed: e.target.checked })} />
+              <span>利用規約と禁止事項に同意します</span>
+            </label>
+          </div>
+        )}
 
         <div className="email-signup-actions profile-setup-actions">
           <button type="button" className="secondary" onClick={goPrev} disabled={activeIndex === 0}>戻る</button>
