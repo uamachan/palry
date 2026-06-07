@@ -63,7 +63,7 @@ function normalizeRiotId(value) {
 
 function isRiotIdInput(input) {
   if (!(input instanceof HTMLInputElement)) return false;
-  return input.placeholder === '例：name#JP1' || input.getAttribute('data-riot-id') === 'true';
+  return input.hasAttribute('data-copyable') || input.getAttribute('data-riot-id') === 'true';
 }
 
 function validateRiotIdInput(input) {
@@ -81,7 +81,7 @@ function ensureRiotIdHint(input) {
   input.dataset.riotHintReady = 'true';
   input.setAttribute('inputmode', 'text');
   input.setAttribute('autocomplete', 'off');
-  input.setAttribute('maxlength', '32');
+  input.setAttribute('maxlength', '22');
   input.setAttribute('title', RIOT_ID_MESSAGE);
   input.setAttribute('aria-describedby', 'riot-id-help');
 
@@ -116,7 +116,7 @@ document.addEventListener('focusin', (event) => {
 document.addEventListener('submit', (event) => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
-  const input = form.querySelector('input[placeholder="例：name#JP1"], input[data-riot-id="true"]');
+  const input = form.querySelector('input[data-copyable], input[data-riot-id="true"]');
   if (!input) return;
   ensureRiotIdHint(input);
   validateRiotIdInput(input);
@@ -128,7 +128,7 @@ document.addEventListener('submit', (event) => {
 }, true);
 
 window.requestAnimationFrame(() => {
-  document.querySelectorAll('input[placeholder="例：name#JP1"], input[data-riot-id="true"]').forEach((input) => {
+  document.querySelectorAll('input[data-copyable], input[data-riot-id="true"]').forEach((input) => {
     ensureRiotIdHint(input);
     validateRiotIdInput(input);
   });
