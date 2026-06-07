@@ -359,7 +359,7 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }
 
-  const genderFilterLocked = targetGender !== 'all' && !plansData?.plans?.[plan]?.genderFilter && !entitlements.genderFilter;
+  const genderFilterLocked = !plansData?.plans?.[plan]?.genderFilter && !entitlements.genderFilter;
 
   async function refreshProfiles() {
     if (!user) return;
