@@ -1,5 +1,5 @@
 import React from 'react';
-import { cx } from '../../constants.jsx';
+import { cx, rankIconFor } from '../../constants.jsx';
 import VoiceIntroPlayer from './VoiceIntroPlayer.jsx';
 
 export default function TinderProfileCard({ profile, onReport, onBlock, swipeDir, onOpenProfile }) {
@@ -37,7 +37,10 @@ export default function TinderProfileCard({ profile, onReport, onBlock, swipeDir
           </button>
           <span className="mp-age">{profile.ageRange}</span>
         </div>
-        <p className="mp-meta">{profile.rank} · {profile.role}</p>
+        <p className="mp-meta mp-rank-meta">
+          <span className="rank-inline-icon rank-inline-icon--overlay" aria-hidden="true"><img src={rankIconFor(profile.rank)} alt="" loading="lazy" /></span>
+          <span>{profile.rank} · {profile.role}</span>
+        </p>
         <p className="mp-meta">{profile.gender}{profile.region ? ` · ${profile.region}` : ''}</p>
         {tags.length > 0 && <div className="mp-tags">{tags.slice(0, 4).map((t) => <span className="mp-tag" key={t}>{t}</span>)}</div>}
         {profile.bio && <p className="mp-bio">{profile.bio}</p>}
