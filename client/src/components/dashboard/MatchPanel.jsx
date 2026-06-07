@@ -1,35 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { cx } from '../../constants.jsx';
 import TinderProfileCard from './TinderProfileCard.jsx';
 import ProfileDetailModal from './ProfileDetailModal.jsx';
+
+function useIsMounted() {
+  const isMounted = useRef(true);
+  useEffect(() => {
+    return () => { isMounted.current = false; };
+  }, []);
+  return isMounted;
+}
 
 export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike }) {
   const [swipeDir, setSwipeDir] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [acceptingLikeId, setAcceptingLikeId] = useState('');
   const [detailProfile, setDetailProfile] = useState(null);
+  const isMounted = useIsMounted();
 
-  async function handleSwipe(type) {
+  const handleSwipe = useCallback(async (type) => {
     if (actionBusy || !current) return;
     setActionBusy(true);
     const dir = type === 'pass' ? 'left' : type === 'super' ? 'up' : 'right';
     try {
       setSwipeDir(dir);
       await new Promise((r) => setTimeout(r, 300));
+      if (!isMounted.current) return;
       setSwipeDir(null);
       await swipe(type);
     } finally {
-      setSwipeDir(null);
-      setActionBusy(false);
+      if (isMounted.current) {
+        setSwipeDir(null);
+        setActionBusy(false);
+      }
     }
-  }
+  }, [actionBusy, current, swipe, isMounted]);
 
-  async function handleAcceptLike(id) {
+  const handleAcceptLike = useCallback(async (id) => {
     if (acceptingLikeId) return;
     setAcceptingLikeId(id);
     try { await acceptLike(id); }
-    finally { setAcceptingLikeId(''); }
-  }
+    finally { 
+      if (isMounted.current) setAcceptingLikeId(''); 
+    }
+  }, [acceptingLikeId, acceptLike, isMounted]);
 
   return (
     <div className="mp-wrap">

@@ -17,19 +17,19 @@ export default function ProfileDetailModal({ profile, onClose }) {
   ];
 
   return (
-    <div className="profile-detail-modal" role="dialog" aria-modal="true">
+    <div className="profile-detail-modal" role="dialog" aria-modal="true" aria-labelledby="profile-detail-title" aria-describedby="profile-detail-desc">
       <button className="profile-detail-scrim" type="button" aria-label="閉じる" onClick={onClose}></button>
       <section className="profile-detail-panel">
-        <button className="profile-detail-close" type="button" onClick={onClose}>×</button>
+        <button className="profile-detail-close" type="button" onClick={onClose} aria-label="モーダルを閉じる">×</button>
         <div className="profile-detail-hero">
           {profile.profilePhoto
             ? <img src={profile.profilePhoto} alt={profile.name} loading="lazy" decoding="async" />
             : <div className="profile-detail-fallback">{profile.name?.slice(0, 1) || 'P'}</div>}
         </div>
-        <div className="profile-detail-body">
+        <div className="profile-detail-body" id="profile-detail-desc">
           <div className="profile-detail-head">
             <div>
-              <h2>{profile.name}</h2>
+              <h2 id="profile-detail-title">{profile.name}</h2>
               <p>{profile.gender}{profile.ageRange ? ` / ${profile.ageRange}` : ''}{profile.region ? ` / ${profile.region}` : ''}</p>
             </div>
             <span>相性 {profile.matchScore}%</span>

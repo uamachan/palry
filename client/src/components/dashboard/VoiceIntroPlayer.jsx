@@ -23,9 +23,9 @@ export default function VoiceIntroPlayer({ src, compact = false }) {
           aria-label={src ? '声の自己紹介を再生' : '声の自己紹介はありません'}
           disabled={!src}
         >
-          <span className="voice-chip-icon">{!src ? '-' : playing ? 'Ⅱ' : '▶'}</span>
+          <span className="voice-chip-icon" aria-hidden="true">{!src ? '-' : playing ? 'Ⅱ' : '▶'}</span>
           <span className="voice-chip-text">{!src ? '声がない' : playing ? '再生中' : '声を聞く'}</span>
-          <i></i><i></i><i></i>
+          <i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i>
         </button>
         {src && <audio ref={audioRef} src={src} onEnded={() => setPlaying(false)} onPause={() => setPlaying(false)} />}
       </div>
