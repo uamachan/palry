@@ -245,6 +245,14 @@ function enumValue(value, allowed, fallback = '') {
   return allowed.includes(normalized) ? normalized : fallback;
 }
 
+// クライアントの AGE_RANGES と一致させる。数値年齢（旧形式）も後方互換で受け付ける。
+const AGE_RANGE_OPTIONS = ['10代', '20代前半', '20代後半', '30代', '40代以上'];
+function cleanAgeField(value) {
+  const text = cleanText(value, 20);
+  if (AGE_RANGE_OPTIONS.includes(text)) return text;
+  return cleanAge(text); // 後方互換：数値年齢 13〜80
+}
+
 function normalizeGender(gender) {
   return enumValue(gender, allowedGenders, 'その他/未設定');
 }
@@ -420,7 +428,7 @@ function userToProfile(user) {
     id: user.id,
     name: user.name,
     gender: normalizeGender(user.gender),
-    ageRange: user.age || '年齢未設定',
+    ageRange: user.age ? (/^\d+$/.test(user.age) ? `${user.age}歳` : user.age) : '年齢未設定',
     region: normalizeRegion(user.region),
     rank: normalizeRank(user.rank),
     peakRank: normalizeRank(user.peakRank || user.rank),
@@ -801,8 +809,8 @@ app.post('/api/register', authLimiter, async (req, res) => {
   if (!payload.riotId) return res.status(400).json({ message: 'Riot IDが必要です。' });
   if (!payload.region) return res.status(400).json({ message: '地域が必要です。' });
   if (!payload.agreed) return res.status(400).json({ message: '利用規約への同意が必要です。' });
-  const safeAge = cleanAge(payload.age);
-  if (!safeAge) return res.status(400).json({ message: '年齢は13〜80歳で入力してください。' });
+  const safeAge = cleanAgeField(payload.age);
+  if (!safeAge) return res.status(400).json({ message: '年齢帯を選択してください。' });
   const profileEnums = validateProfileEnums(payload);
   if (profileEnums.status) return res.status(profileEnums.status).json({ message: profileEnums.message });
 
@@ -863,8 +871,8 @@ app.put('/api/profile', requireAuth, async (req, res) => {
   if (!payload.name) return res.status(400).json({ message: '表示名が必要です。' });
   if (!payload.riotId) return res.status(400).json({ message: 'Riot IDが必要です。' });
   if (!payload.region) return res.status(400).json({ message: '地域が必要です。' });
-  const safeAge = cleanAge(payload.age);
-  if (!safeAge) return res.status(400).json({ message: '年齢は13〜80歳で入力してください。' });
+  const safeAge = cleanAgeField(payload.age);
+  if (!safeAge) return res.status(400).json({ message: '年齢帯を選択してください。' });
 
   const riotId = cleanText(payload.riotId, 60);
   const result = await updateJson('users.json', [], (users) => {
