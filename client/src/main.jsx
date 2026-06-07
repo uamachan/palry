@@ -19,6 +19,7 @@ import './profile-setup.css';
 import './profile-validation.css';
 import './design-polish.css';
 import './matching-icons.css';
+import './profile-visual.css';
 
 let firebaseModsPromise = null;
 function getFirebaseMods() {
@@ -45,11 +46,11 @@ function getFirebaseMods() {
 }
 
 function initialForm() {
-  return { email: '', emailConfirm: '', password: '', name: '', riotId: '', age: '', gender: '', region: '', profilePhoto: '', rank: 'Gold 1', role: defaultRole, tags: [], agents: [], xHandle: '', bio: '', voiceIntro: '', agreed: false };
+  return { email: '', emailConfirm: '', password: '', name: '', riotId: '', age: '', gender: '', region: '', profilePhoto: '', rank: 'Gold 1', role: defaultRole, tags: [], agents: [], xHandle: '', bio: '', voiceIntro: '', agreed: false, vc: '', maps: [], favoriteWeapon: '' };
 }
 
 function publicUserToForm(user) {
-  return { ...initialForm(), ...user, tags: user?.tags || [], agents: user?.agents || [], agreed: true };
+  return { ...initialForm(), ...user, tags: user?.tags || [], agents: user?.agents || [], maps: user?.maps || [], agreed: true };
 }
 
 function firebaseErrorMessage(error) {

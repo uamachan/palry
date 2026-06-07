@@ -131,3 +131,13 @@ export async function resizePhoto(file, maxSize = 720, quality = 0.72) {
     image.src = sourceDataUrl;
   });
 }
+
+export const vcOptions = ['なし', 'Discord', 'Skype', 'その他'];
+
+export const maps = [
+  'アセント', 'スプリット', 'ヘイヴン', 'バインド',
+  'アイスボックス', 'ブリーズ', 'フラクチャー', 'パール',
+  'ロータス', 'サンセット', 'アビス', 'カロード'
+];
+
+export const favoriteWeapons = ['Vandal', 'Phantom', 'Operator', 'Sheriff', 'Ghost', 'Marshal', 'Judge', 'Odin'];
