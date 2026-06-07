@@ -6,18 +6,33 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 本番のプロフィール/DM/マッチングデータは、リポジトリ内ではなく永続ディスクへ保存する。
-// Render では Persistent Disk の mount path を /var/data にする運用を想定し、
-// DATA_DIR 未設定でも /var/data/pairly を既定値にする。
+// Render / Docker では Persistent Disk / volume の mount path を /data にする運用を想定し、
+// DATA_DIR 未設定でも /data を既定値にする。
 // ローカル開発のみ server/data を使う。
 const isProduction = process.env.NODE_ENV === 'production';
 const dataDir = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : isProduction
-    ? '/var/data/pairly'
+    ? '/data'
     : path.resolve(__dirname, '../data');
 
+function envInt(name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < min || value > max) {
+    console.warn(`[jsonStore] Invalid ${name}; using ${fallback}.`);
+    return fallback;
+  }
+  return value;
+}
+
+const JSON_LOCK_TIMEOUT_MS = envInt('JSON_LOCK_TIMEOUT_MS', 10000, { min: 100, max: 120000 });
+const JSON_LOCK_STALE_MS = envInt('JSON_LOCK_STALE_MS', 30000, { min: 1000, max: 300000 });
+const JSON_LOCK_RETRY_MS = envInt('JSON_LOCK_RETRY_MS', 25, { min: 5, max: 1000 });
+
 if (isProduction && !process.env.DATA_DIR) {
-  console.warn('[jsonStore] DATA_DIR is not set. Using /var/data/pairly. Mount a persistent disk at /var/data in production.');
+  console.warn('[jsonStore] DATA_DIR is not set. Using /data. Mount a persistent disk at /data in production.');
 }
 
 export function getDataDir() {
@@ -58,7 +73,68 @@ export async function readJson(file, fallback) {
 // 書き込み途中のファイル破損を防ぐ。
 const writeQueues = new Map();
 
-async function atomicWrite(file, data) {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function releaseFileLock(lockPath, token) {
+  try {
+    const current = await fs.readFile(lockPath, 'utf8');
+    if (current.includes(token)) {
+      await fs.rm(lockPath, { force: true });
+    }
+  } catch {
+    // ロック解除失敗は後続の stale lock 回収に任せる。
+  }
+}
+
+async function withFileLock(file, task) {
+  await ensureDataDir();
+  const target = safeFilePath(file);
+  const lockPath = `${target}.lock`;
+  const token = `${process.pid}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`;
+  const deadline = Date.now() + JSON_LOCK_TIMEOUT_MS;
+  let handle = null;
+
+  while (true) {
+    try {
+      handle = await fs.open(lockPath, 'wx');
+      await handle.writeFile(JSON.stringify({ token, pid: process.pid, createdAt: new Date().toISOString() }), 'utf8');
+      await handle.close();
+      handle = null;
+      break;
+    } catch (error) {
+      if (handle) {
+        await handle.close().catch(() => {});
+        handle = null;
+      }
+      if (error.code !== 'EEXIST') throw error;
+
+      const stat = await fs.stat(lockPath).catch((statError) => {
+        if (statError.code === 'ENOENT') return null;
+        throw statError;
+      });
+      if (stat && Date.now() - stat.mtimeMs > JSON_LOCK_STALE_MS) {
+        await fs.rm(lockPath, { force: true }).catch(() => {});
+        continue;
+      }
+      if (Date.now() >= deadline) {
+        const lockError = new Error(`Timed out waiting for data file lock: ${file}`);
+        lockError.status = 503;
+        throw lockError;
+      }
+      await sleep(Math.min(JSON_LOCK_RETRY_MS, Math.max(1, deadline - Date.now())));
+    }
+  }
+
+  try {
+    return await task();
+  } finally {
+    await releaseFileLock(lockPath, token);
+  }
+}
+
+async function atomicWriteUnlocked(file, data) {
   await ensureDataDir();
   const target = safeFilePath(file);
   // 同一ディレクトリ内の一時ファイルへ書いてから rename（同一FS上では原子的）。
@@ -70,6 +146,10 @@ async function atomicWrite(file, data) {
     await fs.rm(tmp, { force: true }).catch(() => {});
     throw error;
   }
+}
+
+function atomicWrite(file, data) {
+  return withFileLock(file, () => atomicWriteUnlocked(file, data));
 }
 
 export function writeJson(file, data) {
@@ -91,12 +171,14 @@ export function updateJson(file, fallback, mutator) {
   const previous = writeQueues.get(file) || Promise.resolve();
   const next = previous
     .catch(() => {})
-    .then(async () => {
+    .then(() => withFileLock(file, async () => {
       const current = await readJson(file, fallback);
-      const { value, result } = await mutator(current);
-      if (value !== undefined) await atomicWrite(file, value);
+      const mutation = await mutator(current);
+      if (!mutation || typeof mutation !== 'object') return mutation;
+      const { value, result } = mutation;
+      if (value !== undefined) await atomicWriteUnlocked(file, value);
       return result;
-    });
+    }));
   writeQueues.set(file, next);
   next.finally(() => {
     if (writeQueues.get(file) === next) writeQueues.delete(file);
