@@ -12,6 +12,19 @@
   .pv-basic-grid { grid-template-columns: 1fr; }
 }
 .pv-span-all { grid-column: 1 / -1; }
+.pv-basic-grid > .pv-field,
+.pv-basic-grid > .pv-field-group {
+  position: relative;
+  z-index: 3;
+  min-width: 0;
+}
+.pv-basic-grid select {
+  min-height: 52px;
+  line-height: 1.25;
+  display: block;
+  position: relative;
+  z-index: 4;
+}
 
 /* ── 写真アップロードカード ── */
 .pv-photo-card {
