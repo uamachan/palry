@@ -1,0 +1,146 @@
+/* ── デザイントークン（唯一の真実） ──────────────────────────────
+   色・余白・角丸・影・z-index をここに集約する。
+   既存スタイルを壊さないよう、現行の配色に合わせた値を変数化している。
+   新規コンポーネントは原則これらの変数を参照する。 */
+:root {
+  /* 配色 */
+  --color-bg: #fffdf9;
+  --color-surface: #ffffff;
+  --color-border: #e8e0d6;
+  --color-accent: #c4b09a;
+  --color-accent-strong: #a8906f;
+  --color-text: #2b2b2b;
+  --color-text-muted: #7d7468;
+  --color-danger: #d8584f;
+  --color-success: #4c9a76;
+
+  /* 角丸 */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  /* 余白スケール（4pxベース） */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* タイポグラフィ */
+  --font-sans: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+
+  /* 影 */
+  --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.06);
+  --shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.12);
+
+  /* レイヤー */
+  --z-header: 100;
+  --z-modal: 1000;
+  --z-toast: 1100;
+}
+
+/* ── 再利用 UI プリミティブの共通スタイル ───────────────────── */
+
+/* Skeleton: 実レイアウトと同形のプレースホルダ（CLS抑制） */
+@keyframes pairly-skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.ui-skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, #efe9e1 25%, #f6f1ea 37%, #efe9e1 63%);
+  background-size: 200% 100%;
+  animation: pairly-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton { animation: none; }
+}
+.ui-skeleton-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.ui-skeleton-list { display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* EmptyState / ErrorState: 空・エラーの統一表示 */
+.ui-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.ui-state h4 { margin: 0; color: var(--color-text); font-size: 1rem; }
+.ui-state p { margin: 0; font-size: 0.9rem; }
+.ui-state .ui-state-icon { font-size: 2rem; opacity: 0.7; }
+
+/* アプリ全体のクラッシュ代替 UI */
+.ui-error-boundary {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  padding: var(--space-5);
+}
+.ui-error-boundary .ui-error-card {
+  max-width: 420px;
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-family: var(--font-sans);
+  color: var(--color-text);
+}
+
+/* 同意バナー（アナリティクス） */
+.ui-consent {
+  position: fixed;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: var(--z-toast);
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  padding: var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-sans);
+}
+.ui-consent p { margin: 0; flex: 1 1 240px; font-size: 0.85rem; color: var(--color-text-muted); }
+.ui-consent .ui-consent-actions { display: flex; gap: var(--space-2); }
+
+/* 404 */
+.ui-notfound {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  text-align: center;
+  padding: var(--space-6);
+}
+.ui-notfound .ui-notfound-code { font-size: 4rem; font-weight: 800; color: var(--color-accent); line-height: 1; }

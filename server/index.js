@@ -78,18 +78,26 @@ app.use(cors({
 // Firebase 認証（Google ログインの iframe/gapi）と data URL の写真/音声を
 // 壊さないよう必要な origin だけ許可する。開発は Vite の HMR/inline を壊すため付与しない。
 const firebaseAuthDomain = cleanText(process.env.VITE_FIREBASE_AUTH_DOMAIN, 200);
+// アナリティクス/監視を有効化した時に必要なドメインを CSP に足す。
+// GA（VITE_GA_ID）が設定されていれば GA ドメインを自動許可。
+// それ以外は CSP_SCRIPT_SRC_EXTRA / CSP_CONNECT_SRC_EXTRA（スペース区切り）で注入する。
+const gaEnabled = Boolean(cleanText(process.env.VITE_GA_ID, 60));
+const gaScriptSrc = gaEnabled ? ' https://www.googletagmanager.com' : '';
+const gaConnectSrc = gaEnabled ? ' https://www.google-analytics.com https://*.google-analytics.com https://*.googletagmanager.com' : '';
+const extraScriptSrc = process.env.CSP_SCRIPT_SRC_EXTRA ? ` ${process.env.CSP_SCRIPT_SRC_EXTRA.trim()}` : '';
+const extraConnectSrc = process.env.CSP_CONNECT_SRC_EXTRA ? ` ${process.env.CSP_CONNECT_SRC_EXTRA.trim()}` : '';
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "script-src 'self' https://apis.google.com",
+  `script-src 'self' https://apis.google.com${gaScriptSrc}${extraScriptSrc}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "media-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.googleapis.com",
+  `connect-src 'self' https://*.googleapis.com${gaConnectSrc}${extraConnectSrc}`,
   `frame-src 'self' ${firebaseAuthDomain ? `https://${firebaseAuthDomain} ` : ''}https://*.firebaseapp.com https://accounts.google.com https://apis.google.com`,
   "worker-src 'self' blob:"
 ].join('; ');
