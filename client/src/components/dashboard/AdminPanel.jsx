@@ -3,6 +3,7 @@ import React from 'react';
 const AUDIT_LABELS = {
   report: '通報', block: 'ブロック', auto_hide: '自動非表示',
   admin_view_reports: '管理閲覧', admin_unhide: '非表示解除',
+  demo_purchase_plan: 'デモプラン購入', demo_purchase_item: 'デモ単品購入',
 };
 
 export default function AdminPanel({ reports, flaggedUsers = [], unhideUser, auditLog = [] }) {

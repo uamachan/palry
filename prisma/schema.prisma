@@ -1,0 +1,223 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                  String    @id @db.VarChar(80)
+  source              String    @default("user") @db.VarChar(40)
+  isLegacyProfile     Boolean   @default(false) @map("is_legacy_profile")
+  firebaseUid         String?   @unique @map("firebase_uid") @db.VarChar(128)
+  email               String?   @unique @db.VarChar(190)
+  name                String    @db.VarChar(80)
+  gender              String?   @db.VarChar(40)
+  riotId              String?   @unique @map("riot_id") @db.VarChar(80)
+  age                 Int?
+  ageRange            String?   @map("age_range") @db.VarChar(40)
+  region              String?   @db.VarChar(60)
+  rank                String?   @db.VarChar(60)
+  peakRank            String?   @map("peak_rank") @db.VarChar(60)
+  role                String?   @db.VarChar(60)
+  agents              Json?
+  tags                Json?
+  modes               Json?
+  reasons             Json?
+  xHandle             String?   @map("x_handle") @db.VarChar(80)
+  bio                 String?   @db.Text
+  profilePhoto        String?   @map("profile_photo") @db.Text
+  voiceIntro          String?   @map("voice_intro") @db.Text
+  voice               String?   @db.VarChar(120)
+  activeTime          String?   @map("active_time") @db.VarChar(120)
+  opener              String?   @db.Text
+  matchScore          Int?      @map("match_score")
+  matchChance         Float?    @map("match_chance")
+  trust               Int?
+  guarded             Boolean?
+  plan                String    @default("FREE") @db.VarChar(20)
+  verified            Boolean   @default(false)
+  autoHidden          Boolean   @default(false) @map("auto_hidden")
+  autoHiddenAt        DateTime? @map("auto_hidden_at") @db.Timestamptz(3)
+  autoHiddenReporters Int?      @map("auto_hidden_reporters")
+  agreedAt            DateTime? @map("agreed_at") @db.Timestamptz(3)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime? @map("updated_at") @db.Timestamptz(3)
+  legacyData          Json?     @map("legacy_data")
+
+  likesSent         Like[]           @relation("LikeFrom")
+  likesReceived     Like[]           @relation("LikeTo")
+  receivedLikesFor  ReceivedLike[]   @relation("ReceivedLikeFor")
+  receivedLikesFrom ReceivedLike[]   @relation("ReceivedLikeFrom")
+  matchesOwned      Match[]          @relation("MatchOwner")
+  matchesAsProfile  Match[]          @relation("MatchProfile")
+  messagesSent      Message[]        @relation("MessageSender")
+  blocksMade        Block[]          @relation("BlockOwner")
+  blockedBy         Block[]          @relation("BlockProfile")
+  reportsMade       Report[]         @relation("ReportReporter")
+  reportsReceived   Report[]         @relation("ReportProfile")
+  purchases         Purchase[]
+  singlePurchases   SinglePurchase[]
+
+  @@index([autoHidden, createdAt])
+  @@index([source])
+  @@map("users")
+}
+
+model Like {
+  id         String   @id @db.VarChar(80)
+  fromUserId String   @map("from_user_id") @db.VarChar(80)
+  toUserId   String   @map("to_user_id") @db.VarChar(80)
+  type       String   @default("like") @db.VarChar(20)
+  plan       String?  @db.VarChar(20)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  fromUser User @relation("LikeFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("LikeTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId])
+  @@index([fromUserId, createdAt])
+  @@index([toUserId, createdAt])
+  @@map("likes")
+}
+
+model ReceivedLike {
+  id           String    @id @db.VarChar(80)
+  forUserId    String    @map("for_user_id") @db.VarChar(80)
+  fromUserId   String    @map("from_user_id") @db.VarChar(80)
+  type         String    @default("like") @db.VarChar(20)
+  status       String    @default("pending") @db.VarChar(30)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  acceptedAt   DateTime? @map("accepted_at") @db.Timestamptz(3)
+  autoHiddenAt DateTime? @map("auto_hidden_at") @db.Timestamptz(3)
+  blockedAt    DateTime? @map("blocked_at") @db.Timestamptz(3)
+  unhiddenAt   DateTime? @map("unhidden_at") @db.Timestamptz(3)
+
+  forUser  User @relation("ReceivedLikeFor", fields: [forUserId], references: [id], onDelete: Cascade)
+  fromUser User @relation("ReceivedLikeFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+
+  @@index([forUserId, status, createdAt])
+  @@index([fromUserId, status, createdAt])
+  @@map("received_likes")
+}
+
+model Match {
+  id             String    @id @db.VarChar(80)
+  userId         String    @map("user_id") @db.VarChar(80)
+  profileId      String    @map("profile_id") @db.VarChar(80)
+  profileName    String?   @map("profile_name") @db.VarChar(80)
+  opener         String?   @db.Text
+  conversationId String?   @map("conversation_id") @db.VarChar(80)
+  dmUnlocked     Boolean   @default(true) @map("dm_unlocked")
+  readAt         DateTime? @map("read_at") @db.Timestamptz(3)
+  blockedAt      DateTime? @map("blocked_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  owner    User      @relation("MatchOwner", fields: [userId], references: [id], onDelete: Cascade)
+  profile  User      @relation("MatchProfile", fields: [profileId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([userId, profileId])
+  @@index([conversationId, createdAt])
+  @@index([userId, dmUnlocked, createdAt])
+  @@map("matches")
+}
+
+model Message {
+  id             String    @id @db.VarChar(80)
+  matchId        String?   @map("match_id") @db.VarChar(80)
+  conversationId String?   @map("conversation_id") @db.VarChar(80)
+  senderUserId   String?   @map("sender_user_id") @db.VarChar(80)
+  sender         String?   @db.VarChar(20)
+  userId         String?   @map("legacy_user_id") @db.VarChar(80)
+  profileId      String?   @map("legacy_profile_id") @db.VarChar(80)
+  body           String    @db.VarChar(500)
+  readAt         DateTime? @map("read_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  match      Match? @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  senderUser User?  @relation("MessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@index([matchId, createdAt])
+  @@index([senderUserId, createdAt])
+  @@map("messages")
+}
+
+model Block {
+  id        String   @id @db.VarChar(80)
+  userId    String   @map("user_id") @db.VarChar(80)
+  profileId String   @map("profile_id") @db.VarChar(80)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  owner   User @relation("BlockOwner", fields: [userId], references: [id], onDelete: Cascade)
+  profile User @relation("BlockProfile", fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, profileId])
+  @@index([profileId, createdAt])
+  @@map("blocks")
+}
+
+model Report {
+  id             String    @id @db.VarChar(80)
+  reporterUserId String    @map("reporter_user_id") @db.VarChar(80)
+  profileId      String    @map("profile_id") @db.VarChar(80)
+  reason         String    @db.VarChar(120)
+  status         String    @default("open") @db.VarChar(30)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  dismissedAt    DateTime? @map("dismissed_at") @db.Timestamptz(3)
+
+  reporter User @relation("ReportReporter", fields: [reporterUserId], references: [id], onDelete: Cascade)
+  profile  User @relation("ReportProfile", fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, status, createdAt])
+  @@index([reporterUserId, createdAt])
+  @@map("reports")
+}
+
+model AuditLog {
+  id        String   @id @db.VarChar(80)
+  action    String   @db.VarChar(80)
+  actorId   String?  @map("actor_id") @db.VarChar(80)
+  targetId  String?  @map("target_id") @db.VarChar(80)
+  meta      Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
+model Purchase {
+  id        String   @id @db.VarChar(80)
+  userId    String   @map("user_id") @db.VarChar(80)
+  plan      String   @db.VarChar(20)
+  amount    Int
+  status    String   @db.VarChar(30)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("purchases")
+}
+
+model SinglePurchase {
+  id        String    @id @db.VarChar(80)
+  userId    String    @map("user_id") @db.VarChar(80)
+  item      String    @db.VarChar(80)
+  perk      String    @db.VarChar(40)
+  kind      String    @db.VarChar(30)
+  amount    Int
+  status    String    @db.VarChar(30)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(3)
+  remaining Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, perk, expiresAt])
+  @@index([userId, kind, createdAt])
+  @@map("single_purchases")
+}

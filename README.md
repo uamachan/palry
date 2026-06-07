@@ -23,7 +23,7 @@ PRODUCTION_REVIEW.md
 ```
 
 結論として、現在の構成は **Render単一Web Service + Persistent Disk** での小規模公開を推奨します。
-本格運用では JSON 保存から DB への移行を推奨します。
+本格運用では JSON 保存から DB への移行を推奨します。PostgreSQL/Prisma への移行土台は `docs/DB_MIGRATION.md` にまとめています。
 
 ## プロフィールの永続保存
 
@@ -47,7 +47,7 @@ Pairly は Firebase Authentication のログインアカウントと、サーバ
 本番の既定保存先は以下です。
 
 ```bash
-DATA_DIR=/var/data/pairly
+DATA_DIR=/data
 ```
 
 `DATA_DIR` の中に以下のようなデータが保存されます。
@@ -68,11 +68,11 @@ Renderで運用する場合は、サービスに **Persistent Disk** を追加�
 推奨設定:
 
 ```txt
-Mount Path: /var/data
-DATA_DIR: /var/data/pairly
+Mount Path: /data
+DATA_DIR: /data
 ```
 
-`DATA_DIR` を設定しない場合でも本番では `/var/data/pairly` を使いますが、永続ディスクが `/var/data` にマウントされていないと、再デプロイや再起動でデータが消える可能性があります。
+`DATA_DIR` を設定しない場合でも本番では `/data` を使いますが、永続ディスクが `/data` にマウントされていないと、再デプロイや再起動でデータが消える可能性があります。
 
 再ログインしてプロフィールが消える場合は、ほぼ以下のどちらかです。
 
@@ -81,6 +81,19 @@ DATA_DIR: /var/data/pairly
 
 完全に長期運用する場合は、JSONファイル保存ではなく Supabase / PostgreSQL / Firebase Firestore などのDB化を推奨します。
 ただし現在の構成でも、`DATA_DIR` を永続ディスクに向ければプロフィールデータはアカウントに紐づいたまま保存されます。
+
+## PostgreSQL移行の準備
+
+Prisma schema と JSON import script を用意しています。
+
+```bash
+npm run db:validate
+npm run db:migrate
+npm run db:import-json:dry-run
+npm run db:import-json
+```
+
+詳しい手順は `docs/DB_MIGRATION.md` を確認してください。
 
 ## 起動方法
 

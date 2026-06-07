@@ -3,7 +3,7 @@ import cors from 'cors';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readJson, writeJson, updateJson, uid } from './lib/jsonStore.js';
+import { readJson, updateJson, uid } from './lib/jsonStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,12 +11,28 @@ loadLocalEnv();
 const app = express();
 // Express の既定ヘッダ "X-Powered-By: Express" を消し、サーバー実装の露出を減らす。
 app.disable('x-powered-by');
-const port = Number(process.env.PORT || 3001);
+const port = envInt('PORT', 3001, { min: 1, max: 65535 });
 const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+function envInt(name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < min || value > max) {
+    console.warn(`[config] Invalid ${name}; using ${fallback}.`);
+    return fallback;
+  }
+  return value;
+}
+
+function toNonNegativeInt(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
+}
 
 function validateProductionConfig() {
   if (!isProduction) return;
@@ -39,26 +55,36 @@ if (isProduction) app.set('trust proxy', 1);
 // シンプルなインメモリ・レート制限（固定ウィンドウ）。
 // 注意: 複数インスタンス構成では各インスタンスごとの制限になる。
 // 本格運用では Redis ベース等の共有ストアへ置き換える。
-function rateLimit({ windowMs, max, message }) {
-  const hits = new Map(); // ip -> { count, resetAt }
+function requestIp(req) {
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+function accountRateLimitKey(req) {
+  return req.authedUser?.id ? `user:${req.authedUser.id}` : `ip:${requestIp(req)}`;
+}
+
+function rateLimit({ windowMs, max, message, keyGenerator }) {
+  const limitWindowMs = Number.isFinite(windowMs) && windowMs > 0 ? windowMs : 60 * 1000;
+  const limitMax = Number.isFinite(max) && max > 0 ? Math.floor(max) : 1;
+  const hits = new Map(); // key -> { count, resetAt }
   // 期限切れエントリを定期的に掃除してメモリ増加を防ぐ。
   const cleaner = setInterval(() => {
     const now = Date.now();
     for (const [ip, entry] of hits) {
       if (entry.resetAt <= now) hits.delete(ip);
     }
-  }, windowMs);
+  }, limitWindowMs);
   cleaner.unref?.(); // この timer でプロセスを生かし続けない
   return (req, res, next) => {
     const now = Date.now();
-    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
-    let entry = hits.get(ip);
+    const key = keyGenerator ? keyGenerator(req) : `ip:${requestIp(req)}`;
+    let entry = hits.get(key);
     if (!entry || entry.resetAt <= now) {
-      entry = { count: 0, resetAt: now + windowMs };
-      hits.set(ip, entry);
+      entry = { count: 0, resetAt: now + limitWindowMs };
+      hits.set(key, entry);
     }
     entry.count += 1;
-    if (entry.count > max) {
+    if (entry.count > limitMax) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
       res.setHeader('Retry-After', String(retryAfter));
       return res.status(429).json({ message: message || 'リクエストが多すぎます。しばらくしてからお試しください。' });
@@ -116,11 +142,24 @@ app.use((req, res, next) => {
 });
 
 // 全 API への緩めの制限と、認証系エンドポイントへの厳しめの制限。
-const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: Number(process.env.RATE_LIMIT_API_PER_MIN || 120) });
-const authLimiter = rateLimit({ windowMs: 60 * 1000, max: Number(process.env.RATE_LIMIT_AUTH_PER_MIN || 20), message: '認証の試行が多すぎます。しばらくしてからお試しください。' });
-const reportLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, message: '通報の送信が多すぎます。しばらくしてからお試しください。' });
-// DM送信はグローバル制限より厳しめに（別文面の連投によるスパム/フラッディング防止）。
-const dmLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, message: 'メッセージの送信が多すぎます。しばらくしてからお試しください。' });
+const RATE_LIMIT_API_PER_MIN = envInt('RATE_LIMIT_API_PER_MIN', 120, { min: 1, max: 10000 });
+const RATE_LIMIT_AUTH_PER_MIN = envInt('RATE_LIMIT_AUTH_PER_MIN', 20, { min: 1, max: 1000 });
+const RATE_LIMIT_REPORT_PER_MIN = envInt('RATE_LIMIT_REPORT_PER_MIN', 10, { min: 1, max: 1000 });
+const RATE_LIMIT_DM_PER_MIN = envInt('RATE_LIMIT_DM_PER_MIN', 30, { min: 1, max: 1000 });
+const MAX_REPORTS_PER_DAY = envInt('MAX_REPORTS_PER_DAY', 20, { min: 1, max: 1000 });
+const REPORT_AUTO_HIDE_THRESHOLD = envInt('REPORT_AUTO_HIDE_THRESHOLD', 3, { min: 1, max: 1000 });
+const MAX_AUDIT_EVENTS = envInt('MAX_AUDIT_EVENTS', 5000, { min: 100, max: 100000 });
+const MAX_REPORTS_STORED = envInt('MAX_REPORTS_STORED', 10000, { min: 100, max: 200000 });
+const MAX_MESSAGES_STORED = envInt('MAX_MESSAGES_STORED', 50000, { min: 1000, max: 500000 });
+const DM_THREAD_MESSAGE_LIMIT = envInt('DM_THREAD_MESSAGE_LIMIT', 100, { min: 1, max: 500 });
+const DM_THREADS_LIMIT = envInt('DM_THREADS_LIMIT', 100, { min: 1, max: 500 });
+const RECEIVED_LIKES_LIMIT = envInt('RECEIVED_LIKES_LIMIT', 200, { min: 1, max: 1000 });
+const ADMIN_REPORTS_LIMIT = envInt('ADMIN_REPORTS_LIMIT', 200, { min: 1, max: 1000 });
+
+const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: RATE_LIMIT_API_PER_MIN });
+const authLimiter = rateLimit({ windowMs: 60 * 1000, max: RATE_LIMIT_AUTH_PER_MIN, message: '認証の試行が多すぎます。しばらくしてからお試しください。' });
+const reportLimiter = rateLimit({ windowMs: 60 * 1000, max: RATE_LIMIT_REPORT_PER_MIN, keyGenerator: accountRateLimitKey, message: '通報の送信が多すぎます。しばらくしてからお試しください。' });
+const dmLimiter = rateLimit({ windowMs: 60 * 1000, max: RATE_LIMIT_DM_PER_MIN, keyGenerator: accountRateLimitKey, message: 'メッセージの送信が多すぎます。しばらくしてからお試しください。' });
 app.use('/api', apiLimiter);
 
 validateProductionConfig();
@@ -174,11 +213,65 @@ const singleItemConfig = {
   'プロフィール目立たせ7日': { perk: 'spotlight', kind: 'timed', durationMs: 7 * DAY_MS }
 };
 
+const allowedGenders = ['男性', '女性', 'その他/未設定'];
+const valorantRanks = [
+  'Unranked',
+  'Iron 1', 'Iron 2', 'Iron 3',
+  'Bronze 1', 'Bronze 2', 'Bronze 3',
+  'Silver 1', 'Silver 2', 'Silver 3',
+  'Gold 1', 'Gold 2', 'Gold 3',
+  'Platinum 1', 'Platinum 2', 'Platinum 3',
+  'Diamond 1', 'Diamond 2', 'Diamond 3',
+  'Ascendant 1', 'Ascendant 2', 'Ascendant 3',
+  'Immortal 1', 'Immortal 2', 'Immortal 3',
+  'Radiant'
+];
 const valorantRoles = ['デュエリスト', 'イニシエーター', 'コントローラー', 'センチネル'];
+const regions = ['北海道', '東北', '関東', '甲信越', '北陸', '東海', '近畿', '中国', '四国', '九州', '沖縄', '海外'];
+const rankAliases = new Map([
+  ['Iron', 'Iron 1'],
+  ['Bronze', 'Bronze 1'],
+  ['Silver', 'Silver 1'],
+  ['Gold', 'Gold 1'],
+  ['Platinum', 'Platinum 1'],
+  ['Diamond', 'Diamond 1'],
+  ['Ascendant', 'Ascendant 1'],
+  ['Immortal', 'Immortal 1']
+]);
+
+function enumValue(value, allowed, fallback = '') {
+  const normalized = cleanText(value, 60);
+  return allowed.includes(normalized) ? normalized : fallback;
+}
+
+function normalizeGender(gender) {
+  return enumValue(gender, allowedGenders, 'その他/未設定');
+}
+
+function normalizeRank(rank) {
+  const value = cleanText(rank, 60);
+  return enumValue(rankAliases.get(value) || value, valorantRanks, 'Gold 1');
+}
 
 function normalizeRole(role) {
-  const value = cleanText(role, 30);
-  return valorantRoles.includes(value) ? value : 'コントローラー';
+  return enumValue(role, valorantRoles, 'デュエリスト');
+}
+
+function normalizeRegion(region) {
+  return enumValue(region, regions, '');
+}
+
+function validateProfileEnums(payload, existing = {}) {
+  const gender = enumValue(payload.gender, allowedGenders);
+  if (!gender) return { status: 400, message: '性別の値が不正です。' };
+  const region = enumValue(payload.region, regions);
+  if (!region) return { status: 400, message: '地域の値が不正です。' };
+  const rankInput = cleanText(payload.rank || existing.rank || 'Gold 1', 60);
+  const rank = enumValue(rankAliases.get(rankInput) || rankInput, valorantRanks);
+  if (!rank) return { status: 400, message: 'ランクの値が不正です。' };
+  const role = enumValue(payload.role || existing.role || 'デュエリスト', valorantRoles);
+  if (!role) return { status: 400, message: 'ロールの値が不正です。' };
+  return { gender, region, rank, role };
 }
 
 function loadLocalEnv() {
@@ -264,6 +357,17 @@ function publicUser(user) {
   return safeUser;
 }
 
+function isVisibleUser(user) {
+  return Boolean(user?.firebaseUid) && !user.autoHidden;
+}
+
+function pairBlocked(blocks, aId, bId) {
+  return blocks.some((block) =>
+    (block.userId === aId && block.profileId === bId) ||
+    (block.userId === bId && block.profileId === aId)
+  );
+}
+
 function emailKey(email) {
   return cleanText(email, 120).toLowerCase();
 }
@@ -283,12 +387,10 @@ function isAdmin(user) {
 // 通報の悪用対策しきい値（環境変数で調整可能）。
 // MAX_REPORTS_PER_DAY: 1アカウントが1日に出せる通報数の上限（大量通報の抑止／永続=reports.json基準）。
 // REPORT_AUTO_HIDE_THRESHOLD: 異なる通報者がこの人数に達したら候補から自動非表示にする。
-const MAX_REPORTS_PER_DAY = Number(process.env.MAX_REPORTS_PER_DAY || 20);
-const REPORT_AUTO_HIDE_THRESHOLD = Number(process.env.REPORT_AUTO_HIDE_THRESHOLD || 3);
 const REPORT_AUTO_HIDE_WINDOW_MS = 30 * DAY_MS;
 
 function clientIp(req) {
-  return req.ip || req.socket?.remoteAddress || 'unknown';
+  return requestIp(req);
 }
 
 // 監査ログ（append-only・上限5000件）。ブロック/通報/管理操作などの追跡用。
@@ -297,7 +399,7 @@ function appendAudit(action, actorId, targetId, meta = {}) {
   return updateJson('audit.json', [], (log) => {
     const entry = { id: uid('audit'), action, actorId: actorId || null, targetId: targetId || null, meta, createdAt: new Date().toISOString() };
     const next = [entry, ...log];
-    return { value: next.length > 5000 ? next.slice(0, 5000) : next, result: entry };
+    return { value: next.length > MAX_AUDIT_EVENTS ? next.slice(0, MAX_AUDIT_EVENTS) : next, result: entry };
   }).catch((error) => console.error('[audit] write failed', error));
 }
 
@@ -344,11 +446,11 @@ function userToProfile(user) {
   return {
     id: user.id,
     name: user.name,
-    gender: user.gender,
+    gender: normalizeGender(user.gender),
     ageRange: user.age ? `${user.age}歳` : '年齢未設定',
-    region: user.region || '',
-    rank: user.rank || 'Gold',
-    peakRank: user.peakRank || user.rank || '',
+    region: normalizeRegion(user.region),
+    rank: normalizeRank(user.rank),
+    peakRank: normalizeRank(user.peakRank || user.rank),
     role: normalizeRole(user.role),
     tags: Array.isArray(user.tags) ? user.tags : [],
     modes: Array.isArray(user.modes) ? user.modes : [],
@@ -376,7 +478,7 @@ async function readCandidateProfiles(excludeUserId = '') {
   const users = await readJson('users.json', []);
   return users
     // autoHidden（複数通報で自動非表示）は新規候補から除外する。既存マッチ/DMには影響しない。
-    .filter((user) => user.firebaseUid && user.id !== excludeUserId && !user.autoHidden)
+    .filter((user) => isVisibleUser(user) && user.id !== excludeUserId)
     .map((user) => ({ ...userToProfile(user), isRealUser: true }));
 }
 
@@ -392,7 +494,7 @@ function activeEntitlements(singlePurchases, userId, now = Date.now()) {
         result[p.perk] = true;
       }
     } else if (p.kind === 'consumable' && p.perk === 'superCredits') {
-      result.superCredits += Math.max(0, Number(p.remaining || 0));
+      result.superCredits += toNonNegativeInt(p.remaining, 0);
     }
   }
   return result;
@@ -471,6 +573,7 @@ function makeMatchRow(ownerUserId, otherProfile, conversationId, isRealUser) {
 // 行うことで直列化し、A→B と B→A の同時いいねで二重 pending になる競合を防ぐ。
 // 既にマッチ済み or 新規作成後、対象ペア両側のマッチ行を返す（未成立なら空配列）。
 async function tryCreateMutualMatch(userA, userB) {
+  if (userA?.autoHidden || userB?.autoHidden) return [];
   await updateJson('matches.json', [], async (matches) => {
     if (pairAlreadyMatched(matches, userA.id, userB.id)) {
       return { value: undefined, result: false };
@@ -509,6 +612,26 @@ async function resolvePendingBetween(userAId, userBId) {
   });
 }
 
+async function setReceivedLikesFromUserStatus(fromUserId, hidden) {
+  const now = new Date().toISOString();
+  return updateJson('received_likes.json', [], (received) => {
+    let changed = false;
+    const next = received.map((item) => {
+      if (item.fromProfileId !== fromUserId) return item;
+      if (hidden && item.status === 'pending') {
+        changed = true;
+        return { ...item, status: 'auto_hidden', autoHiddenAt: now };
+      }
+      if (!hidden && item.status === 'auto_hidden') {
+        changed = true;
+        return { ...item, status: 'pending', unhiddenAt: now };
+      }
+      return item;
+    });
+    return { value: changed ? next : undefined, result: changed };
+  });
+}
+
 // あるメッセージが、ある人の視点で「自分が送った」ものかを判定。
 function senderFor(message, viewerUserId) {
   if (message.senderUserId) return message.senderUserId === viewerUserId ? 'user' : 'match';
@@ -526,9 +649,10 @@ function messageBelongsToMatch(message, match) {
 // 認証付きリクエストごとに Google Identity Toolkit を呼ぶとレイテンシ・コスト・
 // レート制限の負担が大きいため、トークン単位で短時間キャッシュする。
 // TTL はトークン有効期限（約1時間）より十分短くする。
-const TOKEN_CACHE_TTL_MS = Number(process.env.TOKEN_CACHE_TTL_MS || 5 * 60 * 1000);
+const TOKEN_CACHE_TTL_MS = envInt('TOKEN_CACHE_TTL_MS', 5 * 60 * 1000, { min: 1000, max: 60 * 60 * 1000 });
 const TOKEN_CACHE_MAX = 5000;
 const tokenCache = new Map(); // token -> { value, expiresAt }
+let firebaseAdminAuthPromise = null;
 
 function getCachedIdentity(token) {
   const hit = tokenCache.get(token);
@@ -549,6 +673,75 @@ function setCachedIdentity(token, value) {
   tokenCache.set(token, { value, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
 }
 
+function hasFirebaseAdminConfig() {
+  return Boolean(
+    process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+    || process.env.FIREBASE_SERVICE_ACCOUNT_BASE64
+    || process.env.GOOGLE_APPLICATION_CREDENTIALS
+  );
+}
+
+function readFirebaseServiceAccount() {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+    || (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64
+      ? Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8')
+      : '');
+  if (!raw) return null;
+  try {
+    const credential = JSON.parse(raw);
+    if (typeof credential.private_key === 'string') {
+      credential.private_key = credential.private_key.replace(/\\n/g, '\n');
+    }
+    return credential;
+  } catch {
+    const error = new Error('Firebase Admin service accountのJSONが不正です。');
+    error.status = 500;
+    throw error;
+  }
+}
+
+async function getFirebaseAdminAuth() {
+  if (!hasFirebaseAdminConfig()) return null;
+  if (!firebaseAdminAuthPromise) {
+    firebaseAdminAuthPromise = (async () => {
+      const [{ applicationDefault, cert, getApps, initializeApp }, { getAuth }] = await Promise.all([
+        import('firebase-admin/app'),
+        import('firebase-admin/auth')
+      ]);
+      if (!getApps().length) {
+        const serviceAccount = readFirebaseServiceAccount();
+        initializeApp({
+          credential: serviceAccount ? cert(serviceAccount) : applicationDefault()
+        });
+      }
+      return getAuth();
+    })().catch((error) => {
+      firebaseAdminAuthPromise = null;
+      const wrapped = new Error(error.message || 'Firebase Admin SDKの初期化に失敗しました。');
+      wrapped.status = error.status || 500;
+      throw wrapped;
+    });
+  }
+  return firebaseAdminAuthPromise;
+}
+
+async function verifyWithFirebaseAdmin(token) {
+  const auth = await getFirebaseAdminAuth();
+  if (!auth) return null;
+  try {
+    const decoded = await auth.verifyIdToken(token, process.env.FIREBASE_CHECK_REVOKED_TOKENS === 'true');
+    return {
+      uid: cleanText(decoded.uid, 120),
+      email: cleanText(decoded.email, 120),
+      emailVerified: Boolean(decoded.email_verified)
+    };
+  } catch {
+    const error = new Error('Firebase認証の確認に失敗しました。再ログインしてください。');
+    error.status = 401;
+    throw error;
+  }
+}
+
 async function verifyFirebaseIdentity(idToken) {
   const token = cleanText(idToken, 4096);
   if (!token) {
@@ -558,6 +751,12 @@ async function verifyFirebaseIdentity(idToken) {
   }
   const cached = getCachedIdentity(token);
   if (cached) return cached;
+
+  const adminIdentity = await verifyWithFirebaseAdmin(token);
+  if (adminIdentity) {
+    setCachedIdentity(token, adminIdentity);
+    return adminIdentity;
+  }
 
   const apiKey = cleanText(process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY, 200);
   if (!apiKey) {
@@ -631,6 +830,8 @@ app.post('/api/register', authLimiter, async (req, res) => {
   if (!payload.agreed) return res.status(400).json({ message: '利用規約への同意が必要です。' });
   const safeAge = cleanAge(payload.age);
   if (!safeAge) return res.status(400).json({ message: '年齢は13〜80歳で入力してください。' });
+  const profileEnums = validateProfileEnums(payload);
+  if (profileEnums.status) return res.status(profileEnums.status).json({ message: profileEnums.message });
 
   const riotId = cleanText(payload.riotId, 60);
   const result = await updateJson('users.json', [], (users) => {
@@ -645,13 +846,13 @@ app.post('/api/register', authLimiter, async (req, res) => {
       firebaseUid: firebaseUser.uid,
       email: firebaseUser.email,
       name: cleanText(payload.name, 40),
-      gender: cleanText(payload.gender, 20),
+      gender: profileEnums.gender,
       riotId,
       age: safeAge,
-      region: cleanText(payload.region, 40),
+      region: profileEnums.region,
       profilePhoto: sanitizeMedia(payload.profilePhoto, 'image', 2000000),
-      rank: cleanText(payload.rank || 'Gold', 30),
-      role: normalizeRole(payload.role || 'デュエリスト'),
+      rank: profileEnums.rank,
+      role: profileEnums.role,
       tags: Array.isArray(payload.tags) ? payload.tags.map((v) => cleanText(v, 30)).slice(0, 4) : [],
       agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
       xHandle: cleanText(payload.xHandle, 40),
@@ -696,6 +897,8 @@ app.put('/api/profile', requireAuth, async (req, res) => {
   const result = await updateJson('users.json', [], (users) => {
     const index = users.findIndex((user) => user.id === userId);
     if (index < 0) return { value: undefined, result: { status: 404, message: 'プロフィールが見つかりません。' } };
+    const profileEnums = validateProfileEnums(payload, users[index]);
+    if (profileEnums.status) return { value: undefined, result: profileEnums };
     if (users.some((user) => user.id !== userId && user.riotId === riotId)) {
       return { value: undefined, result: { status: 409, message: 'このRiot IDは別のアカウントで使用されています。' } };
     }
@@ -703,13 +906,13 @@ app.put('/api/profile', requireAuth, async (req, res) => {
     const updated = {
       ...users[index],
       name: cleanText(payload.name, 40),
-      gender: cleanText(payload.gender, 20),
+      gender: profileEnums.gender,
       riotId,
       age: safeAge,
-      region: cleanText(payload.region, 40),
+      region: profileEnums.region,
       profilePhoto: sanitizeMedia(payload.profilePhoto, 'image', 2000000),
-      rank: cleanText(payload.rank || users[index].rank || 'Gold', 30),
-      role: normalizeRole(payload.role || users[index].role || 'デュエリスト'),
+      rank: profileEnums.rank,
+      role: profileEnums.role,
       tags: Array.isArray(payload.tags) ? payload.tags.map((v) => cleanText(v, 30)).slice(0, 4) : [],
       agents: Array.isArray(payload.agents) ? payload.agents.map((v) => cleanText(v, 20)).slice(0, 6) : [],
       xHandle: cleanText(payload.xHandle, 40),
@@ -730,8 +933,12 @@ app.put('/api/profile', requireAuth, async (req, res) => {
 
 app.get('/api/profiles', requireAuth, async (req, res) => {
   const planName = String(req.authedUser.plan || 'FREE').toUpperCase();
-  const targetGender = String(req.query.targetGender || 'all');
+  const rawTargetGender = cleanText(req.query.targetGender || 'all', 20);
+  const targetGender = rawTargetGender === 'all' || allowedGenders.includes(rawTargetGender) ? rawTargetGender : 'all';
   const userId = req.authedUser.id;
+  if (req.authedUser.autoHidden) {
+    return res.json({ profiles: [], plan: plans[planName] || plans.FREE, entitlements: { genderFilter: false, boost: false, spotlight: false, superCredits: 0 }, genderFilterAllowed: false, targetGenderApplied: false });
+  }
   const [profiles, blocks, singlePurchases] = await Promise.all([
     readCandidateProfiles(userId),
     readJson('blocks.json', []),
@@ -757,8 +964,10 @@ app.get('/api/profiles', requireAuth, async (req, res) => {
 });
 
 app.post('/api/like', requireAuth, async (req, res) => {
-  const { profileId, type = 'like' } = req.body || {};
+  const profileId = cleanText(req.body?.profileId, 80);
+  const type = cleanText(req.body?.type || 'like', 20);
   const userId = req.authedUser.id;
+  if (req.authedUser.autoHidden) return res.status(403).json({ message: '現在この操作は利用できません。' });
   const planName = String(req.authedUser.plan || 'FREE').toUpperCase();
   const selectedType = ['like', 'super', 'dual'].includes(type) ? type : 'like';
   const limit = quotaFor(planName, selectedType);
@@ -775,10 +984,8 @@ app.post('/api/like', requireAuth, async (req, res) => {
 
   // SUPER LIKE 3回 の購入分は、プランの本日上限を超えても消費して送れる。
   const superCredits = selectedType === 'super' ? activeEntitlements(singlePurchases, userId).superCredits : 0;
-  const effectiveLimit = limit + superCredits;
-  if (blocks.some((block) =>
-    (block.userId === userId && block.profileId === profileId) ||
-    (block.userId === profileId && block.profileId === userId))) {
+  const effectiveLimit = limit === Infinity ? Infinity : limit + superCredits;
+  if (pairBlocked(blocks, userId, profileId)) {
     return res.status(403).json({ message: 'ブロック済みの相手にはいいねできません。' });
   }
   if (pairAlreadyMatched(matches, userId, profileId)) {
@@ -802,10 +1009,10 @@ app.post('/api/like', requireAuth, async (req, res) => {
   // 購入したスーパーいいねを1回分消費する。
   if (likeResult === 'created' && usedSuperCredit) {
     await updateJson('single_purchases.json', [], (purchases) => {
-      const idx = purchases.findIndex((p) => p.userId === userId && p.perk === 'superCredits' && Number(p.remaining || 0) > 0);
+      const idx = purchases.findIndex((p) => p.userId === userId && p.perk === 'superCredits' && toNonNegativeInt(p.remaining, 0) > 0);
       if (idx < 0) return { value: undefined, result: false };
       const next = [...purchases];
-      next[idx] = { ...next[idx], remaining: Number(next[idx].remaining) - 1 };
+      next[idx] = { ...next[idx], remaining: toNonNegativeInt(next[idx].remaining, 0) - 1 };
       return { value: next, result: true };
     });
   }
@@ -817,6 +1024,7 @@ app.post('/api/like', requireAuth, async (req, res) => {
 
   const me = req.authedUser;
   const targetUser = users.find((u) => u.id === profileId);
+  if (!targetUser || targetUser.autoHidden) return res.status(404).json({ message: 'プロフィールが見つかりません。' });
 
   // 相互いいねが成立していれば、その場で双方向マッチ（競合に強い直列化版）。
   const matchRows = await tryCreateMutualMatch(me, targetUser);
@@ -843,12 +1051,17 @@ app.post('/api/like', requireAuth, async (req, res) => {
 });
 
 async function sendReceivedLikesForCurrentUser(req, res) {
+  if (req.authedUser.autoHidden) return res.json({ receivedLikes: [] });
   const [received, users] = await Promise.all([
     readJson('received_likes.json', []),
     readJson('users.json', [])
   ]);
-  const realUserIds = new Set(users.map((user) => user.id));
-  res.json({ receivedLikes: received.filter((r) => r.forUserId === req.authedUser.id && r.status === 'pending' && realUserIds.has(r.fromProfileId)) });
+  const visibleUserIds = new Set(users.filter(isVisibleUser).map((user) => user.id));
+  res.json({
+    receivedLikes: received
+      .filter((r) => r.forUserId === req.authedUser.id && r.status === 'pending' && visibleUserIds.has(r.fromProfileId))
+      .slice(0, RECEIVED_LIKES_LIMIT)
+  });
 }
 
 // /me は明示的な現在ユーザー専用エンドポイント。
@@ -857,25 +1070,49 @@ app.get('/api/received-likes/me', requireAuth, sendReceivedLikesForCurrentUser);
 app.get('/api/received-likes/:userId', requireAuth, sendReceivedLikesForCurrentUser);
 
 app.post('/api/accept-like', requireAuth, async (req, res) => {
-  const { receivedLikeId } = req.body || {};
+  const receivedLikeId = cleanText(req.body?.receivedLikeId, 80);
   const userId = req.authedUser.id;
   const me = req.authedUser;
+  if (me.autoHidden) return res.status(403).json({ message: '現在この操作は利用できません。' });
+  if (!receivedLikeId) return res.status(400).json({ message: '対象のいいねが必要です。' });
 
-  let rl = null;
+  const received = await readJson('received_likes.json', []);
+  const rl = received.find((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
+  if (!rl) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
+
+  const [users, blocks] = await Promise.all([
+    readJson('users.json', []),
+    readJson('blocks.json', [])
+  ]);
+  const fromUser = users.find((u) => u.id === rl.fromProfileId);
+  if (!fromUser) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
+  if (fromUser.autoHidden) {
+    await setReceivedLikesFromUserStatus(fromUser.id, true);
+    return res.status(404).json({ message: '対象のいいねが見つかりません。' });
+  }
+  if (pairBlocked(blocks, userId, rl.fromProfileId)) {
+    await updateJson('received_likes.json', [], (current) => {
+      let changed = false;
+      const next = current.map((item) => {
+        if (item.id === receivedLikeId && item.status === 'pending') {
+          changed = true;
+          return { ...item, status: 'blocked', blockedAt: new Date().toISOString() };
+        }
+        return item;
+      });
+      return { value: changed ? next : undefined, result: changed };
+    });
+    return res.status(403).json({ message: 'ブロック済みの相手とはマッチできません。' });
+  }
+
   const accepted = await updateJson('received_likes.json', [], (received) => {
     const idx = received.findIndex((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
     if (idx < 0) return { value: undefined, result: false };
-    rl = received[idx];
     const next = [...received];
     next[idx] = { ...rl, status: 'accepted', acceptedAt: new Date().toISOString() };
     return { value: next, result: true };
   });
-  if (!accepted || !rl) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
-
-  const users = await readJson('users.json', []);
-  const fromUser = users.find((u) => u.id === rl.fromProfileId);
-  // received-like は常に実ユーザー発のはず。万一見つからなければ対象なし扱い。
-  if (!fromUser) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
+  if (!accepted) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
 
   // いいねを返す＝自分も相手をいいねしたとみなし、likes.json にも記録（真の相互いいね）。
   await updateJson('likes.json', [], (likes) => {
@@ -890,22 +1127,41 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
 });
 
 app.get('/api/matches/:userId', requireAuth, async (req, res) => {
-  const matches = await readJson('matches.json', []);
-  res.json({ matches: matches.filter((match) => match.userId === req.authedUser.id) });
+  const [matches, users] = await Promise.all([
+    readJson('matches.json', []),
+    readJson('users.json', [])
+  ]);
+  const visibleUserIds = new Set(users.filter(isVisibleUser).map((user) => user.id));
+  res.json({ matches: matches.filter((match) => match.userId === req.authedUser.id && match.dmUnlocked && visibleUserIds.has(match.profileId)) });
 });
 
 app.get('/api/dm/:userId', requireAuth, async (req, res) => {
   const viewerId = req.authedUser.id;
-  const [matches, messages] = await Promise.all([
+  if (req.authedUser.autoHidden) return res.json({ threads: [] });
+  const [matches, messages, users] = await Promise.all([
     readJson('matches.json', []),
-    readJson('messages.json', [])
+    readJson('messages.json', []),
+    readJson('users.json', [])
   ]);
-  const userMatches = matches.filter((match) => match.userId === viewerId && match.dmUnlocked);
+  const visibleUserIds = new Set(users.filter(isVisibleUser).map((user) => user.id));
+  const userMatches = matches
+    .filter((match) => match.userId === viewerId && match.dmUnlocked && visibleUserIds.has(match.profileId))
+    .slice(0, DM_THREADS_LIMIT);
+  const convIds = new Set(userMatches.map((match) => match.conversationId || match.id));
+  const messagesByConversation = new Map();
+  for (const message of messages) {
+    const convId = message.conversationId || message.matchId;
+    if (!convIds.has(convId)) continue;
+    const list = messagesByConversation.get(convId) || [];
+    list.push(message);
+    messagesByConversation.set(convId, list);
+  }
   const threads = userMatches.map((match) => {
-    const threadMessages = messages
-      .filter((message) => messageBelongsToMatch(message, match))
-      .map((message) => ({ ...message, sender: senderFor(message, viewerId) }))
+    const allThreadMessages = (messagesByConversation.get(match.conversationId || match.id) || [])
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const threadMessages = allThreadMessages
+      .slice(-DM_THREAD_MESSAGE_LIMIT)
+      .map((message) => ({ ...message, sender: senderFor(message, viewerId) }));
     const openerMessage = {
       id: `opener_${match.id}`,
       matchId: match.id,
@@ -918,8 +1174,8 @@ app.get('/api/dm/:userId', requireAuth, async (req, res) => {
     return {
       match,
       messages: [openerMessage, ...threadMessages],
-      unreadCount: (openerMessage.readAt ? 0 : 1) + threadMessages.filter((message) => message.sender !== 'user' && !message.readAt).length,
-      updatedAt: threadMessages.at(-1)?.createdAt || match.createdAt
+      unreadCount: (openerMessage.readAt ? 0 : 1) + allThreadMessages.filter((message) => senderFor(message, viewerId) !== 'user' && !message.readAt).length,
+      updatedAt: allThreadMessages.at(-1)?.createdAt || match.createdAt
     };
   }).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   res.json({ threads });
@@ -930,10 +1186,15 @@ app.post('/api/dm/read', requireAuth, async (req, res) => {
   const matchId = cleanText(req.body?.matchId, 80);
   if (!matchId) return res.status(400).json({ message: '既読にする会話が必要です。' });
 
-  const matches = await readJson('matches.json', []);
+  const [matches, users] = await Promise.all([
+    readJson('matches.json', []),
+    readJson('users.json', [])
+  ]);
   const matchIndex = matches.findIndex((item) => item.id === matchId && item.userId === viewerId && item.dmUnlocked);
   if (matchIndex < 0) return res.status(403).json({ message: 'マッチ後だけ既読にできます。' });
   const match = matches[matchIndex];
+  const targetUser = users.find((user) => user.id === match.profileId);
+  if (req.authedUser.autoHidden || !isVisibleUser(targetUser)) return res.status(403).json({ message: 'この会話は現在利用できません。' });
   const convId = match.conversationId || match.id;
 
   const readAt = new Date().toISOString();
@@ -966,19 +1227,19 @@ app.post('/api/dm', requireAuth, dmLimiter, async (req, res) => {
   const matchId = cleanText(req.body?.matchId, 80);
   const body = cleanText(req.body?.body, 500);
   if (!matchId || !body) return res.status(400).json({ message: '送信先とメッセージ本文が必要です。' });
+  if (req.authedUser.autoHidden) return res.status(403).json({ message: '現在この操作は利用できません。' });
 
-  const [matches, blocks] = await Promise.all([
+  const [matches, blocks, users] = await Promise.all([
     readJson('matches.json', []),
-    readJson('blocks.json', [])
+    readJson('blocks.json', []),
+    readJson('users.json', [])
   ]);
   const match = matches.find((item) => item.id === matchId && item.userId === viewerId && item.dmUnlocked);
   if (!match) return res.status(403).json({ message: 'マッチ後だけDMを送信できます。' });
+  const targetUser = users.find((user) => user.id === match.profileId);
+  if (!isVisibleUser(targetUser)) return res.status(403).json({ message: 'この相手には現在DMを送信できません。' });
 
-  const blocked = blocks.some((block) =>
-    (block.userId === viewerId && block.profileId === match.profileId) ||
-    (block.userId === match.profileId && block.profileId === viewerId)
-  );
-  if (blocked) return res.status(403).json({ message: 'ブロック済みの相手にはDMを送信できません。' });
+  if (pairBlocked(blocks, viewerId, match.profileId)) return res.status(403).json({ message: 'ブロック済みの相手にはDMを送信できません。' });
 
   // 会話IDで保存することで、双方向マッチの両側に同じメッセージが見える。
   const conversationId = match.conversationId || match.id;
@@ -992,7 +1253,8 @@ app.post('/api/dm', requireAuth, dmLimiter, async (req, res) => {
       Date.now() - new Date(existing.createdAt).getTime() < 2500
     );
     if (recentDuplicate) return { value: undefined, result: null };
-    return { value: [...messages, message], result: message };
+    const next = [...messages, message];
+    return { value: next.length > MAX_MESSAGES_STORED ? next.slice(-MAX_MESSAGES_STORED) : next, result: message };
   });
   if (!savedMessage) {
     return res.status(409).json({ message: '同じメッセージを連続送信しています。少し待ってから送信してください。' });
@@ -1014,8 +1276,10 @@ app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
     if (mine24h.length >= MAX_REPORTS_PER_DAY) return { value: undefined, result: { code: 'too_many' } };
     // 同一相手への24時間以内の重複通報を防ぐ。
     if (mine24h.some((r) => r.profileId === profileId)) return { value: undefined, result: { code: 'duplicate' } };
-    return { value: [report, ...reports], result: { code: 'ok', report } };
+    const next = [report, ...reports];
+    return { value: next.length > MAX_REPORTS_STORED ? next.slice(0, MAX_REPORTS_STORED) : next, result: { code: 'ok', report } };
   });
+  if (!outcome) return res.status(500).json({ message: '通報の保存に失敗しました。' });
   if (outcome.code === 'too_many') return res.status(429).json({ message: '本日の通報回数の上限に達しました。時間をおいてください。' });
   if (outcome.code === 'duplicate') return res.status(409).json({ message: 'このユーザーはすでに通報済みです。時間をおいてください。' });
 
@@ -1037,7 +1301,10 @@ app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
       next[idx] = { ...next[idx], autoHidden: true, autoHiddenAt: new Date().toISOString(), autoHiddenReporters: distinctReporters.size };
       return { value: next, result: true };
     });
-    if (hidden) appendAudit('auto_hide', null, profileId, { reporters: distinctReporters.size });
+    if (hidden) {
+      await setReceivedLikesFromUserStatus(profileId, true);
+      appendAudit('auto_hide', null, profileId, { reporters: distinctReporters.size });
+    }
   }
 
   res.status(201).json({ report: outcome.report });
@@ -1100,7 +1367,11 @@ app.get('/api/admin/reports', requireAuth, async (req, res) => {
   ]);
   // 通報相手の表示名を補完し、自動非表示中のユーザー一覧も返す（管理者レビュー用）。
   const nameById = new Map(users.map((u) => [u.id, u.name]));
-  const enrichedReports = reports.map((r) => ({ ...r, profileName: nameById.get(r.profileId) || null }));
+  const queryLimit = Number(req.query.limit);
+  const requestedLimit = Number.isInteger(queryLimit) && queryLimit > 0
+    ? Math.min(queryLimit, ADMIN_REPORTS_LIMIT)
+    : ADMIN_REPORTS_LIMIT;
+  const enrichedReports = reports.slice(0, requestedLimit).map((r) => ({ ...r, profileName: nameById.get(r.profileId) || null }));
   const flaggedUsers = users
     .filter((u) => u.autoHidden)
     .map((u) => ({ id: u.id, name: u.name, autoHiddenAt: u.autoHiddenAt || null, reporters: u.autoHiddenReporters || 0 }));
@@ -1134,6 +1405,7 @@ app.post('/api/admin/unhide', requireAuth, async (req, res) => {
     });
     return { value: changed ? next : undefined, result: changed };
   });
+  await setReceivedLikesFromUserStatus(profileId, false);
   appendAudit('admin_unhide', req.authedUser.id, profileId, { ip: clientIp(req) });
   res.json({ ok: true, profileId });
 });
@@ -1162,6 +1434,7 @@ app.post('/api/purchase', requireAuth, async (req, res) => {
     next[userIdx] = { ...next[userIdx], plan: validPlan };
     return { value: next, result: true };
   });
+  appendAudit('demo_purchase_plan', userId, userId, { plan: validPlan, amount: purchase.amount });
   res.status(201).json({ purchase });
 });
 
@@ -1202,6 +1475,7 @@ app.post('/api/purchase-item', requireAuth, async (req, res) => {
     entitlements = activeEntitlements(next, userId, now);
     return { value: next, result: true };
   });
+  appendAudit('demo_purchase_item', userId, userId, { item: itemName, perk: record.perk, amount: record.amount });
   res.status(201).json({ purchase: record, entitlements });
 });
 
