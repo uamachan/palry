@@ -236,7 +236,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
       if (!form.rank) return '現在ランク';
       if (!form.role) return 'メインロール';
     }
-    if (tab === 'プレイスタイル' && (!form.tags?.length && !form.agents?.length)) return '目的タグ または よく使うエージェント';
+
     if (tab === '規約' && showAgreement && !form.agreed) return '利用規約への同意';
     return '';
   }

@@ -136,168 +136,285 @@
   opacity:0.65;
 }
 
+/* ── DM Panel – Pairly light style ── */
 .dm-panel-with-profile{
   height:min(760px,calc(100dvh - 150px));
   min-height:560px;
   display:grid!important;
-  grid-template-columns:minmax(210px,260px) minmax(0,1fr) minmax(280px,340px)!important;
+  grid-template-columns:minmax(200px,250px) minmax(0,1fr) minmax(260px,310px)!important;
   gap:0!important;
   overflow:hidden!important;
-  border:1px solid var(--line,#e7e0d8);
+  border:1px solid #E8DED5;
   border-radius:24px;
-  background:#111214;
-  color:#f7f7f7;
-  box-shadow:0 18px 44px rgba(31,25,20,.14);
+  background:#FFFDF9;
+  color:#181614;
+  box-shadow:0 8px 32px rgba(120,80,60,.10);
 }
+
+/* ── スレッド一覧 ── */
 .dm-panel-with-profile .dm-thread-list{
   min-width:0!important;
   height:100%!important;
   overflow:auto!important;
-  border-right:1px solid rgba(255,255,255,.08)!important;
-  background:#151619!important;
+  border-right:1px solid #E8DED5!important;
+  background:#F8F3EE!important;
   padding:12px!important;
 }
-.dm-panel-with-profile .dm-head h3,
+.dm-panel-with-profile .dm-head{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  padding:4px 4px 10px!important;
+}
+.dm-panel-with-profile .dm-head h3{
+  color:#181614!important;
+  font-size:15px!important;
+  font-weight:900!important;
+}
 .dm-panel-with-profile .dm-head span{
-  color:#fff!important;
+  color:#7A716A!important;
+  font-size:12px!important;
+  font-weight:700!important;
 }
 .dm-panel-with-profile .dm-thread{
   width:100%!important;
   display:grid!important;
-  gap:4px!important;
-  padding:12px!important;
-  border:0!important;
-  border-radius:14px!important;
-  background:transparent!important;
-  color:#dfe1e5!important;
+  gap:3px!important;
+  padding:11px 12px!important;
+  border:1.5px solid transparent!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  color:#181614!important;
   text-align:left!important;
+  margin-bottom:6px;
+  box-shadow:0 1px 4px rgba(120,80,60,.06);
+  transition:border-color .15s,box-shadow .15s;
 }
 .dm-panel-with-profile .dm-thread:hover,
 .dm-panel-with-profile .dm-thread.active{
-  background:#24262b!important;
+  border-color:#FF5C8A!important;
+  background:#fff8fb!important;
+  box-shadow:0 2px 10px rgba(255,92,138,.14)!important;
+}
+.dm-panel-with-profile .dm-thread.unread{
+  background:#fff5f8!important;
+  border-color:#ffc8d8!important;
 }
 .dm-panel-with-profile .dm-thread b{
   display:flex!important;
   align-items:center!important;
   justify-content:space-between!important;
-  color:#fff!important;
+  color:#181614!important;
+  font-size:13.5px!important;
 }
-.dm-panel-with-profile .dm-thread small,
-.dm-panel-with-profile .dm-thread span{
-  color:#9da2aa!important;
+.dm-panel-with-profile .dm-thread b em{
+  font-style:normal!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  background:#FF5C8A!important;
+  color:#fff!important;
+  border-radius:999px!important;
+  padding:1px 7px!important;
+  min-width:18px!important;
+  text-align:center!important;
+}
+.dm-panel-with-profile .dm-thread small{
+  color:#7A716A!important;
+  font-size:11.5px!important;
   overflow:hidden!important;
   text-overflow:ellipsis!important;
   white-space:nowrap!important;
 }
+.dm-panel-with-profile .dm-thread span{
+  color:#9A9090!important;
+  font-size:12px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+
+/* ── チャットエリア ── */
 .dm-panel-with-profile .dm-conversation{
   min-width:0!important;
   height:100%!important;
   display:grid!important;
   grid-template-rows:auto minmax(0,1fr) auto auto!important;
   overflow:hidden!important;
-  background:#0f1012!important;
-  color:#f7f7f7!important;
+  background:#FFFDF9!important;
+  color:#181614!important;
 }
 .dm-panel-with-profile .dm-conversation-head{
-  min-height:66px!important;
+  min-height:64px!important;
   padding:12px 16px!important;
-  border-bottom:1px solid rgba(255,255,255,.08)!important;
-  background:#111214!important;
-  color:#fff!important;
+  border-bottom:1px solid #E8DED5!important;
+  background:#fff!important;
+  color:#181614!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
 }
 .dm-panel-with-profile .dm-conversation-head h3{
-  color:#fff!important;
+  color:#181614!important;
+  font-size:15px!important;
+  font-weight:900!important;
 }
 .dm-panel-with-profile .dm-conversation-head span{
-  color:#aeb4bd!important;
+  color:#7A716A!important;
+  font-size:12px!important;
 }
 .dm-panel-with-profile .dm-head-actions-compact button{
-  border:1px solid rgba(255,255,255,.1)!important;
-  background:#24262b!important;
-  color:#fff!important;
+  border:1.5px solid #E8DED5!important;
+  background:#F8F3EE!important;
+  color:#181614!important;
+  border-radius:10px!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  padding:6px 12px!important;
+  transition:border-color .15s!important;
+}
+.dm-panel-with-profile .dm-head-actions-compact button:hover{
+  border-color:#FF5C8A!important;
+  color:#FF5C8A!important;
 }
 .dm-panel-with-profile .dm-messages{
   min-height:0!important;
   height:100%!important;
   overflow:auto!important;
-  padding:18px 18px 24px!important;
-  background:#0f1012!important;
+  padding:20px 18px 24px!important;
+  background:#FFFDF9!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:10px!important;
 }
 .dm-panel-with-profile .dm-bubble{
-  max-width:76%!important;
-  background:#23262d!important;
-  color:#f8f9fb!important;
-  border:0!important;
-  box-shadow:none!important;
+  max-width:72%!important;
+  background:#fff!important;
+  color:#181614!important;
+  border:1px solid #E8DED5!important;
+  border-radius:18px 18px 18px 4px!important;
+  box-shadow:0 1px 4px rgba(120,80,60,.07)!important;
+  padding:10px 14px!important;
+}
+.dm-panel-with-profile .dm-bubble p{
+  margin:0!important;
+  font-size:14px!important;
+  line-height:1.55!important;
 }
 .dm-panel-with-profile .dm-bubble.mine{
   margin-left:auto!important;
-  background:#5865f2!important;
-  color:#fff!important;
+  background:#FFF0F5!important;
+  color:#181614!important;
+  border-color:#FFD0E0!important;
+  border-radius:18px 18px 4px 18px!important;
+  box-shadow:0 2px 8px rgba(255,92,138,.12)!important;
+}
+.dm-panel-with-profile .dm-message-meta{
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  margin-top:4px!important;
+  justify-content:flex-end!important;
 }
 .dm-panel-with-profile .dm-message-meta,
 .dm-panel-with-profile .dm-message-meta time{
-  color:rgba(255,255,255,.68)!important;
+  color:#B8AEA8!important;
+  font-size:11px!important;
 }
 .dm-panel-with-profile .dm-starters{
-  padding:10px 16px!important;
-  background:#0f1012!important;
-  border-top:1px solid rgba(255,255,255,.06)!important;
+  padding:8px 14px!important;
+  background:#F8F3EE!important;
+  border-top:1px solid #E8DED5!important;
+  display:flex!important;
+  gap:6px!important;
+  flex-wrap:wrap!important;
 }
 .dm-panel-with-profile .dm-starters button{
-  background:#24262b!important;
-  border:1px solid rgba(255,255,255,.1)!important;
-  color:#fff!important;
+  background:#fff!important;
+  border:1.5px solid #E8DED5!important;
+  color:#7A716A!important;
+  border-radius:999px!important;
+  font-size:12.5px!important;
+  font-weight:700!important;
+  padding:5px 13px!important;
+  transition:border-color .15s,color .15s!important;
+}
+.dm-panel-with-profile .dm-starters button:hover{
+  border-color:#FF5C8A!important;
+  color:#FF5C8A!important;
 }
 .dm-panel-with-profile .dm-form{
   display:grid!important;
   grid-template-columns:minmax(0,1fr) auto!important;
-  gap:10px!important;
-  padding:14px 16px!important;
-  background:#111214!important;
-  border-top:1px solid rgba(255,255,255,.08)!important;
+  gap:8px!important;
+  padding:12px 14px 14px!important;
+  background:#fff!important;
+  border-top:1px solid #E8DED5!important;
+  align-items:center!important;
 }
 .dm-panel-with-profile .dm-form input{
-  min-height:46px!important;
-  border:0!important;
+  min-height:44px!important;
+  border:1.5px solid #E8DED5!important;
   border-radius:14px!important;
-  background:#2b2d31!important;
-  color:#fff!important;
+  background:#F8F3EE!important;
+  color:#181614!important;
   padding:0 14px!important;
+  font-size:14px!important;
+  transition:border-color .15s!important;
+}
+.dm-panel-with-profile .dm-form input:focus{
+  border-color:#FF5C8A!important;
+  outline:none!important;
 }
 .dm-panel-with-profile .dm-form input::placeholder{
-  color:#aeb4bd!important;
+  color:#B8AEA8!important;
 }
+.dm-panel-with-profile .dm-form .primary{
+  min-height:44px!important;
+  padding:0 16px!important;
+  background:#FF5C8A!important;
+  color:#fff!important;
+  border:none!important;
+  border-radius:14px!important;
+  font-weight:800!important;
+  font-size:14px!important;
+  transition:opacity .15s!important;
+}
+.dm-panel-with-profile .dm-form .primary:disabled{
+  opacity:.42!important;
+}
+
+/* ── 右プロフィールサイドバー ── */
 .dm-profile-sidebar{
   min-width:0;
   height:100%;
   overflow:auto;
-  background:#151619;
-  border-left:1px solid rgba(255,255,255,.08);
-  color:#f7f7f7;
+  background:#FFFDF9;
+  border-left:1px solid #E8DED5;
+  color:#181614;
 }
 .dm-profile-cover{
-  height:92px;
-  background:linear-gradient(135deg,#37ff00 0%,#00e5ff 100%);
+  height:72px;
+  background:linear-gradient(135deg,#FFD6E3 0%,#C8F0E6 100%);
 }
 .dm-profile-main{
   position:relative;
-  padding:0 18px 14px;
-  border-bottom:1px solid rgba(255,255,255,.08);
+  padding:0 16px 14px;
+  border-bottom:1px solid #E8DED5;
 }
 .dm-profile-avatar{
-  width:76px;
-  height:76px;
-  margin-top:-38px;
-  border:6px solid #151619;
+  width:64px;
+  height:64px;
+  margin-top:-32px;
+  border:4px solid #FFFDF9;
   border-radius:50%;
   display:grid;
   place-items:center;
   overflow:hidden;
-  background:#24262b;
-  color:#fff;
-  font-size:26px;
-  font-weight:1000;
+  background:#F8F3EE;
+  color:#7A716A;
+  font-size:22px;
+  font-weight:900;
+  box-shadow:0 2px 10px rgba(120,80,60,.12);
 }
 .dm-profile-avatar img{
   width:100%;
@@ -305,102 +422,146 @@
   object-fit:cover;
 }
 .dm-profile-main h3{
-  margin:10px 0 2px;
-  color:#fff;
-  font-size:22px;
+  margin:8px 0 1px;
+  color:#181614;
+  font-size:17px;
+  font-weight:900;
 }
 .dm-profile-riot{
-  margin:0;
-  color:#aeb4bd;
-  font-weight:800;
+  margin:0 0 8px;
+  color:#7A716A;
+  font-size:11.5px;
+  font-weight:700;
 }
+.dm-profile-rank-row{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-top:4px;
+}
+.dm-profile-rank-badge{
+  font-size:11.5px;
+  font-weight:800;
+  color:#B88A10;
+  background:#FFF8E8;
+  border:1px solid #F0D888;
+  border-radius:999px;
+  padding:3px 10px;
+}
+.dm-profile-role-badge{
+  font-size:11.5px;
+  font-weight:800;
+  color:#169855;
+  background:#EDF9F1;
+  border:1px solid #A8E4C0;
+  border-radius:999px;
+  padding:3px 10px;
+}
+
+/* ── メタ情報チップ行 ── */
+.dm-profile-meta-chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  padding:10px 16px;
+  border-bottom:1px solid #E8DED5;
+}
+.dm-profile-meta-chip{
+  font-size:11.5px;
+  font-weight:700;
+  color:#5A5050;
+  background:#F8F3EE;
+  border:1px solid #E8DED5;
+  border-radius:999px;
+  padding:4px 10px;
+}
+.dm-profile-meta-chip strong{
+  color:#9A9090;
+  font-weight:800;
+  margin-right:3px;
+  font-size:10.5px;
+}
+
+/* ── セクション ── */
 .dm-profile-section{
-  padding:14px 18px;
-  border-bottom:1px solid rgba(255,255,255,.08);
+  padding:11px 16px;
+  border-bottom:1px solid #E8DED5;
 }
 .dm-profile-section>b{
   display:block;
-  margin-bottom:9px;
-  color:#fff;
-  font-size:13px;
-}
-.dm-profile-info{
-  display:grid;
-  gap:8px;
-  margin:0;
-}
-.dm-profile-info div{
-  display:grid;
-  grid-template-columns:78px minmax(0,1fr);
-  gap:10px;
-}
-.dm-profile-info dt{
-  color:#9da2aa;
-  font-size:12px;
+  margin-bottom:7px;
+  color:#9A9090;
+  font-size:11px;
   font-weight:900;
-}
-.dm-profile-info dd{
-  margin:0;
-  color:#fff;
-  font-weight:800;
-  min-width:0;
-  overflow-wrap:anywhere;
+  letter-spacing:.06em;
+  text-transform:uppercase;
 }
 .dm-profile-chips{
   display:flex;
   flex-wrap:wrap;
-  gap:6px;
+  gap:5px;
 }
 .dm-profile-chips span{
   border-radius:999px;
-  background:#24262b;
-  border:1px solid rgba(255,255,255,.08);
-  padding:6px 9px;
-  color:#fff;
+  background:#F8F3EE;
+  border:1px solid #E8DED5;
+  padding:4px 10px;
+  color:#5A5050;
   font-size:12px;
-  font-weight:900;
+  font-weight:700;
 }
 .dm-profile-empty,
 .dm-profile-bio{
   margin:0;
-  color:#c5cad3;
+  color:#9A9090;
   line-height:1.65;
   overflow-wrap:anywhere;
+  font-size:13px;
 }
-.dm-profile-maps{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  margin-top:8px;
-}
-.dm-profile-maps-label{
-  font-size:11px;
-  font-weight:800;
-  color:#8a8fa8;
-  letter-spacing:.04em;
-}
+
+/* ── アクション ── */
 .dm-profile-actions{
   display:grid;
   gap:8px;
-  padding:16px 18px 20px;
+  padding:14px 16px 18px;
 }
-.dm-profile-actions button{
-  min-height:40px;
-  border:1px solid rgba(255,255,255,.1);
+.dm-profile-actions>button{
+  min-height:38px;
+  border:1.5px solid #E8DED5;
   border-radius:12px;
-  background:#24262b;
-  color:#fff;
-  font-weight:900;
+  background:#F8F3EE;
+  color:#181614;
+  font-weight:800;
+  font-size:13px;
+  transition:border-color .15s;
 }
-.dm-profile-actions button.danger{
-  border-color:rgba(255,83,112,.34);
-  background:rgba(255,83,112,.12);
-  color:#ff8fa3;
+.dm-profile-actions>button:hover{
+  border-color:#C8C0B8;
+}
+.dm-profile-actions-danger{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+}
+.dm-profile-actions-danger button{
+  min-height:34px;
+  border:1px solid #E8DED5;
+  border-radius:10px;
+  background:#F8F3EE;
+  color:#7A716A;
+  font-weight:700;
+  font-size:12px;
+  transition:border-color .15s;
+}
+.dm-profile-actions-danger button.danger{
+  border-color:rgba(255,92,138,.22);
+  background:rgba(255,92,138,.05);
+  color:#D03060;
 }
 
 @media(max-width:1060px){
   .dm-panel-with-profile{
-    grid-template-columns:minmax(190px,240px) minmax(0,1fr)!important;
+    grid-template-columns:minmax(180px,230px) minmax(0,1fr)!important;
   }
   .dm-profile-sidebar{
     display:none!important;
@@ -434,13 +595,13 @@
   }
   .dm-panel-with-profile{
     height:calc(100dvh - 150px)!important;
-    min-height:520px!important;
+    min-height:480px!important;
     grid-template-columns:1fr!important;
   }
   .dm-panel-with-profile .dm-thread-list{
     display:none!important;
   }
   .dm-panel-with-profile .dm-bubble{
-    max-width:88%!important;
+    max-width:86%!important;
   }
 }
