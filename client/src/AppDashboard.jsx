@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { appTabs, cx, planLabel, TAB_ICONS } from './constants.jsx';
+import { appTabs, cx, TAB_ICONS } from './constants.jsx';
 import SiteHeader from './SiteHeader.jsx';
 import { SafetyCompact } from './Safety.jsx';
 

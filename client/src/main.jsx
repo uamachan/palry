@@ -7,7 +7,7 @@ const LazyAppDashboard = lazy(() => import('./AppDashboard.jsx'));
 const LazyAuthForms = lazy(() => import('./AuthForms.jsx'));
 import Safety from './Safety.jsx';
 import SiteHeader from './SiteHeader.jsx';
-import { appTabs, defaultRole, planLabel, roles } from './constants.jsx';
+import { appTabs, defaultRole, planLabel } from './constants.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import { initAnalytics, track, shouldAskConsent, setConsent } from './analytics.js';
 import { initMonitoring } from './monitoring.js';
