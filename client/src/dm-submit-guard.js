@@ -26,26 +26,38 @@ document.addEventListener('submit', (event) => {
   }, 2500);
 }, true);
 
-const RIOT_ID_MESSAGE = 'Riot IDは「GameName#Tagline」の形式で入力してください。GameNameは英数字3〜16文字、Taglineは英数字3〜5文字です。例：Player123#JP1';
-const RIOT_ID_PATTERN = /^[A-Za-z0-9]{3,16}#[A-Za-z0-9]{3,5}$/;
+const RIOT_ID_MESSAGE = 'Riot IDは「GameName#Tagline」の形式で入力してください。日本語・韓国語・英語などが使えます。GameNameは1〜16文字、Taglineは1〜5文字です。例：たろう#JP1';
+
+function countChars(value) {
+  return [...String(value || '')].length;
+}
+
+function isValidRiotId(value) {
+  const text = String(value || '').trim();
+  if (!text || text.includes(' ')) return false;
+  const parts = text.split('#');
+  if (parts.length !== 2) return false;
+  const [gameName, tagline] = parts;
+  return countChars(gameName) >= 1 && countChars(gameName) <= 16 && countChars(tagline) >= 1 && countChars(tagline) <= 5;
+}
 
 function normalizeRiotId(value) {
-  const raw = String(value || '').trim().replace(/＃/g, '#');
+  const raw = String(value || '').trim().replace(/＃/g, '#').replace(/\s+/g, '');
   let normalized = '';
   let hasHash = false;
   for (const char of raw) {
-    if (/^[A-Za-z0-9]$/.test(char)) {
-      normalized += char;
+    if (char === '#') {
+      if (!hasHash) {
+        normalized += '#';
+        hasHash = true;
+      }
       continue;
     }
-    if (char === '#' && !hasHash) {
-      normalized += '#';
-      hasHash = true;
-    }
+    normalized += char;
   }
   const [gameName = '', tagline = ''] = normalized.split('#');
-  const limitedGameName = gameName.slice(0, 16);
-  const limitedTagline = tagline.slice(0, 5);
+  const limitedGameName = [...gameName].slice(0, 16).join('');
+  const limitedTagline = [...tagline].slice(0, 5).join('');
   return hasHash ? `${limitedGameName}#${limitedTagline}` : limitedGameName;
 }
 
@@ -57,7 +69,7 @@ function isRiotIdInput(input) {
 function validateRiotIdInput(input) {
   if (!isRiotIdInput(input)) return;
   const value = input.value.trim();
-  if (!value || RIOT_ID_PATTERN.test(value)) {
+  if (!value || isValidRiotId(value)) {
     input.setCustomValidity('');
     return;
   }
@@ -69,7 +81,7 @@ function ensureRiotIdHint(input) {
   input.dataset.riotHintReady = 'true';
   input.setAttribute('inputmode', 'text');
   input.setAttribute('autocomplete', 'off');
-  input.setAttribute('maxlength', '22');
+  input.setAttribute('maxlength', '32');
   input.setAttribute('title', RIOT_ID_MESSAGE);
   input.setAttribute('aria-describedby', 'riot-id-help');
 
@@ -78,7 +90,7 @@ function ensureRiotIdHint(input) {
   const hint = document.createElement('small');
   hint.id = 'riot-id-help';
   hint.className = 'riot-id-help';
-  hint.textContent = '例：Player123#JP1（英数字のみ / GameName 3〜16文字、Tagline 3〜5文字）';
+  hint.textContent = '例：たろう#JP1 / Player#KR1 / 민수#123（GameName 1〜16文字、Tagline 1〜5文字）';
   label.appendChild(hint);
 }
 
