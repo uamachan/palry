@@ -1,10 +1,12 @@
 import React from 'react';
 import { TAB_ICONS } from '../../constants.jsx';
+import { SkeletonList } from '../../ui/primitives.jsx';
 
-export default function NotificationsPanel({ receivedLikes, dmThreads, setActiveTab, selectDmThread, acceptLike }) {
+export default function NotificationsPanel({ receivedLikes, dmThreads, setActiveTab, selectDmThread, acceptLike, likesLoading, dmLoading }) {
   const unreadThreads = dmThreads.filter((t) => Number(t.unreadCount || 0) > 0);
   const recentThreads = dmThreads.slice(0, 3);
   const totalUnread = receivedLikes.length + unreadThreads.reduce((sum, t) => sum + Number(t.unreadCount || 0), 0);
+  const loadingFirstLoad = (likesLoading || dmLoading) && !receivedLikes.length && !dmThreads.length;
   return (
     <div className="notifications-panel list-panel" aria-label="通知パネル">
       <div className="notifications-head">
@@ -12,6 +14,7 @@ export default function NotificationsPanel({ receivedLikes, dmThreads, setActive
         <b aria-label={`${totalUnread}件の通知`}>{totalUnread}件</b>
       </div>
       <div className="notification-list" role="list">
+        {loadingFirstLoad && <SkeletonList rows={3} />}
         {receivedLikes.map((like) => (
           <article className="notification-card important" key={like.id} role="listitem">
             <div className="notification-icon" aria-hidden="true">♡</div>
@@ -33,7 +36,7 @@ export default function NotificationsPanel({ receivedLikes, dmThreads, setActive
             <button type="button" aria-label={`${thread.match.profileName}さんにDMを送る`} onClick={() => { selectDmThread(thread.match.id); setActiveTab('dm'); }}>DM</button>
           </article>
         ))}
-        {!receivedLikes.length && !unreadThreads.length && !recentThreads.length && (
+        {!loadingFirstLoad && !receivedLikes.length && !unreadThreads.length && !recentThreads.length && (
           <div className="notification-empty">
             <div className="notification-empty-icon">{TAB_ICONS.notifications}</div>
             <h3>通知はまだありません</h3>

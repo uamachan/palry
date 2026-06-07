@@ -83,6 +83,9 @@ function App() {
   const [reports, setReports] = useState([]);
   const [flaggedUsers, setFlaggedUsers] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
+  const [profilesLoading, setProfilesLoading] = useState(false);
+  const [dmLoading, setDmLoading] = useState(false);
+  const [likesLoading, setLikesLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('match');
   const [plansData, setPlansData] = useState(null);
   const [pricingTab, setPricingTab] = useState('plans');
@@ -359,12 +362,15 @@ function App() {
 
   async function refreshProfiles() {
     if (!user) return;
+    setProfilesLoading(true);
     try {
       const payload = await api.profiles({ plan, targetGender, userId: user.id });
       setProfiles(payload.profiles || []);
       setIndex(0);
     } catch (error) {
       showToast(error.message || 'プロフィール取得に失敗しました');
+    } finally {
+      setProfilesLoading(false);
     }
   }
 
@@ -376,8 +382,10 @@ function App() {
 
   async function refreshReceivedLikes() {
     if (!user) return;
+    setLikesLoading(true);
     const payload = await api.receivedLikes().catch(() => ({ receivedLikes: [] }));
     setReceivedLikes(payload.receivedLikes || []);
+    setLikesLoading(false);
   }
 
   async function refreshFootprints() {
@@ -388,7 +396,9 @@ function App() {
 
   async function refreshDmThreads(preferredThreadId = activeThreadId) {
     if (!user) return;
+    setDmLoading(true);
     const payload = await api.dmThreads(user.id).catch(() => ({ threads: [] }));
+    setDmLoading(false);
     const nextThreads = payload.threads || [];
     setDmThreads(nextThreads);
     setActiveThreadId((currentId) => {
@@ -639,7 +649,7 @@ function App() {
   // 認証フォームの表示条件
   const showAuthForms = (isAuthed && profileEditorOpen) || (!isAuthed && Boolean(authMode));
 
-  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, auditLog, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, auditLog, profiles, index, form]);
+  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form]);
 
   if (isUnknownRoute) return <NotFound />;
 
