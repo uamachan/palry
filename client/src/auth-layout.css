@@ -9,7 +9,8 @@
 }
 .auth-modal-panel--narrow{
   width:min(520px,calc(100vw - 20px))!important;
-  height:min(590px,calc(100dvh - 20px))!important;
+  height:auto!important;
+  min-height:0!important;
   max-height:calc(100dvh - 20px)!important;
   padding:22px!important;
 }
@@ -30,6 +31,21 @@
   grid-template-rows:auto minmax(0,1fr)!important;
   gap:12px!important;
   padding:0!important;
+}
+.auth-modal-panel--narrow .email-signup-panel{
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow:visible!important;
+  grid-template-rows:auto auto!important;
+  align-content:start!important;
+  gap:18px!important;
+}
+.auth-modal-panel--profile .email-signup-panel{
+  height:100%!important;
+  max-height:100%!important;
+  overflow:hidden!important;
+  grid-template-rows:auto minmax(0,1fr)!important;
 }
 .email-signup-header,
 .profile-setup-heading{
@@ -64,11 +80,19 @@
   gap:12px!important;
   padding:16px!important;
 }
+.auth-modal-panel--narrow .email-signup-form.signup-card,
+.auth-modal-panel--narrow .email-confirm-card{
+  max-height:none!important;
+  overflow:visible!important;
+}
 .email-signup-actions{
   margin-top:auto!important;
   display:grid!important;
   gap:9px!important;
   width:100%!important;
+}
+.auth-modal-panel--narrow .email-signup-actions{
+  margin-top:0!important;
 }
 .email-signup-actions button{
   width:100%!important;
@@ -81,7 +105,7 @@
   order:4!important;
 }
 .auth-entry-panel .email-signup-actions{
-  align-self:center!important;
+  align-self:start!important;
 }
 
 .profile-setup-card{
@@ -242,7 +266,12 @@
 }
 
 @media(max-width:820px){
-  .auth-modal-panel--narrow,
+  .auth-modal-panel--narrow{
+    width:calc(100vw - 20px)!important;
+    height:auto!important;
+    max-height:calc(100dvh - 20px)!important;
+    padding:16px!important;
+  }
   .auth-modal-panel--profile{
     width:calc(100vw - 20px)!important;
     height:calc(100dvh - 20px)!important;
