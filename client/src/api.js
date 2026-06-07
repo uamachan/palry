@@ -56,4 +56,5 @@ export const api = {
   entitlements: (userId) => request(`/api/entitlements/${encodeURIComponent(userId)}`),
   reports: () => request('/api/admin/reports'),
   adminUnhide: (body) => request('/api/admin/unhide', { method: 'POST', body: JSON.stringify(body) }),
+  adminAudit: () => request('/api/admin/audit'),
 };

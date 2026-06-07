@@ -344,7 +344,11 @@ function PricingPanel(props) { return <PublicPricing {...props} appMode />; }
 function ProfilePanel({ user }) {
   return <div className="list-panel"><h3>プロフィール</h3><div className="profile-preview expanded"><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0, 1) || 'P'}</div><b>{user.name}</b><span>{user.gender} / {user.age ? `${user.age}歳` : '年齢未設定'} / {user.region || '地域未設定'}</span><span data-copyable>{user.riotId} / {user.rank} / {user.role}</span>{Boolean(user.tags?.length) && <div className="tag-row">{user.tags.map((tag) => <span className="intent-tag" key={tag}>{tag}</span>)}</div>}<p>{user.bio || '自己紹介は未入力です。'}</p><VoiceIntroPlayer src={user.voiceIntro} /></div></div>;
 }
-function AdminPanel({ reports, flaggedUsers = [], unhideUser }) {
+const AUDIT_LABELS = {
+  report: '通報', block: 'ブロック', auto_hide: '自動非表示',
+  admin_view_reports: '管理閲覧', admin_unhide: '非表示解除',
+};
+function AdminPanel({ reports, flaggedUsers = [], unhideUser, auditLog = [] }) {
   return <div className="list-panel">
     <h3>自動非表示ユーザー</h3>
     {flaggedUsers.length ? flaggedUsers.map((u) => (
@@ -356,6 +360,14 @@ function AdminPanel({ reports, flaggedUsers = [], unhideUser }) {
     )) : <p className="empty-text">自動非表示中のユーザーはいません。</p>}
     <h3>通報管理</h3>
     {reports.length ? reports.map((r) => <div className="list-row" key={r.id}><b>{r.reason}</b><p>{r.profileName || r.profileId || '-'}</p><span>{r.status}</span></div>) : <p className="empty-text">通報はありません。</p>}
+    <h3>監査ログ</h3>
+    {auditLog.length ? auditLog.slice(0, 100).map((a) => (
+      <div className="list-row" key={a.id}>
+        <b>{AUDIT_LABELS[a.action] || a.action}</b>
+        <p>{a.actorId || 'system'} → {a.targetId || '-'}</p>
+        <span>{a.createdAt ? new Date(a.createdAt).toLocaleString('ja-JP') : ''}</span>
+      </div>
+    )) : <p className="empty-text">監査ログはありません。</p>}
   </div>;
 }
 function ProfileSummary({ user, plan, stats, receivedLikes = [] }) {
