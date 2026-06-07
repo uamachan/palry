@@ -50,7 +50,16 @@ function initialForm() {
 }
 
 function publicUserToForm(user) {
-  return { ...initialForm(), ...user, tags: user?.tags || [], agents: user?.agents || [], maps: user?.maps || [], agreed: true };
+  return {
+    ...initialForm(),
+    ...user,
+    tags: user?.tags || [],
+    agents: user?.agents || [],
+    maps: user?.maps || [],
+    vc: user?.vc || '',
+    favoriteWeapon: user?.favoriteWeapon || '',
+    agreed: true,
+  };
 }
 
 function firebaseErrorMessage(error) {
