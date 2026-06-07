@@ -8,28 +8,26 @@ export function cleanText(value, max = 160) {
 
 /**
  * Riot ID は GameName#Tagline 形式に限定する。
- * - GameName: 英数字 3〜16文字
- * - Tagline: 英数字 3〜5文字
+ * - GameName: 1〜16文字（日本語・韓国語・英数字など任意の Unicode。空白・# 除く）
+ * - Tagline: 1〜5文字（同上）
+ * クライアントの AuthForms.jsx / dm-submit-guard.js と同じルールを適用する。
  */
-export const RIOT_ID_PATTERN = /^[A-Za-z0-9]{3,16}#[A-Za-z0-9]{3,5}$/;
+export const RIOT_ID_PATTERN = /^[^#\s]{1,16}#[^#\s]{1,5}$/u;
 
 export function normalizeRiotIdInput(value) {
-  const raw = String(value || '').trim().replace(/＃/g, '#');
+  const raw = String(value || '').trim().replace(/＃/g, '#').replace(/\s+/g, '');
   let normalized = '';
   let hasHash = false;
-  for (const char of raw) {
-    if (/^[A-Za-z0-9]$/.test(char)) {
-      normalized += char;
+  for (const char of [...raw]) {
+    if (char === '#') {
+      if (!hasHash) { normalized += '#'; hasHash = true; }
       continue;
     }
-    if (char === '#' && !hasHash) {
-      normalized += '#';
-      hasHash = true;
-    }
+    normalized += char;
   }
   const [gameName = '', tagline = ''] = normalized.split('#');
-  const limitedGameName = gameName.slice(0, 16);
-  const limitedTagline = tagline.slice(0, 5);
+  const limitedGameName = [...gameName].slice(0, 16).join('');
+  const limitedTagline = [...tagline].slice(0, 5).join('');
   return hasHash ? `${limitedGameName}#${limitedTagline}` : limitedGameName;
 }
 
