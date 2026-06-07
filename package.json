@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "concurrently \"node server/index.js\" \"vite --host 0.0.0.0\"",
     "local": "concurrently \"node server/index.js\" \"vite --host localhost --open /\"",
+    "prebuild": "node scripts/generate-sitemap.mjs",
     "build": "vite build",
+    "sitemap": "node scripts/generate-sitemap.mjs",
     "release:check": "npm run build && node --check server/index.js && node --check server/index-runtime.js",
     "start": "node server/start-production.js",
     "reset-data": "node server/reset-data.js"

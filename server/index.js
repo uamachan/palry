@@ -1138,6 +1138,14 @@ app.post('/api/admin/unhide', requireAuth, async (req, res) => {
   res.json({ ok: true, profileId });
 });
 
+// 監査ログ閲覧（管理者のみ）。直近 limit 件を新しい順で返す。
+app.get('/api/admin/audit', requireAuth, async (req, res) => {
+  if (!isAdmin(req.authedUser)) return res.status(403).json({ message: '管理者のみアクセスできます。' });
+  const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
+  const log = await readJson('audit.json', []);
+  res.json({ audit: log.slice(0, limit) });
+});
+
 app.post('/api/purchase', requireAuth, async (req, res) => {
   if (!isDemoPaymentAllowed()) {
     return res.status(503).json({ message: '決済機能は現在準備中です。しばらくお待ちください。' });

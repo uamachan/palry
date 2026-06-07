@@ -80,6 +80,7 @@ function App() {
   const [footprints, setFootprints] = useState([]);
   const [reports, setReports] = useState([]);
   const [flaggedUsers, setFlaggedUsers] = useState([]);
+  const [auditLog, setAuditLog] = useState([]);
   const [activeTab, setActiveTab] = useState('match');
   const [plansData, setPlansData] = useState(null);
   const [pricingTab, setPricingTab] = useState('plans');
@@ -331,6 +332,7 @@ function App() {
     setFootprints([]);
     setReports([]);
     setFlaggedUsers([]);
+    setAuditLog([]);
     setProfileEditorOpen(false);
     setPendingFirebaseUser(null);
     setEntitlements({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
@@ -417,6 +419,7 @@ function App() {
         setReports(p.reports || []);
         setFlaggedUsers(p.flaggedUsers || []);
       }).catch(() => null);
+      api.adminAudit().then((p) => setAuditLog(p.audit || [])).catch(() => null);
     }
   }, [activeTab, user?.id, user?.isAdmin]);
 
@@ -616,7 +619,7 @@ function App() {
   const adminTab = { id: 'admin', label: '管理' };
   const visibleTabs = user?.isAdmin ? [...appTabs, adminTab] : appTabs;
 
-  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, profiles, index, form]);
+  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, auditLog, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, auditLog, profiles, index, form]);
 
   return <>
     <div className="toast" role="status" aria-live="polite" aria-atomic="true" aria-relevant="text" hidden={!toast}>{toast}</div>
