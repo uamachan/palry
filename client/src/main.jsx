@@ -239,8 +239,15 @@ function App() {
       const payload = await api.login({ idToken });
       completeAuth(payload.user, 'ログインしました');
     } catch (error) {
-      // firebaseErrorMessage は Firebase エラーを日本語化し、
-      // バックエンドエラー（404 等）はそのメッセージをそのまま返す。
+      if (error?.httpStatus === 404) {
+        const { firebaseAuth } = await getFirebaseMods();
+        const current = firebaseAuth.currentUser;
+        setPendingFirebaseUser({ uid: current.uid, email: current.email, emailVerified: true });
+        setForm((f) => ({ ...initialForm(), email: current.email || f.email, emailConfirm: current.email || f.emailConfirm }));
+        setProfileSetupPrompt(false);
+        setAuthMode('profileSetup');
+        return showToast('プロフィールを作成してください');
+      }
       showToast(firebaseErrorMessage(error));
     }
   }
