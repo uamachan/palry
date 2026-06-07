@@ -229,6 +229,14 @@ const valorantRanks = [
 ];
 const valorantRoles = ['デュエリスト', 'イニシエーター', 'コントローラー', 'センチネル'];
 const regions = ['北海道', '東北', '関東', '甲信越', '北陸', '東海', '近畿', '中国', '四国', '九州', '沖縄', '海外'];
+const allowedVcs = ['なし', 'Discord', 'Skype', 'その他'];
+const allowedMaps = ['アセント', 'スプリット', 'ヘイヴン', 'バインド', 'アイスボックス', 'ブリーズ', 'フラクチャー', 'パール', 'ロータス', 'サンセット', 'アビス', 'カロード'];
+const allowedWeapons = ['Vandal', 'Phantom', 'Operator', 'Sheriff', 'Ghost', 'Marshal', 'Judge', 'Odin'];
+
+function sanitizeMapsField(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v) => allowedMaps.includes(cleanText(v, 30))).slice(0, 12);
+}
 const rankAliases = new Map([
   ['Iron', 'Iron 1'],
   ['Bronze', 'Bronze 1'],
@@ -433,10 +441,14 @@ function userToProfile(user) {
     rank: normalizeRank(user.rank),
     peakRank: normalizeRank(user.peakRank || user.rank),
     role: normalizeRole(user.role),
+    riotId: user.riotId || '',
     tags: Array.isArray(user.tags) ? user.tags : [],
     modes: Array.isArray(user.modes) ? user.modes : [],
     agents: Array.isArray(user.agents) ? user.agents : [],
     xHandle: user.xHandle || '',
+    vc: user.vc || '',
+    maps: Array.isArray(user.maps) ? user.maps : [],
+    favoriteWeapon: user.favoriteWeapon || '',
     profilePhoto: user.profilePhoto || '',
     bio: user.bio || '',
     voiceIntro: user.voiceIntro || '',
@@ -541,6 +553,13 @@ function makeMatchRow(ownerUserId, otherProfile, conversationId, isRealUser) {
     profileAgeRange: otherProfile.ageRange || '',
     profileRegion: otherProfile.region || '',
     profileBio: otherProfile.bio || '',
+    profileRiotId: otherProfile.riotId || '',
+    profileXHandle: otherProfile.xHandle || '',
+    profileTags: Array.isArray(otherProfile.tags) ? otherProfile.tags : [],
+    profileAgents: Array.isArray(otherProfile.agents) ? otherProfile.agents : [],
+    profileVc: otherProfile.vc || '',
+    profileMaps: Array.isArray(otherProfile.maps) ? otherProfile.maps : [],
+    profileFavoriteWeapon: otherProfile.favoriteWeapon || '',
     opener: `${otherProfile.name}さんとマッチしました！`,
     dmUnlocked: true,
     conversationId,
@@ -840,6 +859,9 @@ app.post('/api/register', authLimiter, async (req, res) => {
       xHandle: cleanText(payload.xHandle, 40),
       bio: cleanText(payload.bio, 240),
       voiceIntro: sanitizeMedia(payload.voiceIntro, 'audio', 1500000),
+      vc: enumValue(payload.vc, allowedVcs, ''),
+      maps: sanitizeMapsField(payload.maps),
+      favoriteWeapon: enumValue(payload.favoriteWeapon, allowedWeapons, ''),
       plan: 'FREE',
       verified: true,
       agreedAt: new Date().toISOString(),
@@ -901,6 +923,9 @@ app.put('/api/profile', requireAuth, async (req, res) => {
       xHandle: cleanText(payload.xHandle, 40),
       bio: cleanText(payload.bio, 240),
       voiceIntro: sanitizeMedia(payload.voiceIntro, 'audio', 1500000),
+      vc: enumValue(payload.vc, allowedVcs, ''),
+      maps: sanitizeMapsField(payload.maps),
+      favoriteWeapon: enumValue(payload.favoriteWeapon, allowedWeapons, ''),
       updatedAt: new Date().toISOString()
     };
     const next = [...users];
