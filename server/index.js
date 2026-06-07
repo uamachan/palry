@@ -9,6 +9,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 loadLocalEnv();
 const app = express();
+// Express の既定ヘッダ "X-Powered-By: Express" を消し、サーバー実装の露出を減らす。
+app.disable('x-powered-by');
 const port = Number(process.env.PORT || 3001);
 const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
@@ -97,7 +99,11 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), payment=()');
-  if (isProduction) res.setHeader('Content-Security-Policy', contentSecurityPolicy);
+  if (isProduction) {
+    res.setHeader('Content-Security-Policy', contentSecurityPolicy);
+    // HTTPS を強制し、中間者攻撃や HTTP へのダウングレードを防ぐ（2年・サブドメイン含む）。
+    res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  }
   next();
 });
 
@@ -105,6 +111,8 @@ app.use((req, res, next) => {
 const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: Number(process.env.RATE_LIMIT_API_PER_MIN || 120) });
 const authLimiter = rateLimit({ windowMs: 60 * 1000, max: Number(process.env.RATE_LIMIT_AUTH_PER_MIN || 20), message: '認証の試行が多すぎます。しばらくしてからお試しください。' });
 const reportLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, message: '通報の送信が多すぎます。しばらくしてからお試しください。' });
+// DM送信はグローバル制限より厳しめに（別文面の連投によるスパム/フラッディング防止）。
+const dmLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, message: 'メッセージの送信が多すぎます。しばらくしてからお試しください。' });
 app.use('/api', apiLimiter);
 
 validateProductionConfig();
@@ -923,7 +931,7 @@ app.post('/api/dm/read', requireAuth, async (req, res) => {
   res.json({ ok: true, matchId, readAt });
 });
 
-app.post('/api/dm', requireAuth, async (req, res) => {
+app.post('/api/dm', requireAuth, dmLimiter, async (req, res) => {
   const viewerId = req.authedUser.id;
   const matchId = cleanText(req.body?.matchId, 80);
   const body = cleanText(req.body?.body, 500);
