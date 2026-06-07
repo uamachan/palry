@@ -326,7 +326,9 @@ function weightedShuffle(profiles, planName, boostedIds = new Set()) {
   const planBonus = planName === 'VIP' ? 0.08 : planName === 'PLUS' ? 0.04 : 0;
   return [...profiles]
     .map((profile) => {
-      const femaleGuard = profile.gender === '女性' ? 0.22 : 0;
+      // 閲覧者の性別に関わらず、女性候補は候補順位を下げてマッチ機会を抑制する。
+      // 値を大きくするほど女性が下位（=後ろのカード）に回り、マッチしにくくなる。
+      const femaleGuard = profile.gender === '女性' ? 0.5 : 0;
       // ブースト/目立たせ購入者は候補上位に出やすくする。
       const boostBonus = boostedIds.has(profile.id) ? 0.5 : 0;
       const score = Math.random() + Number(profile.matchScore || 70) / 100 + planBonus - femaleGuard + boostBonus;
