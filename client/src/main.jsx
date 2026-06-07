@@ -9,6 +9,8 @@ import SiteHeader from './SiteHeader.jsx';
 import { appTabs, defaultRole, planLabel, roles } from './constants.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import { initAnalytics, track, shouldAskConsent, setConsent } from './analytics.js';
+import { initMonitoring } from './monitoring.js';
+import { NotFound } from './ui/primitives.jsx';
 import './dm-submit-guard.js';
 import './ui/tokens.css';
 import './styles.css';
@@ -94,6 +96,8 @@ function App() {
   const [authReady, setAuthReady] = useState(false);
   const [pendingScrollId, setPendingScrollId] = useState(null);
   const [askConsent, setAskConsent] = useState(false);
+  // ルーティング未導入のため、ルート('/')以外の URL は存在しないページとして 404 を出す。
+  const [isUnknownRoute] = useState(() => typeof window !== 'undefined' && window.location.pathname !== '/');
 
   const toastTimerRef = useRef(null);
 
@@ -132,6 +136,7 @@ function App() {
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
   useEffect(() => {
+    initMonitoring();
     initAnalytics();
     setAskConsent(shouldAskConsent());
   }, []);
@@ -635,6 +640,8 @@ function App() {
   const showAuthForms = (isAuthed && profileEditorOpen) || (!isAuthed && Boolean(authMode));
 
   const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, auditLog, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, auditLog, profiles, index, form]);
+
+  if (isUnknownRoute) return <NotFound />;
 
   return (
     <>
