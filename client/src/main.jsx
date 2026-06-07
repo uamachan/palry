@@ -1,9 +1,10 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { api } from './api.js';
-import AppDashboard from './AppDashboard.jsx';
-import AuthFormsContainer from './AuthForms.jsx';
 import PublicPricing from './Pricing.jsx';
+
+const LazyAppDashboard = lazy(() => import('./AppDashboard.jsx'));
+const LazyAuthForms = lazy(() => import('./AuthForms.jsx'));
 import Safety from './Safety.jsx';
 import SiteHeader from './SiteHeader.jsx';
 import { appTabs, defaultRole, planLabel, roles } from './constants.jsx';
