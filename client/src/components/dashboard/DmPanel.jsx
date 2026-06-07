@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { cx } from '../../constants.jsx';
+import { cx, rankIconFor } from '../../constants.jsx';
 import ProfileDetailModal from './ProfileDetailModal.jsx';
 
 export const dmStarters = ['よろしくお願いします！', '何時ごろ遊べますか？', 'ランク一緒に行きませんか？'];
@@ -55,7 +55,13 @@ function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
       <div className="dm-profile-section">
         <b>基本情報</b>
         <dl className="dm-profile-info">
-          <div><dt>ランク</dt><dd>{profile.rank || '未設定'}</dd></div>
+          <div>
+            <dt>ランク</dt>
+            <dd className="rank-inline dm-rank-line">
+              <span className="rank-inline-icon" aria-hidden="true"><img src={rankIconFor(profile.rank)} alt="" loading="lazy" /></span>
+              <span>{profile.rank || '未設定'}</span>
+            </dd>
+          </div>
           <div><dt>ロール</dt><dd>{profile.role || '未設定'}</dd></div>
           <div><dt>地域</dt><dd>{profile.region || '未設定'}</dd></div>
           <div><dt>年齢帯</dt><dd>{profile.ageRange || '未設定'}</dd></div>
