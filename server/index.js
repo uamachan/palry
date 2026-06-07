@@ -3,7 +3,12 @@ import cors from 'cors';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+<<<<<<< HEAD
 import { readJson, updateJson, uid } from './lib/jsonStore.js';
+=======
+import { readJson, writeJson, updateJson, uid } from './lib/jsonStore.js';
+import { cleanText, cleanAge, sanitizeMedia, emailKey } from './lib/validation.js';
+>>>>>>> 80a049a97dc08ab3b1aed97508ddaa9519abfb95
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -319,35 +324,11 @@ function weightedShuffle(profiles, planName, boostedIds = new Set()) {
     .map((entry) => entry.profile);
 }
 
-function cleanText(value, max = 160) {
-  return String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
-}
-
-function cleanAge(value) {
-  // slice(0,2) で先頭2桁だけ採るのは誤り（"21213"→"21" として通ってしまう）。
-  // 数字以外を除去した全体を数値化し、13〜80 の範囲外は拒否する。
-  const digits = String(value || '').replace(/\D/g, '');
-  const age = Number(digits);
-  if (!digits || !Number.isInteger(age) || age < 13 || age > 80) return '';
-  return String(age);
-}
+// cleanText / cleanAge / sanitizeMedia / emailKey は ./lib/validation.js に集約（単体テスト対象）。
 
 // 本番環境では ENABLE_DEMO_PURCHASE=true を明示しないと決済を通さない（フェイルクローズ）。
 function isDemoPaymentAllowed() {
   return !isProduction || process.env.ENABLE_DEMO_PURCHASE === 'true';
-}
-
-// プロフィール写真/ボイスはユーザー入力をそのまま src として配信するため、
-// 安全な media data URL（または https URL）以外は弾く。
-// data:text/html や javascript: などのスキーム混入・ストレージ悪用を防ぐ。
-function sanitizeMedia(value, kind, max) {
-  const v = String(value || '').trim();
-  if (!v || v.length > max) return '';
-  if (kind === 'image' && /^data:image\/(png|jpe?g|webp|gif|avif);base64,[A-Za-z0-9+/=\s]+$/.test(v)) return v;
-  if (kind === 'audio' && /^data:audio\/(webm|ogg|mpeg|mp3|wav|mp4|x-m4a);base64,[A-Za-z0-9+/=\s]+$/.test(v)) return v;
-  // クライアントは写真/音声を常に data URL（resizePhoto / MediaRecorder→readAsDataURL）で送る。
-  // 任意の https URL を許すとトラッキングや外部リソース埋め込みの面を増やすため弾く。
-  return '';
 }
 
 function publicUser(user) {
@@ -357,6 +338,7 @@ function publicUser(user) {
   return safeUser;
 }
 
+<<<<<<< HEAD
 function isVisibleUser(user) {
   return Boolean(user?.firebaseUid) && !user.autoHidden;
 }
@@ -372,6 +354,8 @@ function emailKey(email) {
   return cleanText(email, 120).toLowerCase();
 }
 
+=======
+>>>>>>> 80a049a97dc08ab3b1aed97508ddaa9519abfb95
 // 管理者メール許可リスト（ADMIN_EMAILS=a@x.com,b@y.com）。
 // 未設定なら誰も管理者でない（管理APIは全拒否＝フェイルクローズ）。
 const adminEmails = new Set(
@@ -446,11 +430,19 @@ function userToProfile(user) {
   return {
     id: user.id,
     name: user.name,
+<<<<<<< HEAD
     gender: normalizeGender(user.gender),
     ageRange: user.age ? `${user.age}歳` : '年齢未設定',
     region: normalizeRegion(user.region),
     rank: normalizeRank(user.rank),
     peakRank: normalizeRank(user.peakRank || user.rank),
+=======
+    gender: user.gender,
+    ageRange: user.age || '年齢未設定',
+    region: user.region || '',
+    rank: user.rank || 'Gold',
+    peakRank: user.peakRank || user.rank || '',
+>>>>>>> 80a049a97dc08ab3b1aed97508ddaa9519abfb95
     role: normalizeRole(user.role),
     tags: Array.isArray(user.tags) ? user.tags : [],
     modes: Array.isArray(user.modes) ? user.modes : [],
@@ -1133,6 +1125,35 @@ app.get('/api/matches/:userId', requireAuth, async (req, res) => {
   ]);
   const visibleUserIds = new Set(users.filter(isVisibleUser).map((user) => user.id));
   res.json({ matches: matches.filter((match) => match.userId === req.authedUser.id && match.dmUnlocked && visibleUserIds.has(match.profileId)) });
+});
+
+// 足あと（自分の操作履歴）をサーバーに永続化する。リロードしても残る。
+app.get('/api/footprints/me', requireAuth, async (req, res) => {
+  const footprints = await readJson('footprints.json', []);
+  res.json({ footprints: footprints.filter((f) => f.userId === req.authedUser.id).slice(0, 50) });
+});
+
+app.post('/api/footprint', requireAuth, async (req, res) => {
+  const userId = req.authedUser.id;
+  const profileId = cleanText(req.body?.profileId, 80);
+  const action = cleanText(req.body?.action, 20) || '見送り';
+  if (!profileId) return res.status(400).json({ message: '対象が必要です。' });
+  const users = await readJson('users.json', []);
+  const target = users.find((u) => u.id === profileId);
+  if (!target) return res.status(404).json({ message: '対象ユーザーが見つかりません。' });
+  const entry = {
+    id: uid('fp'), userId, profileId,
+    name: target.name, rank: target.rank || '', gender: target.gender || '',
+    action, createdAt: new Date().toISOString()
+  };
+  // ユーザーごとに直近50件だけ保持する（無制限肥大を防ぐ）。
+  const saved = await updateJson('footprints.json', [], (footprints) => {
+    const mine = footprints.filter((f) => f.userId === userId);
+    const others = footprints.filter((f) => f.userId !== userId);
+    const nextMine = [entry, ...mine].slice(0, 50);
+    return { value: [...nextMine, ...others], result: entry };
+  });
+  res.status(201).json({ footprint: saved });
 });
 
 app.get('/api/dm/:userId', requireAuth, async (req, res) => {

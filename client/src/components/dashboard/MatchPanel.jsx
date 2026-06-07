@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { cx } from '../../constants.jsx';
 import TinderProfileCard from './TinderProfileCard.jsx';
 import ProfileDetailModal from './ProfileDetailModal.jsx';
+import { SkeletonCard } from '../../ui/primitives.jsx';
 
 function useIsMounted() {
   const isMounted = useRef(true);
@@ -11,7 +12,7 @@ function useIsMounted() {
   return isMounted;
 }
 
-export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike }) {
+export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike, profilesLoading }) {
   const [swipeDir, setSwipeDir] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [acceptingLikeId, setAcceptingLikeId] = useState('');
@@ -81,6 +82,8 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
       <div className="mp-card-wrap">
         {current ? (
           <TinderProfileCard key={current.id} profile={current} onReport={reportCurrent} onBlock={blockCurrent} swipeDir={swipeDir} onOpenProfile={setDetailProfile} />
+        ) : profilesLoading ? (
+          <SkeletonCard />
         ) : (
           <div className="mp-empty" role="status" aria-live="polite">
             <h3>候補がなくなりました</h3>

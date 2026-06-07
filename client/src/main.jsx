@@ -9,6 +9,8 @@ import SiteHeader from './SiteHeader.jsx';
 import { appTabs, defaultRole, planLabel, roles } from './constants.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import { initAnalytics, track, shouldAskConsent, setConsent } from './analytics.js';
+import { initMonitoring } from './monitoring.js';
+import { NotFound } from './ui/primitives.jsx';
 import './dm-submit-guard.js';
 import './ui/tokens.css';
 import './styles.css';
@@ -81,6 +83,9 @@ function App() {
   const [reports, setReports] = useState([]);
   const [flaggedUsers, setFlaggedUsers] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
+  const [profilesLoading, setProfilesLoading] = useState(false);
+  const [dmLoading, setDmLoading] = useState(false);
+  const [likesLoading, setLikesLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('match');
   const [plansData, setPlansData] = useState(null);
   const [pricingTab, setPricingTab] = useState('plans');
@@ -94,6 +99,8 @@ function App() {
   const [authReady, setAuthReady] = useState(false);
   const [pendingScrollId, setPendingScrollId] = useState(null);
   const [askConsent, setAskConsent] = useState(false);
+  // ルーティング未導入のため、ルート('/')以外の URL は存在しないページとして 404 を出す。
+  const [isUnknownRoute] = useState(() => typeof window !== 'undefined' && window.location.pathname !== '/');
 
   const toastTimerRef = useRef(null);
 
@@ -132,6 +139,7 @@ function App() {
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
   useEffect(() => {
+    initMonitoring();
     initAnalytics();
     setAskConsent(shouldAskConsent());
   }, []);
@@ -354,12 +362,15 @@ function App() {
 
   async function refreshProfiles() {
     if (!user) return;
+    setProfilesLoading(true);
     try {
       const payload = await api.profiles({ plan, targetGender, userId: user.id });
       setProfiles(payload.profiles || []);
       setIndex(0);
     } catch (error) {
       showToast(error.message || 'プロフィール取得に失敗しました');
+    } finally {
+      setProfilesLoading(false);
     }
   }
 
@@ -371,13 +382,23 @@ function App() {
 
   async function refreshReceivedLikes() {
     if (!user) return;
+    setLikesLoading(true);
     const payload = await api.receivedLikes().catch(() => ({ receivedLikes: [] }));
     setReceivedLikes(payload.receivedLikes || []);
+    setLikesLoading(false);
+  }
+
+  async function refreshFootprints() {
+    if (!user) return;
+    const payload = await api.footprints().catch(() => ({ footprints: [] }));
+    setFootprints(payload.footprints || []);
   }
 
   async function refreshDmThreads(preferredThreadId = activeThreadId) {
     if (!user) return;
+    setDmLoading(true);
     const payload = await api.dmThreads(user.id).catch(() => ({ threads: [] }));
+    setDmLoading(false);
     const nextThreads = payload.threads || [];
     setDmThreads(nextThreads);
     setActiveThreadId((currentId) => {
@@ -388,7 +409,7 @@ function App() {
   }
 
   useEffect(() => { if (user) refreshProfiles(); }, [user?.id, plan, targetGender, entitlements.genderFilter]);
-  useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); } }, [user?.id]);
+  useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); refreshFootprints(); } }, [user?.id]);
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -448,7 +469,8 @@ function App() {
     if (!current || !user) return;
     const directionLabel = type === 'pass' ? '見送り' : type === 'super' ? 'SUPER LIKE' : type === 'dual' ? '両LIKE' : 'LIKE';
     if (type === 'pass') {
-      setFootprints((f) => [{ name: current.name, rank: current.rank, gender: current.gender, action: '見送り', time: '今' }, ...f].slice(0, 20));
+      setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: '見送り', time: '今' }, ...f].slice(0, 50));
+      api.recordFootprint({ profileId: current.id, action: '見送り' }).catch(() => null);
       nextCard();
       return;
     }
@@ -466,7 +488,8 @@ function App() {
       } else {
         showToast(`${directionLabel} しました`);
       }
-      setFootprints((f) => [{ name: current.name, rank: current.rank, gender: current.gender, action: directionLabel, time: '今' }, ...f].slice(0, 20));
+      setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: directionLabel, time: '今' }, ...f].slice(0, 50));
+      api.recordFootprint({ profileId: current.id, action: directionLabel }).catch(() => null);
       nextCard();
     } catch (error) {
       showToast(error.message || '操作に失敗しました');
@@ -626,7 +649,9 @@ function App() {
   // 認証フォームの表示条件
   const showAuthForms = (isAuthed && profileEditorOpen) || (!isAuthed && Boolean(authMode));
 
-  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, auditLog, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, auditLog, profiles, index, form]);
+  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form]);
+
+  if (isUnknownRoute) return <NotFound />;
 
   return (
     <>
