@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { cx, ranks, roles, agents, intentTags, regions, resizePhoto, vcOptions, maps as mapList, favoriteWeapons } from './constants.jsx';
+import { cx, rankIconMap, roles, roleIconMap, agents, intentTags, regions, resizePhoto, vcOptions, maps as mapList, favoriteWeapons } from './constants.jsx';
 
 function AuthModal({ children, onClose, size }) {
   const panelRef = useRef(null);
@@ -161,23 +161,23 @@ function isValidAgeRange(value) {
 }
 
 const ROLE_INFO = {
-  'デュエリスト':   { icon: '⚡', desc: '撃ち合い・エントリー' },
-  'イニシエーター': { icon: '🔍', desc: '情報・フラッシュ補助' },
-  'コントローラー': { icon: '💨', desc: '煙幕・陣地支配' },
-  'センチネル':     { icon: '🛡️', desc: '守り・ヒーリング' },
+  'デュエリスト':   { desc: '撃ち合い・エントリー' },
+  'イニシエーター': { desc: '情報・フラッシュ補助' },
+  'コントローラー': { desc: '煙幕・陣地支配' },
+  'センチネル':     { desc: '守り・ヒーリング' },
 };
 
 const RANK_TIERS = [
-  { tier: 'Unranked',  color: '#8a8a8a', rankList: ['Unranked'] },
-  { tier: 'Iron',      color: '#7e6b6b', rankList: ['Iron 1', 'Iron 2', 'Iron 3'] },
-  { tier: 'Bronze',    color: '#9c6535', rankList: ['Bronze 1', 'Bronze 2', 'Bronze 3'] },
-  { tier: 'Silver',    color: '#748e9e', rankList: ['Silver 1', 'Silver 2', 'Silver 3'] },
-  { tier: 'Gold',      color: '#b88a10', rankList: ['Gold 1', 'Gold 2', 'Gold 3'] },
-  { tier: 'Platinum',  color: '#00a898', rankList: ['Platinum 1', 'Platinum 2', 'Platinum 3'] },
-  { tier: 'Diamond',   color: '#3858d0', rankList: ['Diamond 1', 'Diamond 2', 'Diamond 3'] },
-  { tier: 'Ascendant', color: '#169855', rankList: ['Ascendant 1', 'Ascendant 2', 'Ascendant 3'] },
-  { tier: 'Immortal',  color: '#c0204a', rankList: ['Immortal 1', 'Immortal 2', 'Immortal 3'] },
-  { tier: 'Radiant',   color: '#c8a000', rankList: ['Radiant'] },
+  { tier: 'Unranked',  color: '#7A716A', rankList: ['Unranked'] },
+  { tier: 'Iron',      color: '#7D6F6A', rankList: ['Iron 1', 'Iron 2', 'Iron 3'] },
+  { tier: 'Bronze',    color: '#A86842', rankList: ['Bronze 1', 'Bronze 2', 'Bronze 3'] },
+  { tier: 'Silver',    color: '#8B9AA2', rankList: ['Silver 1', 'Silver 2', 'Silver 3'] },
+  { tier: 'Gold',      color: '#C2942F', rankList: ['Gold 1', 'Gold 2', 'Gold 3'] },
+  { tier: 'Platinum',  color: '#4FBCA9', rankList: ['Platinum 1', 'Platinum 2', 'Platinum 3'] },
+  { tier: 'Diamond',   color: '#657BD8', rankList: ['Diamond 1', 'Diamond 2', 'Diamond 3'] },
+  { tier: 'Ascendant', color: '#4AA66F', rankList: ['Ascendant 1', 'Ascendant 2', 'Ascendant 3'] },
+  { tier: 'Immortal',  color: '#D24B67', rankList: ['Immortal 1', 'Immortal 2', 'Immortal 3'] },
+  { tier: 'Radiant',   color: '#D4A841', rankList: ['Radiant'] },
 ];
 
 function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLabel = 'プロフィールを完成する', cancelLabel = 'ログインに戻る', showAgreement = true }) {
@@ -362,7 +362,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
                 }
               </div>
               <div className="pv-photo-footer">
-                <span className="pv-photo-btn">{form.profilePhoto ? '📷 写真を変更' : '📷 写真を選択'}</span>
+                <span className="pv-photo-btn">{form.profilePhoto ? '写真を変更' : '写真を選択'}</span>
                 <small>JPG/PNG・自動で最適化</small>
               </div>
             </label>
@@ -441,16 +441,21 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
               <span className="pv-label">現在のランク <span className="pv-req">必須</span></span>
               <div className="pv-rank-tiers">
                 {RANK_TIERS.map(({ tier, color, rankList }) => (
-                  <div key={tier} className="pv-rank-tier-row">
-                    <span className="pv-rank-tier-name" style={{ color }}>{tier}</span>
-                    <div className="pv-rank-badge-group">
+                  <div key={tier} className={cx('pv-rank-card', rankList.includes(form.rank) && 'pv-rank-card--on')} style={{ '--rc': color }}>
+                    <div className="pv-rank-card-head">
+                      <span className="pv-rank-icon-wrap" aria-hidden="true">
+                        <img src={rankIconMap[tier]} alt="" loading="lazy" />
+                      </span>
+                      <span className="pv-rank-tier-name">{tier}</span>
+                    </div>
+                    <div className="pv-rank-badge-group" aria-label={`${tier} のランク選択`}>
                       {rankList.map((rank) => (
                         <button type="button" key={rank}
                           className={cx('pv-rank-badge', form.rank === rank && 'pv-rank-badge--on')}
                           style={{ '--rc': color }}
                           aria-pressed={form.rank === rank}
                           onClick={() => setForm({ ...form, rank })}>
-                          {rank.replace(tier !== 'Unranked' ? tier + ' ' : '', '') || rank}
+                          {rankList.length === 1 ? '選択' : rank.replace(`${tier} `, '')}
                         </button>
                       ))}
                     </div>
@@ -463,13 +468,15 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
               <span className="pv-label">メインロール <span className="pv-req">必須</span></span>
               <div className="pv-role-grid">
                 {roles.map((role) => {
-                  const info = ROLE_INFO[role] || { icon: '🎮', desc: '' };
+                  const info = ROLE_INFO[role] || { desc: '' };
                   return (
                     <button type="button" key={role}
                       className={cx('pv-role-card', form.role === role && 'pv-role-card--on')}
                       aria-pressed={form.role === role}
                       onClick={() => setForm({ ...form, role })}>
-                      <span className="pv-role-icon">{info.icon}</span>
+                      <span className="pv-role-icon" aria-hidden="true">
+                        <img src={roleIconMap[role]} alt="" loading="lazy" />
+                      </span>
                       <span className="pv-role-name">{role}</span>
                       <span className="pv-role-desc">{info.desc}</span>
                     </button>
@@ -581,9 +588,9 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
               </div>
               <button type="button" className={isRecordingVoice ? 'danger' : 'secondary'}
                 onClick={isRecordingVoice ? stopVoiceRecording : startVoiceRecording}>
-                {isRecordingVoice ? '■ 録音停止' : '🎙 録音する'}
+                {isRecordingVoice ? '録音停止' : '録音する'}
               </button>
-              {form.voiceIntro && <span className="pv-voice-done">✓ 録音済み</span>}
+              {form.voiceIntro && <span className="pv-voice-done">録音済み</span>}
             </div>
           </div>
         )}
