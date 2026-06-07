@@ -1,4 +1,8 @@
 /* Auth and profile setup layout. Loaded from matching-icons.css after global polish. */
+.toast{
+  z-index:calc(var(--z-toast,1100) + 100)!important;
+  pointer-events:none!important;
+}
 .auth-modal{
   padding:10px!important;
   place-items:center!important;
