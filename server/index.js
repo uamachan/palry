@@ -640,13 +640,6 @@ function senderFor(message, viewerUserId) {
   return message.sender || 'match'; // 旧データ互換
 }
 
-// メッセージがそのマッチ（会話）に属するか。conversationId 優先、旧データは matchId。
-function messageBelongsToMatch(message, match) {
-  const convId = match.conversationId || match.id;
-  if (message.conversationId) return message.conversationId === convId;
-  return message.matchId === match.id;
-}
-
 // 検証済みトークンの短期キャッシュ。
 // 認証付きリクエストごとに Google Identity Toolkit を呼ぶとレイテンシ・コスト・
 // レート制限の負担が大きいため、トークン単位で短時間キャッシュする。
