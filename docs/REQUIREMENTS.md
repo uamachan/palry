@@ -407,26 +407,34 @@ CLS を抑える。最低限、(a) 候補カード (b) DM スレッド一覧 (c)
 
 ## 11. ギャップ分析と優先度付きロードマップ
 
-現行は機能・セキュリティが高水準。残るは主に **UX 体系化** と **運用計測**。
+「プロの当たり前」項目を一括実装した結果を反映（✅完了 / 🟡一部 / 🔲残）。
 
-### 優先度 高（次フェーズ）
-1. 🔲 **クライアントルーティング + 404 ページ + Error Boundary**
-   （SEO・共有 URL・計測・エラー耐性をまとめて解決）
-2. 🔲 **画面内スケルトン**（候補/DM/通知）と 4 ステートの徹底
-3. 🔲 **フォーム標準化**（インラインエラー + `aria-invalid` + 二重送信ガードの全面適用）
+### 優先度 高
+1. 🟡 **ルーティング + 404 + Error Boundary**
+   — ✅ Error Boundary（描画クラッシュ復旧）／✅ 404 ページ（ルート外URL）。
+   🔲 深いURLルーティング（共有可能URL/画面別メタ）は要フォーカス対応として残置。
+2. ✅ **画面内スケルトン**（候補 MatchPanel・通知 NotificationsPanel に導入、CLS抑制）
+3. 🟡 **フォーム標準化** — ✅ プロフィール基本情報に `aria-invalid`/`aria-describedby`、
+   ✅ 二重送信ガード（DM）。🔲 認証フォームの全面インラインエラー化は残。
 
 ### 優先度 中
-4. 🔲 **アナリティクス（GA4・env-gated・同意バナー・イベント設計）**
-5. 🔲 **デザインシステム形式化**（トークン + `Button/Input/Card/Modal/Skeleton` 部品化）
-6. 🔲 **sitemap 自動生成**（ルート定義一元化）
-7. 🔲 **管理：監査ログ閲覧 UI**
+4. ✅ **アナリティクス**（`VITE_GA_ID` env-gated・同意バナー・`track()` 集約・
+   sign_up/match/dm_send/purchase/app_error 計測・CSP自動許可）
+5. 🟡 **デザインシステム** — ✅ トークン(`ui/tokens.css`)＋プリミティブ
+   (`Skeleton/EmptyState/ErrorState/NotFound`)、✅ ダッシュボードのコンポーネント分割。
+   🔲 `Button/Input/Field/Card` の全面部品化は残。
+6. ✅ **sitemap 自動生成**（`scripts/generate-sitemap.mjs`・prebuild・lastmod自動）
+7. ✅ **管理：監査ログ閲覧 UI**（`GET /api/admin/audit` + 管理画面表示）
 
 ### 優先度 低（拡張）
-8. 🔲 自動テスト（Vitest 単体 + Playwright E2E）と CI（lint/test/build/`npm audit`）
-9. 🔲 ストレージ抽象化（リポジトリ層）→ DB 移行準備
-10. 🔲 実決済（Stripe）統合
-11. 🔲 監視・アラート（Sentry 等）とバックアップ手順
-12. 🔲 足あとのサーバー永続化（「誰が見たか」）
+8. 🟡 **テスト + CI** — ✅ 単体テスト（`node --test`・validation 4件）＋
+   GitHub Actions CI（build/check/test/`npm audit`）。🔲 E2E（Playwright）は残。
+9. 🔲 ストレージ抽象化（リポジトリ層）→ DB 移行準備（大規模横断リファクタのため別途）
+10. 🟡 実決済（Stripe）— ✅ 拡張シーム `server/lib/payments.js`（env-gated）。
+    🔲 実 SDK 統合・Webhook は鍵とパッケージ導入時に。
+11. ✅ **監視・バックアップ** — ✅ クライアント監視（`monitoring.js`・window.onerror/
+    rejection 捕捉・Sentry フック）＋ ✅ バックアップ（`scripts/backup-data.mjs`）。
+12. ✅ **足あとのサーバー永続化**（`/api/footprints` で自分の操作履歴を保存・リロード保持）
 
 ---
 
