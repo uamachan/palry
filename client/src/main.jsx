@@ -7,7 +7,10 @@ import PublicPricing from './Pricing.jsx';
 import Safety from './Safety.jsx';
 import SiteHeader from './SiteHeader.jsx';
 import { appTabs, defaultRole, planLabel, roles } from './constants.jsx';
+import ErrorBoundary from './ErrorBoundary.jsx';
+import { initAnalytics, track, shouldAskConsent, setConsent } from './analytics.js';
 import './dm-submit-guard.js';
+import './ui/tokens.css';
 import './styles.css';
 import './profile-setup.css';
 import './profile-validation.css';
@@ -89,6 +92,7 @@ function App() {
   const [profileSetupPrompt, setProfileSetupPrompt] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [pendingScrollId, setPendingScrollId] = useState(null);
+  const [askConsent, setAskConsent] = useState(false);
 
   const toastTimerRef = useRef(null);
 
@@ -125,6 +129,16 @@ function App() {
   }, []);
 
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
+
+  useEffect(() => {
+    initAnalytics();
+    setAskConsent(shouldAskConsent());
+  }, []);
+
+  function decideConsent(value) {
+    setConsent(value);
+    setAskConsent(false);
+  }
 
   useLayoutEffect(() => {
     if (view === 'site' && pendingScrollId) {
@@ -274,6 +288,7 @@ function App() {
       // 不要な秘密情報を送らないようプロフィール項目だけ送信する。
       const { password, emailConfirm, ...profileData } = form;
       const payload = await api.register({ ...profileData, idToken, email: current.email });
+      track('sign_up', { method: 'email' });
       completeAuth(payload.user, payload.message || 'アカウントを作成しました');
     } catch (error) {
       showToast(error.message || '登録に失敗しました');
@@ -439,6 +454,7 @@ function App() {
       if (payload.entitlements) setEntitlements(payload.entitlements);
       if (payload.match) {
         setMatches((m) => [payload.match, ...m]);
+        track('match', { source: 'swipe' });
         showToast(`${current.name}さんとマッチしました！`);
         await refreshMatches();
         await refreshDmThreads(payload.match.id);
@@ -460,6 +476,7 @@ function App() {
       const payload = await api.acceptLike({ userId: user.id, receivedLikeId });
       if (payload.match) {
         setMatches((m) => [payload.match, ...m]);
+        track('match', { source: 'accept_like' });
         await refreshMatches();
         await refreshDmThreads(payload.match.id);
         setActiveTab('dm');
@@ -506,6 +523,7 @@ function App() {
           updatedAt: payload.message?.createdAt
         };
       }));
+      track('dm_send');
       showToast('メッセージを送信しました');
     } catch (error) {
       showToast(error.message || '送信に失敗しました');
@@ -570,6 +588,7 @@ function App() {
       const confirmedPlan = payload?.purchase?.plan || payload?.plan || nextPlan;
       setPlan(confirmedPlan);
       setUser((u) => ({ ...u, plan: confirmedPlan }));
+      track('purchase', { kind: 'plan', item: confirmedPlan });
       showToast(`${planLabel(confirmedPlan)} に切り替えました（デモ）`);
     } catch (e) {
       setPlan(prevPlan);
@@ -587,6 +606,7 @@ function App() {
     try {
       const payload = await api.purchaseItem({ item: itemName });
       if (payload?.entitlements) setEntitlements(payload.entitlements);
+      track('purchase', { kind: 'item', item: itemName });
       showToast(`「${itemName}」を購入しました（デモ）`);
     } catch (e) {
       showToast(e.message || '購入に失敗しました');
@@ -600,6 +620,15 @@ function App() {
 
   return <>
     <div className="toast" role="status" aria-live="polite" aria-atomic="true" aria-relevant="text" hidden={!toast}>{toast}</div>
+    {askConsent && (
+      <div className="ui-consent" role="dialog" aria-label="計測の同意">
+        <p>サイト改善のため匿名のアクセス解析を利用します。同意いただける場合のみ計測します。</p>
+        <div className="ui-consent-actions">
+          <button type="button" className="secondary" onClick={() => decideConsent('denied')}>拒否</button>
+          <button type="button" className="primary" onClick={() => decideConsent('granted')}>同意する</button>
+        </div>
+      </div>
+    )}
     <AuthFormsContainer
       isAuthed={isAuthed}
       profileEditorOpen={profileEditorOpen}
@@ -689,4 +718,8 @@ function PendingProfileSetupCard({ email, onOpen }) {
 
 function Footer() { return <footer className="footer"><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" width="110" height="37" loading="lazy" decoding="async" /><p>使用した時点で利用規約に同意したものとみなします。PairlyはRiot Games公式サービスではありません。</p></footer>; }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
