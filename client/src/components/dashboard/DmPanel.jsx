@@ -22,6 +22,9 @@ export function profileFromMatch(match) {
     tags: safeArray(match.profileTags || match.tags),
     agents: safeArray(match.profileAgents || match.agents),
     xHandle: match.profileXHandle || match.xHandle || '',
+    vc: match.profileVc || match.vc || '',
+    maps: safeArray(match.profileMaps || match.maps),
+    favoriteWeapon: match.profileFavoriteWeapon || match.favoriteWeapon || '',
     voiceIntro: match.profileVoiceIntro || match.voiceIntro || '',
     matchScore: 100,
     opener: match.opener || `${match.profileName}さんとマッチしました！`,
@@ -70,6 +73,22 @@ function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
         <b>よく使うエージェント</b>
         <ProfileChips items={profile.agents} />
       </div>
+
+      {(profile.vc || profile.maps?.length > 0 || profile.favoriteWeapon) && (
+        <div className="dm-profile-section">
+          <b>プレイスタイル詳細</b>
+          <dl className="dm-profile-info">
+            {profile.vc && <div><dt>VC</dt><dd>{profile.vc}</dd></div>}
+            {profile.favoriteWeapon && <div><dt>好きな武器</dt><dd>{profile.favoriteWeapon}</dd></div>}
+          </dl>
+          {profile.maps?.length > 0 && (
+            <div className="dm-profile-maps">
+              <span className="dm-profile-maps-label">得意MAP</span>
+              <ProfileChips items={profile.maps} empty="未設定" />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="dm-profile-section">
         <b>自己紹介</b>
