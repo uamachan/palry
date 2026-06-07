@@ -762,7 +762,7 @@ function Hero({ onSignup, onOpenApp }) {
     </div>
     <div className="hero-card">
       <div className="browser-bar"><i></i><i></i><i></i><span>pairly.gg/app</span></div>
-      <div className="mock-card"><div className="mock-photo">P</div><div><b>専用マッチング画面</b><span>登録後にいいね / 見送り / メッセージを解放</span></div></div>
+      <div className="mock-card"><div className="mock-photo mock-photo-logo"><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" /></div><div><b>専用マッチング画面</b><span>登録後にいいね / 見送り / メッセージを解放</span></div></div>
       <div className="mock-row">
         {actions.map((action) => <button key={action.label} type="button" onClick={action.onClick} aria-label={action.label}>
           <MockIcon name={action.icon} />
