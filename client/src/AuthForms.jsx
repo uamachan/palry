@@ -185,7 +185,7 @@ function CustomSelect({ label, value, options, onChange }) {
 }
 
 // 年齢帯の選択肢
-const AGE_RANGES = ['10代', '20代前半', '20代後半', '30代', '40代以上'];
+const AGE_RANGES = ['10代', '20代', '30代', '40代', '50代', '60代', '70代', '80代', '90代'];
 
 function isValidAgeRange(value) {
   return AGE_RANGES.includes(value);
@@ -233,7 +233,6 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
     if (tab === '基本情報') {
       if (!form.name?.trim()) return '表示名';
       if (!form.riotId?.trim()) return 'Riot ID';
-      if (!/^[^#]{1,16}#[^#]{1,5}$/u.test(form.riotId.trim())) return 'Riot IDはGameName#Tagline形式で入力してください（例：たろう#JP1）';
       if (!form.age) return '年齢帯';
       if (!isValidAgeRange(form.age)) return '年齢帯を選択してください';
       if (!form.region) return '地域';
@@ -355,7 +354,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
         {activeSetupTab === '基本情報' && <div className="setup-grid two">
           {setupError && <div className="setup-error span-all" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
           <label className="email-field-label"><span>表示名</span><input required value={form.name} maxLength="16" aria-invalid={Boolean(setupError) && !form.name?.trim()} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="例：Pairlyちゃん" /></label>
-          <label className="email-field-label"><span>Riot ID</span><input required value={form.riotId} maxLength="22" aria-invalid={Boolean(setupError) && (!form.riotId?.trim() || !/^[^#]{1,16}#[^#]{1,5}$/u.test(form.riotId.trim()))} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, riotId: e.target.value })} placeholder="例：たろう#JP1" data-copyable /></label>
+          <label className="email-field-label"><span>Riot ID</span><input required value={form.riotId} maxLength="60" aria-invalid={Boolean(setupError) && !form.riotId?.trim()} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, riotId: e.target.value })} placeholder="例：name#JP1" data-copyable /></label>
           <label className="email-field-label"><span>年齢帯</span><select required value={form.age} aria-invalid={Boolean(setupError) && !isValidAgeRange(form.age)} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, age: e.target.value })}><option value="">選択してください</option>{AGE_RANGES.map((range) => <option key={range} value={range}>{range}</option>)}</select></label>
           <label className="email-field-label"><span>地域</span><select required value={form.region} aria-invalid={Boolean(setupError) && !form.region} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, region: e.target.value })}><option value="">選択してください</option>{regions.map((region) => <option key={region} value={region}>{region}</option>)}</select></label>
           <div className="gender-select-block"><span>性別（必須）</span><div className="gender-options">
