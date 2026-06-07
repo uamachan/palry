@@ -375,6 +375,12 @@ function App() {
     setReceivedLikes(payload.receivedLikes || []);
   }
 
+  async function refreshFootprints() {
+    if (!user) return;
+    const payload = await api.footprints().catch(() => ({ footprints: [] }));
+    setFootprints(payload.footprints || []);
+  }
+
   async function refreshDmThreads(preferredThreadId = activeThreadId) {
     if (!user) return;
     const payload = await api.dmThreads(user.id).catch(() => ({ threads: [] }));
@@ -388,7 +394,7 @@ function App() {
   }
 
   useEffect(() => { if (user) refreshProfiles(); }, [user?.id, plan, targetGender, entitlements.genderFilter]);
-  useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); } }, [user?.id]);
+  useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); refreshFootprints(); } }, [user?.id]);
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -448,7 +454,8 @@ function App() {
     if (!current || !user) return;
     const directionLabel = type === 'pass' ? '見送り' : type === 'super' ? 'SUPER LIKE' : type === 'dual' ? '両LIKE' : 'LIKE';
     if (type === 'pass') {
-      setFootprints((f) => [{ name: current.name, rank: current.rank, gender: current.gender, action: '見送り', time: '今' }, ...f].slice(0, 20));
+      setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: '見送り', time: '今' }, ...f].slice(0, 50));
+      api.recordFootprint({ profileId: current.id, action: '見送り' }).catch(() => null);
       nextCard();
       return;
     }
@@ -466,7 +473,8 @@ function App() {
       } else {
         showToast(`${directionLabel} しました`);
       }
-      setFootprints((f) => [{ name: current.name, rank: current.rank, gender: current.gender, action: directionLabel, time: '今' }, ...f].slice(0, 20));
+      setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: directionLabel, time: '今' }, ...f].slice(0, 50));
+      api.recordFootprint({ profileId: current.id, action: directionLabel }).catch(() => null);
       nextCard();
     } catch (error) {
       showToast(error.message || '操作に失敗しました');
