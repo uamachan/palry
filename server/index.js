@@ -235,7 +235,7 @@ const allowedWeapons = ['Vandal', 'Phantom', 'Operator', 'Sheriff', 'Ghost', 'Ma
 
 function sanitizeMapsField(raw) {
   if (!Array.isArray(raw)) return [];
-  return raw.filter((v) => allowedMaps.includes(cleanText(v, 30))).slice(0, 12);
+  return raw.filter((v) => allowedMaps.includes(cleanText(v, 30))).slice(0, 5);
 }
 const rankAliases = new Map([
   ['Iron', 'Iron 1'],
