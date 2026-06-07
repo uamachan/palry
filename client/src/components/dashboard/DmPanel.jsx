@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { cx } from '../../constants.jsx';
 import ProfileDetailModal from './ProfileDetailModal.jsx';
 
@@ -24,9 +24,12 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
   const activeThread = dmThreads.find((t) => t.match.id === activeThreadId) || dmThreads[0];
   const [detailProfile, setDetailProfile] = useState(null);
 
+  // 同一スレッドへの多重既読APIコールを防ぐ
+  const lastMarkedRef = useRef(null);
   useEffect(() => {
-    if (!activeThread?.match?.id) return;
-    const threadId = activeThread.match.id;
+    const threadId = activeThread?.match?.id;
+    if (!threadId || lastMarkedRef.current === threadId) return;
+    lastMarkedRef.current = threadId;
     markDmRead(threadId);
   }, [activeThread?.match?.id, markDmRead]);
 
@@ -72,7 +75,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
                   <p>{message.body}</p>
                   <div className="dm-message-meta">
                     {message.sender === 'user' && (
-                      <span className={cx('dm-read-state', message.readAt && 'read')}>{message.readAt ? '既読' : '未読'}</span>
+                      <span className={cx('dm-read-state', message.readAt && 'read')}>{message.readAt ? '既読' : '送信済み'}</span>
                     )}
                     <time>{new Date(message.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time>
                   </div>

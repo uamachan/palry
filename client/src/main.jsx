@@ -516,14 +516,18 @@ function App() {
     setDmSending(true);
     try {
       const payload = await api.sendDm({ matchId: activeThreadId, body });
+      // payload.message が不正な場合は早期にエラーを投げ、undefinedをmessagesに追加しない
+      if (!payload?.message?.id) {
+        throw new Error('送信結果が不正です。もう一度お試しください。');
+      }
       setDmDraft('');
       setDmThreads((threads) => threads.map((thread) => {
         if (thread.match.id !== activeThreadId) return thread;
-        const alreadyExists = thread.messages.some((message) => message.id === payload.message?.id);
+        const alreadyExists = thread.messages.some((message) => message.id === payload.message.id);
         return {
           ...thread,
           messages: alreadyExists ? thread.messages : [...thread.messages, payload.message],
-          updatedAt: payload.message?.createdAt
+          updatedAt: payload.message.createdAt || thread.updatedAt,
         };
       }));
       track('dm_send');
