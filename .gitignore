@@ -6,6 +6,7 @@ node_modules/
 dist/
 server/data/*.json
 server/.index-runtime.generated.js
+backups/
 .playwright-mcp/
 .claude/settings.local.json
 *.log

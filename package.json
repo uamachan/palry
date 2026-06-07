@@ -10,9 +10,11 @@
     "prebuild": "node scripts/generate-sitemap.mjs",
     "build": "vite build",
     "sitemap": "node scripts/generate-sitemap.mjs",
-    "release:check": "npm run build && node --check server/index.js && node --check server/index-runtime.js",
+    "test": "node --test",
+    "release:check": "npm run build && node --check server/index.js && node --check server/index-runtime.js && node --test",
     "start": "node server/start-production.js",
-    "reset-data": "node server/reset-data.js"
+    "reset-data": "node server/reset-data.js",
+    "backup-data": "node scripts/backup-data.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.2",
