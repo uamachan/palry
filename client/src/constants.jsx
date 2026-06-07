@@ -14,8 +14,28 @@ export const ranks = [
   'Radiant'
 ];
 
+export const rankIconMap = {
+  Unranked: '/assets/ranks/unranked.svg',
+  Iron: '/assets/ranks/iron.svg',
+  Bronze: '/assets/ranks/bronze.svg',
+  Silver: '/assets/ranks/silver.svg',
+  Gold: '/assets/ranks/gold.svg',
+  Platinum: '/assets/ranks/platinum.svg',
+  Diamond: '/assets/ranks/diamond.svg',
+  Ascendant: '/assets/ranks/ascendant.svg',
+  Immortal: '/assets/ranks/immortal.svg',
+  Radiant: '/assets/ranks/radiant.svg'
+};
+
 export const roles = ['デュエリスト', 'イニシエーター', 'コントローラー', 'センチネル'];
 export const defaultRole = roles[0];
+
+export const roleIconMap = {
+  'デュエリスト': '/assets/roles/duelist.svg',
+  'イニシエーター': '/assets/roles/initiator.svg',
+  'コントローラー': '/assets/roles/controller.svg',
+  'センチネル': '/assets/roles/sentinel.svg'
+};
 
 export const agents = [
   'Astra', 'Breach', 'Brimstone', 'Chamber', 'Clove', 'Cypher',
