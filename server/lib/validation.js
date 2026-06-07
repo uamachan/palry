@@ -40,10 +40,10 @@ export function cleanRiotId(value) {
 
 /**
  * 年齢帯をホワイトリスト制で検証する。
- * フロントの AGE_RANGES と同じ値（10代/20代前半/20代後半/30代/40代以上）を正とする。
+ * フロントの AGE_RANGES と同じ値（10代〜90代）を正とする。
  * それ以外・空は空文字を返す。
  */
-export const VALID_AGE_RANGES = ['10代', '20代前半', '20代後半', '30代', '40代以上'];
+export const VALID_AGE_RANGES = ['10代', '20代', '30代', '40代', '50代', '60代', '70代', '80代', '90代'];
 
 export function cleanAge(value) {
   const v = String(value || '').trim();
