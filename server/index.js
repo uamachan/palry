@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readJson, writeJson, updateJson, uid } from './lib/jsonStore.js';
+import { cleanText, cleanAge, sanitizeMedia, emailKey } from './lib/validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -226,35 +227,11 @@ function weightedShuffle(profiles, planName, boostedIds = new Set()) {
     .map((entry) => entry.profile);
 }
 
-function cleanText(value, max = 160) {
-  return String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
-}
-
-function cleanAge(value) {
-  // slice(0,2) で先頭2桁だけ採るのは誤り（"21213"→"21" として通ってしまう）。
-  // 数字以外を除去した全体を数値化し、13〜80 の範囲外は拒否する。
-  const digits = String(value || '').replace(/\D/g, '');
-  const age = Number(digits);
-  if (!digits || !Number.isInteger(age) || age < 13 || age > 80) return '';
-  return String(age);
-}
+// cleanText / cleanAge / sanitizeMedia / emailKey は ./lib/validation.js に集約（単体テスト対象）。
 
 // 本番環境では ENABLE_DEMO_PURCHASE=true を明示しないと決済を通さない（フェイルクローズ）。
 function isDemoPaymentAllowed() {
   return !isProduction || process.env.ENABLE_DEMO_PURCHASE === 'true';
-}
-
-// プロフィール写真/ボイスはユーザー入力をそのまま src として配信するため、
-// 安全な media data URL（または https URL）以外は弾く。
-// data:text/html や javascript: などのスキーム混入・ストレージ悪用を防ぐ。
-function sanitizeMedia(value, kind, max) {
-  const v = String(value || '').trim();
-  if (!v || v.length > max) return '';
-  if (kind === 'image' && /^data:image\/(png|jpe?g|webp|gif|avif);base64,[A-Za-z0-9+/=\s]+$/.test(v)) return v;
-  if (kind === 'audio' && /^data:audio\/(webm|ogg|mpeg|mp3|wav|mp4|x-m4a);base64,[A-Za-z0-9+/=\s]+$/.test(v)) return v;
-  // クライアントは写真/音声を常に data URL（resizePhoto / MediaRecorder→readAsDataURL）で送る。
-  // 任意の https URL を許すとトラッキングや外部リソース埋め込みの面を増やすため弾く。
-  return '';
 }
 
 function publicUser(user) {
@@ -262,10 +239,6 @@ function publicUser(user) {
   // firebaseUid はサーバー内部の紐付け専用でフロントは使用しない。
   const { authCode, authCodeHash, authCodeSalt, otpSecret, firebaseUid, ...safeUser } = user;
   return safeUser;
-}
-
-function emailKey(email) {
-  return cleanText(email, 120).toLowerCase();
 }
 
 // 管理者メール許可リスト（ADMIN_EMAILS=a@x.com,b@y.com）。
