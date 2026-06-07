@@ -74,21 +74,17 @@ function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
         <ProfileChips items={profile.agents} />
       </div>
 
-      {(profile.vc || profile.maps?.length > 0 || profile.favoriteWeapon) && (
-        <div className="dm-profile-section">
-          <b>プレイスタイル詳細</b>
-          <dl className="dm-profile-info">
-            {profile.vc && <div><dt>VC</dt><dd>{profile.vc}</dd></div>}
-            {profile.favoriteWeapon && <div><dt>好きな武器</dt><dd>{profile.favoriteWeapon}</dd></div>}
-          </dl>
-          {profile.maps?.length > 0 && (
-            <div className="dm-profile-maps">
-              <span className="dm-profile-maps-label">得意MAP</span>
-              <ProfileChips items={profile.maps} empty="未設定" />
-            </div>
-          )}
+      <div className="dm-profile-section">
+        <b>プレイスタイル詳細</b>
+        <dl className="dm-profile-info">
+          <div><dt>VC</dt><dd>{profile.vc || '未設定'}</dd></div>
+          <div><dt>好きな武器</dt><dd>{profile.favoriteWeapon || '未設定'}</dd></div>
+        </dl>
+        <div className="dm-profile-maps">
+          <span className="dm-profile-maps-label">得意MAP</span>
+          <ProfileChips items={profile.maps} empty="未設定" />
         </div>
-      )}
+      </div>
 
       <div className="dm-profile-section">
         <b>自己紹介</b>

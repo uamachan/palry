@@ -204,7 +204,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
   }));
   const toggleMap = (map) => setForm((f) => {
     const current = f.maps || [];
-    return { ...f, maps: current.includes(map) ? current.filter((m) => m !== map) : [...current, map].slice(0, 12) };
+    return { ...f, maps: current.includes(map) ? current.filter((m) => m !== map) : [...current, map].slice(0, 5) };
   });
 
   useEffect(() => () => {
