@@ -68,8 +68,8 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
 
       {/* 性別フィルター */}
       <div className="mp-filter-row">
-        <label htmlFor="gender-filter" className="mp-filter-label">表示</label>
-        <select id="gender-filter" className="mp-filter-select" disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)} aria-label="表示する性別を選択">
+        <label htmlFor="gender-filter" className="mp-filter-label">性別指定</label>
+        <select id="gender-filter" className="mp-filter-select" disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)} aria-label="性別指定">
           <option value="all">すべて</option>
           <option value="女性">女性</option>
           <option value="男性">男性</option>
