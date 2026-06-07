@@ -58,6 +58,19 @@ export function EmptyState({ icon = '🫧', title, message, action }) {
   );
 }
 
+/** 404 ページ（不正な URL） */
+export function NotFound() {
+  return (
+    <div className="ui-notfound" role="main">
+      <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" width="132" height="44" />
+      <div className="ui-notfound-code">404</div>
+      <h2>ページが見つかりません</h2>
+      <p>お探しのページは存在しないか、移動した可能性があります。</p>
+      <a className="primary" href="/" style={{ textDecoration: 'none' }}>ホームに戻る</a>
+    </div>
+  );
+}
+
 /** エラー表示（4ステートの Error、再試行付き） */
 export function ErrorState({ message = '読み込みに失敗しました', onRetry }) {
   return (
