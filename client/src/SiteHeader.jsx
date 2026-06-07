@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { cx, planLabel, TAB_ICONS } from './constants.jsx';
 
+function maskEmail(email) {
+  const value = String(email || '');
+  const [name, domain] = value.split('@');
+  if (!name || !domain) return value;
+  const head = name.slice(0, Math.min(2, name.length));
+  return `${head}***@${domain}`;
+}
+
 /**
  * サイトヘッダー。
  * ランディングページとアプリ画面の両方で共用するため独立ファイルに切り出す。
@@ -15,6 +23,7 @@ export default function SiteHeader({
 }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const logo = <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" width="132" height="44" decoding="async" fetchPriority="high" />;
+  const accountSubtext = user?.email ? maskEmail(user.email) : user?.riotId;
 
   const brandEl = onBrandClick
     ? (
@@ -79,7 +88,7 @@ export default function SiteHeader({
                     </div>
                     <div>
                       <b>{user.name}</b>
-                      <span>{user.email || user.riotId}</span>
+                      <span>{accountSubtext}</span>
                     </div>
                   </div>
                   <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); openProfileEditor?.(); }}>プロフィール編集</button>
