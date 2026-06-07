@@ -619,54 +619,94 @@ function App() {
   const adminTab = { id: 'admin', label: '管理' };
   const visibleTabs = user?.isAdmin ? [...appTabs, adminTab] : appTabs;
 
+  // 認証フォームの表示条件
+  const showAuthForms = (isAuthed && profileEditorOpen) || (!isAuthed && Boolean(authMode));
+
   const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, auditLog, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, auditLog, profiles, index, form]);
 
-  return <>
-    <div className="toast" role="status" aria-live="polite" aria-atomic="true" aria-relevant="text" hidden={!toast}>{toast}</div>
-    {askConsent && (
-      <div className="ui-consent" role="dialog" aria-label="計測の同意">
-        <p>サイト改善のため匿名のアクセス解析を利用します。同意いただける場合のみ計測します。</p>
-        <div className="ui-consent-actions">
-          <button type="button" className="secondary" onClick={() => decideConsent('denied')}>拒否</button>
-          <button type="button" className="primary" onClick={() => decideConsent('granted')}>同意する</button>
+  return (
+    <>
+      <div className="toast" role="status" aria-live="polite" aria-atomic="true" aria-relevant="text" hidden={!toast}>{toast}</div>
+      {askConsent && (
+        <div className="ui-consent" role="dialog" aria-label="計測の同意">
+          <p>サイト改善のため匿名のアクセス解析を利用します。同意いただける場合のみ計測します。</p>
+          <div className="ui-consent-actions">
+            <button type="button" className="secondary" onClick={() => decideConsent('denied')}>拒否</button>
+            <button type="button" className="primary" onClick={() => decideConsent('granted')}>同意する</button>
+          </div>
         </div>
-      </div>
-    )}
-    <AuthFormsContainer
-      isAuthed={isAuthed}
-      profileEditorOpen={profileEditorOpen}
-      setProfileEditorOpen={setProfileEditorOpen}
-      user={user}
-      editForm={editForm}
-      setEditForm={setEditForm}
-      saveProfileEdit={saveProfileEdit}
-      showToast={showToast}
-      authMode={authMode}
-      setAuthMode={setAuthMode}
-      showAuth={showAuth}
-      form={form}
-      setForm={setForm}
-      pendingFirebaseUser={pendingFirebaseUser}
-      createAccount={createAccount}
-      register={register}
-      continueWithGoogle={continueWithGoogle}
-      loginWithFirebase={loginWithFirebase}
-      resendVerificationEmail={resendVerificationEmail}
-      confirmEmailVerified={confirmEmailVerified}
-      resetPassword={resetPassword}
-    />
-    {view === 'app' && user ? <AppDashboard {...shared} onBackSite={(sectionId) => { setView('site'); if (sectionId) setPendingScrollId(sectionId); }} /> : <>
-      <SiteHeader isAuthed={isAuthed} user={user} plan={plan} notificationCount={notificationCount} onAuth={() => showAuth('entry')} onOpenApp={() => openApp('match')} openProfileEditor={openProfileEditor} logout={logout} onGoApp={() => { openApp('match'); }} onGoNotifications={() => { openApp('notifications'); }} />
-      <main className="site-page">
-        <Hero onSignup={() => showAuth('register')} onOpenApp={() => openApp('match')} />
-        {profileSetupPrompt && pendingFirebaseUser && <PendingProfileSetupCard email={pendingFirebaseUser.email} onOpen={() => advanceToProfileSetup(pendingFirebaseUser.uid, pendingFirebaseUser.email, 'プロフィールを設定してください')} />}
-        {isAuthed && <ReturnToAppCard user={user} openApp={openApp} />}
-        <PublicPricing plansData={plansData} pricingTab={pricingTab} setPricingTab={setPricingTab} onSignup={() => showAuth('register')} buyPlan={buyPlan} buyItem={buyItem} />
-        <Safety />
-      </main>
-      <Footer />
-    </>}
-  </>;
+      )}
+
+      {/* 認証モーダル群（遅延読み込み） */}
+      {showAuthForms && (
+        <Suspense fallback={null}>
+          <LazyAuthForms
+            isAuthed={isAuthed}
+            profileEditorOpen={profileEditorOpen}
+            setProfileEditorOpen={setProfileEditorOpen}
+            user={user}
+            editForm={editForm}
+            setEditForm={setEditForm}
+            saveProfileEdit={saveProfileEdit}
+            showToast={showToast}
+            authMode={authMode}
+            setAuthMode={setAuthMode}
+            showAuth={showAuth}
+            form={form}
+            setForm={setForm}
+            pendingFirebaseUser={pendingFirebaseUser}
+            createAccount={createAccount}
+            register={register}
+            continueWithGoogle={continueWithGoogle}
+            loginWithFirebase={loginWithFirebase}
+            resendVerificationEmail={resendVerificationEmail}
+            confirmEmailVerified={confirmEmailVerified}
+            resetPassword={resetPassword}
+          />
+        </Suspense>
+      )}
+
+      {/* メインビュー切り替え */}
+      {view === 'app' && user ? (
+        // ─ アプリ画面（遅延読み込み） ─────────────────────────────────
+        <Suspense fallback={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--bg-primary, #f7f5f2)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ width: 48, height: 48, border: '3px solid #e0d8cf', borderTopColor: '#b8a99a', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <span style={{ color: '#b8a99a', fontSize: '0.875rem' }}>読み込み中...</span>
+            </div>
+          </div>
+        }>
+          <LazyAppDashboard {...shared} onBackSite={(sectionId) => { setView('site'); if (sectionId) setPendingScrollId(sectionId); }} />
+        </Suspense>
+      ) : (
+        // ─ ランディングページ ──────────────────────────────────────────
+        <>
+          <SiteHeader isAuthed={isAuthed} user={user} plan={plan} notificationCount={notificationCount} onAuth={() => showAuth('entry')} onOpenApp={() => openApp('match')} openProfileEditor={openProfileEditor} logout={logout} onGoApp={() => { openApp('match'); }} onGoNotifications={() => { openApp('notifications'); }} />
+          <main className="site-page">
+            <Hero onSignup={() => showAuth('register')} onOpenApp={() => openApp('match')} />
+            {profileSetupPrompt && pendingFirebaseUser && <PendingProfileSetupCard email={pendingFirebaseUser.email} onOpen={() => advanceToProfileSetup(pendingFirebaseUser.uid, pendingFirebaseUser.email, 'プロフィールを設定してください')} />}
+            {isAuthed && <ReturnToAppCard user={user} openApp={openApp} />}
+            <PublicPricing plansData={plansData} pricingTab={pricingTab} setPricingTab={setPricingTab} onSignup={() => showAuth('register')} buyPlan={buyPlan} buyItem={buyItem} />
+            <Safety />
+          </main>
+          <Footer />
+        </>
+      )}
+    </>
+  );
+}
+
+// ── Hero ──────────────────────────────────────────────────────────────
+function MockIconRole({ role }) {
+  const colors = { duelist: '#ff4655', initiator: '#6aaeaa', controller: '#6d7fd6', sentinel: '#e8b66b' };
+  const abbr = { duelist: 'D', initiator: 'I', controller: 'C', sentinel: 'S' };
+  const color = colors[role] || '#b8a99a';
+  return (
+    <div style={{ width: 52, height: 52, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 20 }}>
+      {abbr[role] || 'P'}
+    </div>
+  );
 }
 
 function Hero({ onSignup, onOpenApp }) {
