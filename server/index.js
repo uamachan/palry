@@ -272,6 +272,27 @@ function isAdmin(user) {
   return adminEmails.size > 0 && adminEmails.has(emailKey(user?.email));
 }
 
+// 通報の悪用対策しきい値（環境変数で調整可能）。
+// MAX_REPORTS_PER_DAY: 1アカウントが1日に出せる通報数の上限（大量通報の抑止／永続=reports.json基準）。
+// REPORT_AUTO_HIDE_THRESHOLD: 異なる通報者がこの人数に達したら候補から自動非表示にする。
+const MAX_REPORTS_PER_DAY = Number(process.env.MAX_REPORTS_PER_DAY || 20);
+const REPORT_AUTO_HIDE_THRESHOLD = Number(process.env.REPORT_AUTO_HIDE_THRESHOLD || 3);
+const REPORT_AUTO_HIDE_WINDOW_MS = 30 * DAY_MS;
+
+function clientIp(req) {
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+// 監査ログ（append-only・上限5000件）。ブロック/通報/管理操作などの追跡用。
+// 書き込み失敗でメインのリクエストを止めないよう内部で握りつぶす（fire-and-forget可）。
+function appendAudit(action, actorId, targetId, meta = {}) {
+  return updateJson('audit.json', [], (log) => {
+    const entry = { id: uid('audit'), action, actorId: actorId || null, targetId: targetId || null, meta, createdAt: new Date().toISOString() };
+    const next = [entry, ...log];
+    return { value: next.length > 5000 ? next.slice(0, 5000) : next, result: entry };
+  }).catch((error) => console.error('[audit] write failed', error));
+}
+
 async function findAndLinkFirebaseProfile(firebaseUser) {
   let profile = null;
   const firebaseUid = cleanText(firebaseUser.uid, 120);
@@ -346,7 +367,8 @@ function userToProfile(user) {
 async function readCandidateProfiles(excludeUserId = '') {
   const users = await readJson('users.json', []);
   return users
-    .filter((user) => user.firebaseUid && user.id !== excludeUserId)
+    // autoHidden（複数通報で自動非表示）は新規候補から除外する。既存マッチ/DMには影響しない。
+    .filter((user) => user.firebaseUid && user.id !== excludeUserId && !user.autoHidden)
     .map((user) => ({ ...userToProfile(user), isRealUser: true }));
 }
 
@@ -976,18 +998,41 @@ app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
   if (profileId === req.authedUser.id) return res.status(400).json({ message: '自分自身を通報することはできません。' });
   const users = await readJson('users.json', []);
   if (!users.some((u) => u.id === profileId)) return res.status(404).json({ message: '対象ユーザーが見つかりません。' });
-  const report = { id: uid('report'), userId: req.authedUser.id, profileId, reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
-  const savedReport = await updateJson('reports.json', [], (reports) => {
-    const recentDuplicate = reports.some((r) =>
-      r.userId === req.authedUser.id &&
-      r.profileId === profileId &&
-      Date.now() - new Date(r.createdAt).getTime() < 24 * 60 * 60 * 1000
-    );
-    if (recentDuplicate) return { value: undefined, result: null };
-    return { value: [report, ...reports], result: report };
+  const actorId = req.authedUser.id;
+  const report = { id: uid('report'), userId: actorId, profileId, reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
+  const outcome = await updateJson('reports.json', [], (reports) => {
+    const mine24h = reports.filter((r) => r.userId === actorId && Date.now() - new Date(r.createdAt).getTime() < DAY_MS);
+    // アカウント単位の永続レート制限（再起動で消えない）。
+    if (mine24h.length >= MAX_REPORTS_PER_DAY) return { value: undefined, result: { code: 'too_many' } };
+    // 同一相手への24時間以内の重複通報を防ぐ。
+    if (mine24h.some((r) => r.profileId === profileId)) return { value: undefined, result: { code: 'duplicate' } };
+    return { value: [report, ...reports], result: { code: 'ok', report } };
   });
-  if (!savedReport) return res.status(409).json({ message: 'このユーザーはすでに通報済みです。時間をおいてください。' });
-  res.status(201).json({ report: savedReport });
+  if (outcome.code === 'too_many') return res.status(429).json({ message: '本日の通報回数の上限に達しました。時間をおいてください。' });
+  if (outcome.code === 'duplicate') return res.status(409).json({ message: 'このユーザーはすでに通報済みです。時間をおいてください。' });
+
+  appendAudit('report', actorId, profileId, { reason: report.reason, ip: clientIp(req) });
+
+  // 自動エスカレーション: 異なる通報者がしきい値に達したら候補から自動非表示にする。
+  // dismissed（管理者が確認済み）の通報はカウントしない。
+  const allReports = await readJson('reports.json', []);
+  const distinctReporters = new Set(
+    allReports
+      .filter((r) => r.profileId === profileId && r.status !== 'dismissed' && Date.now() - new Date(r.createdAt).getTime() < REPORT_AUTO_HIDE_WINDOW_MS)
+      .map((r) => r.userId)
+  );
+  if (distinctReporters.size >= REPORT_AUTO_HIDE_THRESHOLD) {
+    const hidden = await updateJson('users.json', [], (users) => {
+      const idx = users.findIndex((u) => u.id === profileId);
+      if (idx < 0 || users[idx].autoHidden) return { value: undefined, result: false };
+      const next = [...users];
+      next[idx] = { ...next[idx], autoHidden: true, autoHiddenAt: new Date().toISOString(), autoHiddenReporters: distinctReporters.size };
+      return { value: next, result: true };
+    });
+    if (hidden) appendAudit('auto_hide', null, profileId, { reporters: distinctReporters.size });
+  }
+
+  res.status(201).json({ report: outcome.report });
 });
 
 app.post('/api/block', requireAuth, async (req, res) => {
@@ -1035,13 +1080,54 @@ app.post('/api/block', requireAuth, async (req, res) => {
     });
     return { value: changed ? next : undefined, result: changed };
   });
+  appendAudit('block', userId, profileId, { ip: clientIp(req) });
   res.status(201).json({ block });
 });
 
 app.get('/api/admin/reports', requireAuth, async (req, res) => {
   if (!isAdmin(req.authedUser)) return res.status(403).json({ message: '管理者のみアクセスできます。' });
-  const reports = await readJson('reports.json', []);
-  res.json({ reports });
+  const [reports, users] = await Promise.all([
+    readJson('reports.json', []),
+    readJson('users.json', [])
+  ]);
+  // 通報相手の表示名を補完し、自動非表示中のユーザー一覧も返す（管理者レビュー用）。
+  const nameById = new Map(users.map((u) => [u.id, u.name]));
+  const enrichedReports = reports.map((r) => ({ ...r, profileName: nameById.get(r.profileId) || null }));
+  const flaggedUsers = users
+    .filter((u) => u.autoHidden)
+    .map((u) => ({ id: u.id, name: u.name, autoHiddenAt: u.autoHiddenAt || null, reporters: u.autoHiddenReporters || 0 }));
+  appendAudit('admin_view_reports', req.authedUser.id, null, { ip: clientIp(req) });
+  res.json({ reports: enrichedReports, flaggedUsers });
+});
+
+// 管理者が自動非表示を解除する。誤通報による永久ロックを防ぐための復旧手段。
+// 対象ユーザーの未処理通報は dismissed にして、再び自動非表示にならないようにする。
+app.post('/api/admin/unhide', requireAuth, async (req, res) => {
+  if (!isAdmin(req.authedUser)) return res.status(403).json({ message: '管理者のみアクセスできます。' });
+  const profileId = cleanText(req.body?.profileId, 80);
+  if (!profileId) return res.status(400).json({ message: '対象ユーザーが必要です。' });
+  const cleared = await updateJson('users.json', [], (users) => {
+    const idx = users.findIndex((u) => u.id === profileId);
+    if (idx < 0) return { value: undefined, result: false };
+    const next = [...users];
+    const { autoHidden, autoHiddenAt, autoHiddenReporters, ...rest } = next[idx];
+    next[idx] = rest;
+    return { value: next, result: true };
+  });
+  if (!cleared) return res.status(404).json({ message: '対象ユーザーが見つかりません。' });
+  await updateJson('reports.json', [], (reports) => {
+    let changed = false;
+    const next = reports.map((r) => {
+      if (r.profileId === profileId && r.status !== 'dismissed') {
+        changed = true;
+        return { ...r, status: 'dismissed', dismissedAt: new Date().toISOString() };
+      }
+      return r;
+    });
+    return { value: changed ? next : undefined, result: changed };
+  });
+  appendAudit('admin_unhide', req.authedUser.id, profileId, { ip: clientIp(req) });
+  res.json({ ok: true, profileId });
 });
 
 app.post('/api/purchase', requireAuth, async (req, res) => {

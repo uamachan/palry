@@ -76,6 +76,7 @@ function App() {
   const [dmSending, setDmSending] = useState(false);
   const [footprints, setFootprints] = useState([]);
   const [reports, setReports] = useState([]);
+  const [flaggedUsers, setFlaggedUsers] = useState([]);
   const [activeTab, setActiveTab] = useState('match');
   const [plansData, setPlansData] = useState(null);
   const [pricingTab, setPricingTab] = useState('plans');
@@ -314,6 +315,7 @@ function App() {
     setIndex(0);
     setFootprints([]);
     setReports([]);
+    setFlaggedUsers([]);
     setProfileEditorOpen(false);
     setPendingFirebaseUser(null);
     setEntitlements({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
@@ -395,10 +397,26 @@ function App() {
     api.entitlements(user.id).then((payload) => setEntitlements(payload.entitlements || entitlements)).catch(() => null);
   }, [user?.id]);
   useEffect(() => {
-    if (activeTab === 'admin' && user) {
-      api.reports().then((p) => setReports(p.reports || [])).catch(() => null);
+    if (activeTab === 'admin' && user?.isAdmin) {
+      api.reports().then((p) => {
+        setReports(p.reports || []);
+        setFlaggedUsers(p.flaggedUsers || []);
+      }).catch(() => null);
     }
-  }, [activeTab, user?.id]);
+  }, [activeTab, user?.id, user?.isAdmin]);
+
+  async function unhideUser(profileId) {
+    if (!user?.isAdmin || !profileId) return;
+    try {
+      await api.adminUnhide({ profileId });
+      const p = await api.reports();
+      setReports(p.reports || []);
+      setFlaggedUsers(p.flaggedUsers || []);
+      showToast('自動非表示を解除しました');
+    } catch (error) {
+      showToast(error.message || '解除に失敗しました');
+    }
+  }
 
   const current = profiles[index] || null;
   const stats = useMemo(() => ({ likes: receivedLikes.length, matches: matches.length, footprints: footprints.length }), [receivedLikes.length, matches.length, footprints.length]);
@@ -578,7 +596,7 @@ function App() {
   const adminTab = { id: 'admin', label: '管理' };
   const visibleTabs = user?.isAdmin ? [...appTabs, adminTab] : appTabs;
 
-  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, profiles, index, form]);
+  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, profiles, index, form, setForm, openApp, openProfileEditor, logout }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, profiles, index, form]);
 
   return <>
     <div className="toast" role="status" aria-live="polite" aria-atomic="true" aria-relevant="text" hidden={!toast}>{toast}</div>
