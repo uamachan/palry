@@ -7,15 +7,15 @@ export function cleanText(value, max = 160) {
 }
 
 /**
- * 年齢を 13〜80 に正規化。範囲外・不正は空文字を返す。
- * slice(0,2) で先頭2桁だけ採るのは誤り（"21213"→"21" として通ってしまう）。
- * 数字以外を除去した全体を数値化して範囲判定する。
+ * 年齢帯をホワイトリスト制で検証する。
+ * フロントの AGE_RANGES と同じ値（10代/20代前半/20代後半/30代/40代以上）を正とする。
+ * それ以外・空は空文字を返す。
  */
+export const VALID_AGE_RANGES = ['10代', '20代前半', '20代後半', '30代', '40代以上'];
+
 export function cleanAge(value) {
-  const digits = String(value || '').replace(/\D/g, '');
-  const age = Number(digits);
-  if (!digits || !Number.isInteger(age) || age < 13 || age > 80) return '';
-  return String(age);
+  const v = String(value || '').trim();
+  return VALID_AGE_RANGES.includes(v) ? v : '';
 }
 
 /**

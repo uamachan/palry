@@ -318,7 +318,7 @@ function userToProfile(user) {
     id: user.id,
     name: user.name,
     gender: user.gender,
-    ageRange: user.age ? `${user.age}歳` : '年齢未設定',
+    ageRange: user.age || '年齢未設定',
     region: user.region || '',
     rank: user.rank || 'Gold',
     peakRank: user.peakRank || user.rank || '',
