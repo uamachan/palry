@@ -1,4 +1,5 @@
 import React from 'react';
+import { rankIconFor } from '../../constants.jsx';
 import VoiceIntroPlayer from './VoiceIntroPlayer.jsx';
 
 export default function ProfileDetailModal({ profile, onClose }) {
@@ -7,8 +8,9 @@ export default function ProfileDetailModal({ profile, onClose }) {
   const agentsList = Array.isArray(profile.agents) ? profile.agents : [];
   const reasons = Array.isArray(profile.reasons) ? profile.reasons : [];
   const voiceLabel = profile.voice || (profile.voiceIntro ? '声の自己紹介あり' : '未設定');
+  const currentRank = profile.rank || 'Unranked';
   const detailItems = [
-    ['現在ランク', profile.rank || 'Unranked'],
+    ['現在ランク', currentRank],
     ['最高ランク', profile.peakRank || '未設定'],
     ['ロール', profile.role || 'ロール未設定'],
     ['活動時間', profile.activeTime || '未設定'],
@@ -35,7 +37,15 @@ export default function ProfileDetailModal({ profile, onClose }) {
             <span>相性 {profile.matchScore}%</span>
           </div>
           <div className="profile-detail-kpis">
-            {detailItems.map(([label, value]) => <div key={label}><span>{label}</span><b>{value}</b></div>)}
+            {detailItems.map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <b className={label === '現在ランク' ? 'rank-inline profile-detail-rank' : undefined}>
+                  {label === '現在ランク' && <span className="rank-inline-icon" aria-hidden="true"><img src={rankIconFor(value)} alt="" loading="lazy" /></span>}
+                  <span>{value}</span>
+                </b>
+              </div>
+            ))}
           </div>
           {tags.length > 0 && <div className="profile-detail-block"><strong>目的タグ</strong><div className="profile-detail-tags">{tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div>}
           {modes.length > 0 && <div className="profile-detail-block"><strong>プレイスタイル</strong><div className="profile-detail-tags is-muted">{modes.map((mode) => <span key={mode}>{mode}</span>)}</div></div>}
