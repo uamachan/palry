@@ -356,13 +356,13 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
             </button>
           ))}
         </div>
-        {setupError && <div className="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
+        {setupError && <div className="setup-error" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
 
         {activeSetupTab === '基本情報' && <div className="setup-grid two">
-          <label className="email-field-label"><span>表示名</span><input required value={form.name} maxLength="40" onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="例：Pairlyちゃん" /></label>
-          <label className="email-field-label"><span>Riot ID</span><input required value={form.riotId} maxLength="60" onChange={(e) => setForm({ ...form, riotId: e.target.value })} placeholder="例：name#JP1" data-copyable /></label>
-          <label className="email-field-label"><span>年齢</span><input required type="number" inputMode="numeric" min="13" max="80" maxLength="2" value={form.age} onChange={(e) => setForm({ ...form, age: normalizeAgeInput(e.target.value) })} onBlur={() => { if (form.age && !isValidAge(form.age)) setForm({ ...form, age: '' }); }} placeholder="13〜80" /></label>
-          <label className="email-field-label"><span>地域</span><select required value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}><option value="">選択してください</option>{regions.map((region) => <option key={region} value={region}>{region}</option>)}</select></label>
+          <label className="email-field-label"><span>表示名</span><input required value={form.name} maxLength="40" aria-invalid={Boolean(setupError) && !form.name?.trim()} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="例：Pairlyちゃん" /></label>
+          <label className="email-field-label"><span>Riot ID</span><input required value={form.riotId} maxLength="60" aria-invalid={Boolean(setupError) && !form.riotId?.trim()} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, riotId: e.target.value })} placeholder="例：name#JP1" data-copyable /></label>
+          <label className="email-field-label"><span>年齢</span><input required type="number" inputMode="numeric" min="13" max="80" maxLength="2" aria-invalid={Boolean(setupError) && (!form.age || !isValidAge(form.age))} aria-describedby={setupError ? 'setup-error' : undefined} value={form.age} onChange={(e) => setForm({ ...form, age: normalizeAgeInput(e.target.value) })} onBlur={() => { if (form.age && !isValidAge(form.age)) setForm({ ...form, age: '' }); }} placeholder="13〜80" /></label>
+          <label className="email-field-label"><span>地域</span><select required value={form.region} aria-invalid={Boolean(setupError) && !form.region} aria-describedby={setupError ? 'setup-error' : undefined} onChange={(e) => setForm({ ...form, region: e.target.value })}><option value="">選択してください</option>{regions.map((region) => <option key={region} value={region}>{region}</option>)}</select></label>
           <div className="gender-select-block"><span>性別（必須）</span><div className="gender-options">
             {['男性', '女性', 'その他/未設定'].map((gender) => <button key={gender} type="button" className={form.gender === gender ? 'selected' : ''} onClick={() => setForm({ ...form, gender })}>{gender}</button>)}
           </div></div>
