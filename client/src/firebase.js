@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { browserLocalPersistence, getAuth, setPersistence } from 'firebase/auth';
+import { browserSessionPersistence, getAuth, setPersistence } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -21,11 +21,9 @@ const hasFirebaseConfig = Boolean(
 export const firebaseApp = hasFirebaseConfig ? initializeApp(firebaseConfig) : null;
 export const firebaseAuth = firebaseApp ? getAuth(firebaseApp) : null;
 
-// ログイン状態は明示的にローカル保存する。
-// これで一度ログインしたら、ユーザーがログアウトするまで再読み込み後も維持される。
 export const firebaseReady = firebaseAuth
-  ? setPersistence(firebaseAuth, browserLocalPersistence).then(() => true).catch((error) => {
-      console.warn('[firebase] Failed to set local auth persistence:', error);
+  ? setPersistence(firebaseAuth, browserSessionPersistence).then(() => true).catch((error) => {
+      console.warn('[firebase] Failed to set auth persistence:', error);
       return true;
     })
   : Promise.resolve(false);
