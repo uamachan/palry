@@ -13,8 +13,11 @@ test('cleanText: 山括弧除去・トリム・最大長', () => {
 
 test('cleanAge: 指定の年齢帯のみ許可、異常値は空', () => {
   assert.equal(cleanAge('10代'), '10代');
-  assert.equal(cleanAge('20代前半'), '20代前半');
+  assert.equal(cleanAge('20代'), '20代');
   assert.equal(cleanAge('30代'), '30代');
+  assert.equal(cleanAge('80代'), '80代');
+  assert.equal(cleanAge('90代'), '90代');
+  assert.equal(cleanAge('20代前半'), '');
   assert.equal(cleanAge('25'), '');    // 数値は弾かれる
   assert.equal(cleanAge(25), '');      // 数値型も弾かれる
   assert.equal(cleanAge('100代'), ''); // リスト外
