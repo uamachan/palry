@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sentinel">
+  <circle cx="32" cy="32" r="27" fill="#FFF8F1" stroke="#E8DED5" stroke-width="2"/>
+  <path fill="#181614" d="M32 10 48 18v14c0 12-7 20-16 24-9-4-16-12-16-24V18l16-8Z"/>
+  <path fill="#71D8BE" d="M32 17 42 22v10c0 8-4 14-10 17-6-3-10-9-10-17V22l10-5Z"/>
+  <path fill="none" stroke="#FFFDF9" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" d="m25 32 5 5 10-12"/>
+</svg>
