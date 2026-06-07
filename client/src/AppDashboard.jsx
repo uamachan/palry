@@ -344,8 +344,19 @@ function PricingPanel(props) { return <PublicPricing {...props} appMode />; }
 function ProfilePanel({ user }) {
   return <div className="list-panel"><h3>プロフィール</h3><div className="profile-preview expanded"><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0, 1) || 'P'}</div><b>{user.name}</b><span>{user.gender} / {user.age ? `${user.age}歳` : '年齢未設定'} / {user.region || '地域未設定'}</span><span data-copyable>{user.riotId} / {user.rank} / {user.role}</span>{Boolean(user.tags?.length) && <div className="tag-row">{user.tags.map((tag) => <span className="intent-tag" key={tag}>{tag}</span>)}</div>}<p>{user.bio || '自己紹介は未入力です。'}</p><VoiceIntroPlayer src={user.voiceIntro} /></div></div>;
 }
-function AdminPanel({ reports }) {
-  return <div className="list-panel"><h3>通報管理</h3>{reports.length ? reports.map((r) => <div className="list-row" key={r.id}><b>{r.reason}</b><p>プロフィール: {r.profileId || '-'}</p><span>{r.status}</span></div>) : <p className="empty-text">通報はありません。</p>}</div>;
+function AdminPanel({ reports, flaggedUsers = [], unhideUser }) {
+  return <div className="list-panel">
+    <h3>自動非表示ユーザー</h3>
+    {flaggedUsers.length ? flaggedUsers.map((u) => (
+      <div className="list-row" key={u.id}>
+        <b>{u.name || '(名前なし)'}</b>
+        <p>通報者 {u.reporters}人 / {u.autoHiddenAt ? new Date(u.autoHiddenAt).toLocaleString('ja-JP') : '-'}</p>
+        <button type="button" className="secondary" onClick={() => unhideUser?.(u.id)}>解除</button>
+      </div>
+    )) : <p className="empty-text">自動非表示中のユーザーはいません。</p>}
+    <h3>通報管理</h3>
+    {reports.length ? reports.map((r) => <div className="list-row" key={r.id}><b>{r.reason}</b><p>{r.profileName || r.profileId || '-'}</p><span>{r.status}</span></div>) : <p className="empty-text">通報はありません。</p>}
+  </div>;
 }
 function ProfileSummary({ user, plan, stats, receivedLikes = [] }) {
   return <div className="side-card"><h3>自分の状態</h3><div className="avatar">{user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : user.name?.slice(0, 1) || 'P'}</div><b>{user.name}</b><p data-copyable>{user.riotId}</p><div className="mini-list"><span>{user.gender}</span><span>{user.age ? `${user.age}歳` : '年齢未設定'}</span><span>{user.region || '地域未設定'}</span><span>{user.rank}</span><span>{user.role}</span>{user.tags?.map((tag) => <span key={tag}>{tag}</span>)}</div><div className="statline"><span>好意あり {receivedLikes.length}</span><span>マッチ {stats.matches}</span></div><span className="plan-pill">{planLabel(plan)}</span></div>;
