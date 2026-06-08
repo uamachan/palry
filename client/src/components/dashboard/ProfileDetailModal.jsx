@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import VoiceIntroPlayer from './VoiceIntroPlayer.jsx';
 
 export default function ProfileDetailModal({ profile, onClose }) {
+  const panelRef = useRef(null);
   const tags = Array.isArray(profile.tags) ? profile.tags : [];
   const modes = Array.isArray(profile.modes) ? profile.modes : [];
   const agentsList = Array.isArray(profile.agents) ? profile.agents : [];
@@ -16,10 +17,49 @@ export default function ProfileDetailModal({ profile, onClose }) {
     ['信頼度', profile.trust ? `${profile.trust}%` : profile.verified ? '認証済み' : '未設定'],
   ];
 
+  useEffect(() => {
+    // body scroll lock
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    // inert で背景を完全に操作不能に
+    const appRoot = document.getElementById('root');
+    if (appRoot) appRoot.inert = true;
+
+    // モーダル内の最初のフォーカス可能要素にフォーカス
+    const focusable = panelRef.current?.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable?.length) focusable[0].focus();
+
+    // Escape で閉じる
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+
+      // フォーカストラップ
+      if (e.key === 'Tab' && focusable?.length) {
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+          if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = prev;
+      if (appRoot) appRoot.inert = false;
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onClose]);
+
   return (
     <div className="profile-detail-modal" role="dialog" aria-modal="true" aria-labelledby="profile-detail-title" aria-describedby="profile-detail-desc">
       <button className="profile-detail-scrim" type="button" aria-label="閉じる" onClick={onClose}></button>
-      <section className="profile-detail-panel">
+      <section className="profile-detail-panel" ref={panelRef}>
         <button className="profile-detail-close" type="button" onClick={onClose} aria-label="モーダルを閉じる">×</button>
         <div className="profile-detail-hero">
           {profile.profilePhoto
