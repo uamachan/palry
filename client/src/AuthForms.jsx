@@ -13,11 +13,9 @@ function AuthModal({ children, onClose, size }) {
     const panel = panelRef.current;
     if (!panel) return;
 
-    // body scroll lock + background inert
+    // body scroll lock
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const appRoot = document.getElementById('root');
-    if (appRoot) appRoot.inert = true;
 
     const getFocusable = () => panel.querySelectorAll(
       'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])'
@@ -46,7 +44,6 @@ function AuthModal({ children, onClose, size }) {
     document.addEventListener('keydown', esc);
     return () => {
       document.body.style.overflow = prevOverflow;
-      if (appRoot) appRoot.inert = false;
       panel.removeEventListener('keydown', trap);
       document.removeEventListener('keydown', esc);
     };
