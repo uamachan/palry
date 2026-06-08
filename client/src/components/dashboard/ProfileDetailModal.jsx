@@ -22,10 +22,6 @@ export default function ProfileDetailModal({ profile, onClose }) {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // inert で背景を完全に操作不能に
-    const appRoot = document.getElementById('root');
-    if (appRoot) appRoot.inert = true;
-
     // モーダル内の最初のフォーカス可能要素にフォーカス
     const focusable = panelRef.current?.querySelectorAll(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -51,7 +47,6 @@ export default function ProfileDetailModal({ profile, onClose }) {
 
     return () => {
       document.body.style.overflow = prev;
-      if (appRoot) appRoot.inert = false;
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [onClose]);
