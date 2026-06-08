@@ -20,6 +20,7 @@ import './profile-validation.css';
 import './design-polish.css';
 import './matching-icons.css';
 import './profile-visual.css';
+import './golden-ratio.css';
 
 let firebaseModsPromise = null;
 function getFirebaseMods() {
