@@ -24,14 +24,18 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
   const activeThread = dmThreads.find((t) => t.match.id === activeThreadId) || dmThreads[0];
   const [detailProfile, setDetailProfile] = useState(null);
 
-  // 同一スレッドへの多重既読APIコールを防ぐ
+  // 開いているスレッドを既読化する。初回オープン時に加え、表示中に新着が
+  // 届いて未読が増えた場合も再度既読化する（既読後はローカルで unreadCount が
+  // 0 になるため、このエフェクトは無限ループしない）。
   const lastMarkedRef = useRef(null);
   useEffect(() => {
     const threadId = activeThread?.match?.id;
-    if (!threadId || lastMarkedRef.current === threadId) return;
+    if (!threadId) return;
+    const unread = Number(activeThread?.unreadCount || 0);
+    if (lastMarkedRef.current === threadId && unread === 0) return;
     lastMarkedRef.current = threadId;
     markDmRead(threadId);
-  }, [activeThread?.match?.id, markDmRead]);
+  }, [activeThread?.match?.id, activeThread?.unreadCount, markDmRead]);
 
   const hasUserMessage = Boolean(activeThread?.messages?.some((m) => m.sender === 'user' && !m.system));
 
