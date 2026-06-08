@@ -262,4 +262,115 @@
     padding: 7px 4px !important;
     font-size: 10px !important;
   }
+
+  /* Landing page: center mobile hero instead of leaving it left-aligned. */
+  html body #root .site-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    box-sizing: border-box !important;
+    text-align: center !important;
+    overflow-x: hidden !important;
+  }
+
+  html body #root > .site-header,
+  html body #root .site-page + .footer {
+    width: min(100%, 430px) !important;
+    max-width: 430px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  html body #root .site-page .hero.section,
+  html body #root .site-page .hero {
+    width: min(100%, 430px) !important;
+    max-width: 430px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    display: grid !important;
+    justify-items: center !important;
+    align-items: start !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .site-page .hero-copy {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+  }
+
+  html body #root .site-page .hero-copy .eyebrow {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+  }
+
+  html body #root .site-page .hero-copy h1 {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+    font-size: clamp(38px, 11vw, 58px) !important;
+    line-height: 1.08 !important;
+    letter-spacing: -0.06em !important;
+  }
+
+  html body #root .site-page .hero-copy h1 span {
+    display: block !important;
+    text-align: center !important;
+  }
+
+  html body #root .site-page .hero-copy p {
+    width: 100% !important;
+    max-width: 390px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+    font-size: clamp(15px, 4.4vw, 18px) !important;
+    line-height: 1.8 !important;
+  }
+
+  html body #root .site-page .hero-actions {
+    width: 100% !important;
+    max-width: 390px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    display: grid !important;
+    justify-items: center !important;
+    gap: 12px !important;
+  }
+
+  html body #root .site-page .hero-actions button {
+    width: min(100%, 360px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    justify-content: center !important;
+  }
+
+  html body #root .site-page .notice-line {
+    max-width: 390px !important;
+    text-align: center !important;
+  }
+
+  html body #root .site-page .hero-card {
+    width: min(100%, 390px) !important;
+    max-width: 390px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    justify-self: center !important;
+  }
 }
