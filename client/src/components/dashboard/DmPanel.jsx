@@ -4,47 +4,126 @@ import ProfileDetailModal from './ProfileDetailModal.jsx';
 
 export const dmStarters = ['よろしくお願いします！', '何時ごろ遊べますか？', 'ランク一緒に行きませんか？'];
 
+function safeArray(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
 export function profileFromMatch(match) {
   return {
     id: match.profileId,
     name: match.profileName,
+    riotId: match.profileRiotId || match.riotId || '',
     profilePhoto: match.profilePhoto || '',
     rank: match.profileRank || '未設定',
     role: match.profileRole || '未設定',
     gender: match.profileGender || '',
     ageRange: match.profileAgeRange || '',
     region: match.profileRegion || '',
+    tags: safeArray(match.profileTags || match.tags),
+    agents: safeArray(match.profileAgents || match.agents),
+    xHandle: match.profileXHandle || match.xHandle || '',
+    vc: match.profileVc || match.vc || '',
+    maps: safeArray(match.profileMaps || match.maps),
+    favoriteWeapon: match.profileFavoriteWeapon || match.favoriteWeapon || '',
+    voiceIntro: match.profileVoiceIntro || match.voiceIntro || '',
     matchScore: 100,
     opener: match.opener || `${match.profileName}さんとマッチしました！`,
-    bio: match.profileBio || 'DMで会話しながら相性を確かめましょう。',
+    bio: match.profileBio || match.bio || '',
   };
+}
+
+function ProfileChips({ items, empty = '未設定' }) {
+  const list = safeArray(items);
+  if (!list.length) return <span className="dm-profile-empty">{empty}</span>;
+  return <div className="dm-profile-chips">{list.map((item) => <span key={item}>{item}</span>)}</div>;
+}
+
+function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
+  if (!profile) return null;
+  return (
+    <aside className="dm-profile-sidebar" aria-label="相手のプロフィール">
+      <div className="dm-profile-cover"></div>
+      <div className="dm-profile-main">
+        <div className="dm-profile-avatar">
+          {profile.profilePhoto ? <img src={profile.profilePhoto} alt="" loading="lazy" decoding="async" /> : profile.name?.slice(0, 1) || 'P'}
+        </div>
+        <h3>{profile.name}</h3>
+        <p className="dm-profile-riot">{profile.riotId || 'Riot ID 未設定'}</p>
+        <div className="dm-profile-rank-row">
+          {profile.rank && profile.rank !== '未設定' && <span className="dm-profile-rank-badge">{profile.rank}</span>}
+          {profile.role && profile.role !== '未設定' && <span className="dm-profile-role-badge">{profile.role}</span>}
+        </div>
+      </div>
+
+      <div className="dm-profile-meta-chips">
+        {profile.region && <span className="dm-profile-meta-chip"><strong>地域</strong>{profile.region}</span>}
+        {profile.ageRange && <span className="dm-profile-meta-chip"><strong>年齢</strong>{profile.ageRange}</span>}
+        {profile.vc && <span className="dm-profile-meta-chip"><strong>VC</strong>{profile.vc}</span>}
+        {profile.favoriteWeapon && <span className="dm-profile-meta-chip"><strong>武器</strong>{profile.favoriteWeapon}</span>}
+      </div>
+
+      {safeArray(profile.tags).length > 0 && (
+        <div className="dm-profile-section">
+          <b>目的</b>
+          <ProfileChips items={profile.tags} />
+        </div>
+      )}
+
+      {safeArray(profile.agents).length > 0 && (
+        <div className="dm-profile-section">
+          <b>エージェント</b>
+          <ProfileChips items={profile.agents} />
+        </div>
+      )}
+
+      {safeArray(profile.maps).length > 0 && (
+        <div className="dm-profile-section">
+          <b>得意MAP</b>
+          <ProfileChips items={profile.maps} />
+        </div>
+      )}
+
+      {profile.bio && (
+        <div className="dm-profile-section">
+          <b>自己紹介</b>
+          <p className="dm-profile-bio">{profile.bio}</p>
+        </div>
+      )}
+
+      <div className="dm-profile-actions">
+        <button type="button" onClick={onOpenDetail}>プロフィール全体を表示</button>
+        <div className="dm-profile-actions-danger">
+          <button type="button" onClick={onReport}>通報</button>
+          <button type="button" className="danger" onClick={onBlock}>ブロック</button>
+        </div>
+      </div>
+    </aside>
+  );
 }
 
 export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, reportProfile, blockProfile }) {
   const activeThread = dmThreads.find((t) => t.match.id === activeThreadId) || dmThreads[0];
   const [detailProfile, setDetailProfile] = useState(null);
+  const activeProfile = activeThread ? profileFromMatch(activeThread.match) : null;
 
-  // 開いているスレッドを既読化する。初回オープン時に加え、表示中に新着が
-  // 届いて未読が増えた場合も再度既読化する（既読後はローカルで unreadCount が
-  // 0 になるため、このエフェクトは無限ループしない）。
+  // 同一スレッドへの多重既読APIコールを防ぐ
   const lastMarkedRef = useRef(null);
   useEffect(() => {
     const threadId = activeThread?.match?.id;
-    if (!threadId) return;
-    const unread = Number(activeThread?.unreadCount || 0);
-    if (lastMarkedRef.current === threadId && unread === 0) return;
+    if (!threadId || lastMarkedRef.current === threadId) return;
     lastMarkedRef.current = threadId;
     markDmRead(threadId);
-  }, [activeThread?.match?.id, activeThread?.unreadCount, markDmRead]);
+  }, [activeThread?.match?.id, markDmRead]);
 
   const hasUserMessage = Boolean(activeThread?.messages?.some((m) => m.sender === 'user' && !m.system));
 
   return (
-    <div className="dm-panel">
+    <div className="dm-panel dm-panel-with-profile">
       <aside className="dm-thread-list">
-        <div className="dm-head"><h3>マッチ後メッセージ</h3><span>{dmThreads.length}件</span></div>
+        <div className="dm-head"><h3>ダイレクトメッセージ</h3><span>{dmThreads.length}件</span></div>
         {dmThreads.length ? dmThreads.map((thread) => {
           const lastMessage = thread.messages.at(-1);
+          const threadProfile = profileFromMatch(thread.match);
           return (
             <button
               className={cx('dm-thread', activeThread?.match.id === thread.match.id && 'active', thread.unreadCount > 0 && 'unread')}
@@ -52,11 +131,13 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
               onClick={() => selectDmThread(thread.match.id)}
             >
               <b>{thread.match.profileName}{thread.unreadCount > 0 && <em>{thread.unreadCount}</em>}</b>
+              <small>{threadProfile.riotId || threadProfile.rank || 'プロフィール未設定'}</small>
               <span>{lastMessage?.body || thread.match.opener}</span>
             </button>
           );
         }) : <p className="empty-text">まだマッチしていません。マッチ後だけメッセージが使えます。</p>}
       </aside>
+
       <section className="dm-conversation">
         {activeThread ? (
           <>
@@ -66,11 +147,9 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
                   ? <img src={activeThread.match.profilePhoto} alt="" loading="lazy" decoding="async" />
                   : activeThread.match.profileName?.slice(0, 1) || 'P'}
               </div>
-              <div><h3>{activeThread.match.profileName}</h3><span>メッセージ解放済み</span></div>
-              <div className="dm-head-actions">
-                <button type="button" onClick={() => setDetailProfile(profileFromMatch(activeThread.match))}>プロフィール</button>
-                <button type="button" onClick={() => reportProfile(activeThread.match.profileId, activeThread.match.profileName)}>通報</button>
-                <button type="button" className="danger" onClick={() => blockProfile(activeThread.match.profileId, activeThread.match.profileName)}>ブロック</button>
+              <div><h3>{activeThread.match.profileName}</h3><span>{activeProfile?.riotId || 'メッセージ解放済み'}</span></div>
+              <div className="dm-head-actions dm-head-actions-compact">
+                <button type="button" onClick={() => setDetailProfile(activeProfile)}>プロフィール</button>
               </div>
             </div>
             <div className="dm-messages" data-copyable>
@@ -91,16 +170,25 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
                 {dmStarters.map((starter) => <button type="button" key={starter} onClick={() => setDmDraft(starter)}>{starter}</button>)}
               </div>
             )}
-            <form className="dm-form" onSubmit={sendDm}>
-              <input value={dmDraft} maxLength="500" onChange={(e) => setDmDraft(e.target.value)} placeholder="メッセージを入力" />
+            <form className="dm-form" onSubmit={sendDm} data-sending={dmSending ? 'true' : 'false'}>
+              <input value={dmDraft} maxLength="500" onChange={(e) => setDmDraft(e.target.value)} placeholder={`${activeThread.match.profileName}へメッセージを送信`} />
               <button className="primary" type="submit" disabled={dmSending || !dmDraft.trim()}>{dmSending ? '送信中' : '送信'}</button>
             </form>
-            {detailProfile && <ProfileDetailModal profile={profileFromMatch(activeThread.match)} onClose={() => setDetailProfile(null)} />}
+            {detailProfile && <ProfileDetailModal profile={detailProfile} onClose={() => setDetailProfile(null)} />}
           </>
         ) : (
           <div className="locked-panel"><h3>メッセージはマッチ後に解放</h3><p>お互いにいいねすると、ここに1対1の会話が表示されます。</p></div>
         )}
       </section>
+
+      {activeThread && activeProfile && (
+        <DmProfileSidebar
+          profile={activeProfile}
+          onOpenDetail={() => setDetailProfile(activeProfile)}
+          onReport={() => reportProfile(activeThread.match.profileId, activeThread.match.profileName)}
+          onBlock={() => blockProfile(activeThread.match.profileId, activeThread.match.profileName)}
+        />
+      )}
     </div>
   );
 }
