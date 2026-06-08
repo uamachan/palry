@@ -1,369 +1,254 @@
-/* Mobile-only final overrides. Public fallback loaded by index.html. */
+/* Mobile-only final overrides. Public fallback loaded by index.html.
+   Strong selectors are used so this wins even when bundled CSS loads later. */
 @media (max-width: 760px) {
   html,
   body,
   #root {
     width: 100% !important;
     max-width: 100% !important;
-    overflow-x: hidden !important;
-  }
-
-  html body .auth-modal {
-    display: grid !important;
-    place-items: center !important;
-    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) !important;
-    overflow: hidden !important;
-  }
-
-  html body .auth-modal .auth-modal-panel,
-  html body .auth-modal .auth-modal-panel--narrow,
-  html body .auth-modal .auth-modal-panel--profile {
-    width: min(calc(100vw - 20px), 430px) !important;
-    max-width: min(calc(100vw - 20px), 430px) !important;
-    margin: 0 auto !important;
-    border-radius: 24px !important;
-    padding: 18px !important;
-    transform: none !important;
-    box-sizing: border-box !important;
-  }
-
-  html body .auth-modal .auth-modal-panel--profile {
-    height: calc(100svh - 20px) !important;
-    max-height: calc(100svh - 20px) !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-  }
-
-  html body .auth-modal .auth-modal-panel--narrow {
-    height: auto !important;
-    min-height: auto !important;
-    max-height: calc(100svh - 20px) !important;
-    overflow-y: auto !important;
-  }
-
-  html body .auth-modal-panel--narrow .auth-entry-panel,
-  html body .auth-modal-panel--narrow .email-signup-panel {
-    min-height: auto !important;
-    height: auto !important;
-    display: grid !important;
-    align-content: start !important;
-    gap: 18px !important;
-    text-align: center !important;
-    overflow: visible !important;
-  }
-
-  html body .auth-modal-panel--narrow .email-signup-header,
-  html body .auth-modal-panel--narrow .auth-entry-panel .email-signup-header {
-    padding: 0 44px 0 0 !important;
-    text-align: center !important;
-  }
-
-  html body .auth-modal-panel--narrow .email-signup-header h2,
-  html body .auth-modal-panel--narrow .auth-entry-panel .email-signup-header h2 {
-    font-size: 28px !important;
-    line-height: 1.15 !important;
-  }
-
-  html body .auth-modal-panel--narrow .email-signup-actions,
-  html body .auth-modal-panel--narrow .auth-entry-panel .email-signup-actions {
-    margin-top: 0 !important;
-    gap: 12px !important;
-  }
-
-  html body .auth-modal-panel--narrow .email-signup-actions button,
-  html body .auth-modal-panel--narrow .auth-entry-panel .email-signup-actions button {
-    min-height: 54px !important;
-    border-radius: 18px !important;
-    font-size: 16px !important;
-  }
-
-  html body .auth-modal-panel--profile .profile-setup-panel {
-    width: 100% !important;
-    max-width: 100% !important;
     height: 100% !important;
-    min-height: 0 !important;
-    margin: 0 auto !important;
-    text-align: left !important;
     overflow: hidden !important;
   }
 
-  html body .auth-modal-panel--profile .profile-setup-heading {
-    text-align: center !important;
-    padding: 0 48px !important;
-    gap: 4px !important;
-    flex: 0 0 auto !important;
-  }
-
-  html body .auth-modal-panel--profile .profile-setup-heading h2 {
-    font-size: 27px !important;
-    line-height: 1.15 !important;
-  }
-
-  html body .auth-modal-panel--profile .profile-setup-heading p {
-    font-size: 13px !important;
-  }
-
-  html body .auth-modal-panel--profile .profile-setup-card {
+  html body #root .appv2 {
     width: 100% !important;
     max-width: 100% !important;
-    min-height: 0 !important;
-    margin: 0 auto !important;
-    padding: 12px !important;
-    gap: 10px !important;
-    border-radius: 22px !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-  }
-
-  html body .auth-modal-panel--profile .profile-setup-card .setup-tabs {
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    grid-auto-rows: 34px !important;
-    gap: 8px !important;
-    height: auto !important;
-    min-height: 76px !important;
-    max-height: none !important;
-    overflow: visible !important;
-    padding: 2px 0 8px !important;
-    border-bottom: 1px solid #e8ded5 !important;
-    flex: 0 0 auto !important;
-  }
-
-  html body .auth-modal-panel--profile .profile-setup-card .setup-tabs button {
-    width: 100% !important;
-    min-width: 0 !important;
-    height: 34px !important;
-    min-height: 34px !important;
-    padding: 0 6px !important;
-    border-radius: 999px !important;
-    font-size: 0 !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
-  }
-
-  html body .auth-modal-panel--profile .profile-setup-card .setup-tabs button:nth-child(1)::after { content: '1 基本'; }
-  html body .auth-modal-panel--profile .profile-setup-card .setup-tabs button:nth-child(2)::after { content: '2 ランク'; }
-  html body .auth-modal-panel--profile .profile-setup-card .setup-tabs button:nth-child(3)::after { content: '3 スタイル'; }
-  html body .auth-modal-panel--profile .profile-setup-card .setup-tabs button:nth-child(4)::after { content: '4 追加'; }
-  html body .auth-modal-panel--profile .profile-setup-card .setup-tabs button:nth-child(5)::after { content: '5 自己紹介'; }
-  html body .auth-modal-panel--profile .profile-setup-card .setup-tabs button:nth-child(6)::after { content: '6 規約'; }
-
-  html body .auth-modal-panel--profile .profile-setup-card .setup-tabs button::after {
-    font-size: 12px !important;
-    font-weight: 900 !important;
-    line-height: 1 !important;
-  }
-
-  html body .auth-modal-panel--profile .profile-setup-card > .pv-basic-grid,
-  html body .auth-modal-panel--profile .profile-setup-card > .pv-rank-section,
-  html body .auth-modal-panel--profile .profile-setup-card > .setup-stack,
-  html body .auth-modal-panel--profile .profile-setup-card > .terms-box {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    padding: 4px 2px 12px !important;
-  }
-
-  html body .auth-modal-panel--profile .pv-photo-card {
-    min-height: 116px !important;
-  }
-
-  html body .auth-modal-panel--profile .profile-setup-actions {
-    flex: 0 0 auto !important;
-    margin-top: auto !important;
-    padding-top: 8px !important;
-    gap: 7px !important;
-  }
-
-  html body .auth-modal-panel--profile .profile-setup-actions button {
-    min-height: 42px !important;
-    border-radius: 16px !important;
-  }
-
-  html body .appv2 {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-height: 100svh !important;
     height: 100svh !important;
+    min-height: 100svh !important;
+    max-height: 100svh !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
-    padding: 6px 6px calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 5px 6px calc(72px + env(safe-area-inset-bottom, 0px)) !important;
     box-sizing: border-box !important;
   }
 
-  html body .appv2 > .site-header {
+  html body #root .appv2 > .site-header {
+    position: relative !important;
+    top: auto !important;
     flex: 0 0 auto !important;
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 0 8px !important;
-    padding: 8px !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 0 7px !important;
+    padding: 8px 8px 9px !important;
     border-radius: 18px !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
   }
 
-  html body .appv2 .site-nav {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
+  html body #root .appv2 .brand img,
+  html body #root .appv2 .app-brand-button img {
+    width: 92px !important;
+    max-width: 30vw !important;
+    height: auto !important;
   }
 
-  html body .appv2 .site-nav::-webkit-scrollbar { display: none !important; }
+  html body #root .appv2 .site-nav {
+    order: 3 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 6px 0 0 !important;
+    overflow: hidden !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
 
-  html body .appv2 .nav-button {
-    min-height: 40px !important;
-    padding: 8px 13px !important;
-    border-radius: 18px !important;
+  html body #root .appv2 .nav-button {
+    min-width: 0 !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    padding: 7px 6px !important;
+    border-radius: 999px !important;
+    font-size: 13px !important;
     white-space: nowrap !important;
   }
 
-  html body .appv2-content {
+  html body #root .appv2-content {
     flex: 1 1 auto !important;
     width: 100% !important;
     max-width: 100% !important;
     min-height: 0 !important;
     height: auto !important;
+    max-height: none !important;
     margin: 0 !important;
-    padding: 10px !important;
+    padding: 8px !important;
     border-radius: 20px !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
   }
 
-  html body .mp-wrap {
+  html body #root .appv2-content--scroll,
+  html body #root .appv2-content--dm {
+    overflow: hidden !important;
+  }
+
+  html body #root .notifications-panel,
+  html body #root .list-panel,
+  html body #root .dm-panel,
+  html body #root .footprints-panel {
     width: 100% !important;
     max-width: 100% !important;
     height: 100% !important;
     min-height: 0 !important;
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto minmax(0, 1fr) auto !important;
-    grid-template-areas: 'filter' 'card' 'actions' !important;
-    gap: 10px !important;
+    max-height: 100% !important;
     overflow: hidden !important;
-    align-items: stretch !important;
-    justify-items: center !important;
-  }
-
-  html body .mp-filter-row {
-    grid-area: filter !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    min-height: 46px !important;
-    display: grid !important;
-    grid-template-columns: auto minmax(0, 1fr) auto !important;
-    align-items: center !important;
-    gap: 8px !important;
-    padding: 7px 8px !important;
-    overflow: hidden !important;
-    border-radius: 18px !important;
     box-sizing: border-box !important;
   }
 
-  html body .mp-filter-label {
-    font-size: 0 !important;
-    min-width: 0 !important;
-  }
-
-  html body .mp-filter-label::after {
-    content: '性別' !important;
-    font-size: 12px !important;
-    font-weight: 1000 !important;
-  }
-
-  html body .mp-filter-select {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    height: 38px !important;
-    padding: 7px 10px !important;
-    font-size: 13px !important;
-    border-radius: 999px !important;
-  }
-
-  html body .mp-lock-hint {
-    min-width: 0 !important;
-    max-width: 112px !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    padding: 7px 9px !important;
-    font-size: 11px !important;
-  }
-
-  html body .mp-card-wrap {
-    grid-area: card !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    height: 100% !important;
-    overflow: hidden !important;
+  /* 通知・足あと: ページ全体ではなく中身だけ収める */
+  html body #root .notifications-panel,
+  html body #root .list-panel,
+  html body #root .footprints-panel {
     display: grid !important;
-    place-items: center !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    gap: 8px !important;
   }
 
-  html body .mp-card,
-  html body .mp-empty,
-  html body .skeleton-card {
-    width: min(100%, 340px) !important;
-    max-width: 340px !important;
-    height: 100% !important;
-    max-height: min(520px, 100%) !important;
+  html body #root .notifications-head,
+  html body #root .list-head,
+  html body #root .footprints-head {
     min-height: 0 !important;
-    margin: 0 auto !important;
-    overflow: hidden !important;
-    border-radius: 24px !important;
+    padding: 10px 12px !important;
+    border-radius: 16px !important;
   }
 
-  html body .mp-card-info {
-    max-height: 58% !important;
-    overflow: hidden !important;
-    padding: 12px !important;
+  html body #root .notifications-head h3,
+  html body #root .list-head h3,
+  html body #root .footprints-head h3 {
+    font-size: 18px !important;
+    line-height: 1.2 !important;
   }
 
-  html body .mp-bio {
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical !important;
-    overflow: hidden !important;
+  html body #root .notification-list,
+  html body #root .footprints-list,
+  html body #root .list-body {
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 2px !important;
   }
 
-  html body .mp-empty {
+  html body #root .notification-empty,
+  html body #root .footprints-empty,
+  html body #root .empty-state,
+  html body #root .locked-panel {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
     display: grid !important;
     place-items: center !important;
     align-content: center !important;
     text-align: center !important;
-    padding: 24px 18px !important;
-    background: #fff !important;
-    border: 1px solid var(--line, #e7e0d8) !important;
+    padding: 18px 16px !important;
+    border-radius: 20px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
-  html body .mp-actions {
-    grid-area: actions !important;
-    width: min(100%, 340px) !important;
-    max-width: 340px !important;
-    margin: 0 auto !important;
+  html body #root .notification-empty h3,
+  html body #root .footprints-empty h3,
+  html body #root .empty-state h3,
+  html body #root .locked-panel h3 {
+    margin: 0 0 8px !important;
+    font-size: clamp(22px, 7vw, 34px) !important;
+    line-height: 1.18 !important;
+    letter-spacing: -0.04em !important;
+  }
+
+  html body #root .notification-empty p,
+  html body #root .footprints-empty p,
+  html body #root .empty-state p,
+  html body #root .locked-panel p {
+    margin: 0 !important;
+    font-size: clamp(13px, 4vw, 17px) !important;
+    line-height: 1.65 !important;
+    color: #7a716a !important;
+  }
+
+  /* DM: 上のスレッド概要 + 会話カードを1画面に収める */
+  html body #root .dm-panel {
     display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 10px !important;
-    padding: 0 !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    gap: 9px !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
   }
 
-  html body .mp-actions .mp-btn {
-    height: 50px !important;
-    min-height: 50px !important;
-    border-radius: 16px !important;
+  html body #root .dm-thread-list {
+    display: block !important;
+    width: 100% !important;
+    max-height: 112px !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 12px !important;
+    border-radius: 18px !important;
+    box-sizing: border-box !important;
   }
 
-  html body .appv2-bottom-nav {
+  html body #root .dm-head {
+    min-height: 0 !important;
+    margin: 0 0 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  html body #root .dm-head h3 {
+    font-size: 18px !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+  }
+
+  html body #root .dm-head span {
+    font-size: 13px !important;
+  }
+
+  html body #root .dm-thread-list .empty-text {
+    margin: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.55 !important;
+    color: #7a716a !important;
+  }
+
+  html body #root .dm-conversation {
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+    border-radius: 20px !important;
+    box-sizing: border-box !important;
+  }
+
+  html body #root .dm-conversation-head {
+    min-height: 56px !important;
+    padding: 9px 11px !important;
+  }
+
+  html body #root .dm-messages {
+    min-height: 0 !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  html body #root .dm-form {
+    min-height: 58px !important;
+    padding: 8px !important;
+  }
+
+  html body #root .dm-starters {
+    max-height: 74px !important;
+    overflow: hidden !important;
+    padding: 7px 8px !important;
+  }
+
+  html body #root .appv2-bottom-nav {
     width: calc(100vw - 14px) !important;
     max-width: calc(100vw - 14px) !important;
     bottom: calc(7px + env(safe-area-inset-bottom, 0px)) !important;
@@ -372,7 +257,7 @@
     box-sizing: border-box !important;
   }
 
-  html body .appv2-nav-btn {
+  html body #root .appv2-nav-btn {
     min-width: 0 !important;
     padding: 7px 4px !important;
     font-size: 10px !important;
