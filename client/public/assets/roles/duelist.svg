@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Duelist">
+  <circle cx="32" cy="32" r="27" fill="#FFF4F7" stroke="#FFD3DF" stroke-width="2"/>
+  <path fill="#FF5C8A" d="m33 8 9 21h12L31 56l3-20H20L33 8Z"/>
+  <path fill="#181614" fill-opacity=".12" d="m34 28 8 1-11 13 2-9h-6l7-5Z"/>
+</svg>
