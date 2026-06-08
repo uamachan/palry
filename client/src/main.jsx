@@ -779,16 +779,6 @@ function Hero({ onSignup, onOpenApp }) {
       <div className="hero-actions"><button className="primary" onClick={onSignup}>アカウント作成して始める</button><button className="secondary" onClick={onOpenApp}>マッチング画面を開く</button></div>
       <p className="notice-line">※ マッチング画面はアカウント作成後に表示。別ブラウザタブではなく、同じサイト内で切り替わります。</p>
     </div>
-    <div className="hero-card">
-      <div className="browser-bar"><i></i><i></i><i></i><span>pairly.gg/app</span></div>
-      <div className="mock-card"><div className="mock-photo mock-photo-logo"><img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" /></div><div><b>専用マッチング画面</b><span>登録後にいいね / 見送り / メッセージを解放</span></div></div>
-      <div className="mock-row">
-        {actions.map((action) => <button key={action.label} type="button" onClick={action.onClick} aria-label={action.label}>
-          <MockIcon name={action.icon} />
-          <span>{action.label}</span>
-        </button>)}
-      </div>
-    </div>
   </section>;
 }
 

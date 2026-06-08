@@ -22,10 +22,14 @@
    PC（デスクトップ）: 黄金比の2カラムレイアウト
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── Hero: コピー (φ) : ビジュアルカード (1) = 61.8% : 38.2% ──── */
-/* 1.08fr .92fr から 1.618fr 1fr へ — より明確な視覚的メリハリ */
+/* ── Hero: hero-card 削除につき1カラム。コピーエリアに最大幅を設定 ── */
 .hero {
-  grid-template-columns: 1.618fr 1fr;
+  grid-template-columns: 1fr;
+  min-height: auto;
+}
+.hero-copy {
+  max-width: min(720px, 100%);
+  margin: 0 auto;
 }
 
 /* Hero 本文: 黄金比 line-height (1.618) で読みやすさを最適化 */
@@ -69,10 +73,7 @@
    Hero・dm-panel は維持できる範囲で φ 比を保ちつつ必要に応じ折りたたむ
    ══════════════════════════════════════════════════════════════════ */
 @media (max-width: 1040px) {
-  /* Hero はタブレット幅では1カラムに（既存の breakpoint と揃える） */
-  .hero {
-    grid-template-columns: 1fr;
-  }
+  .terms-list { grid-template-columns: 1fr; }
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -81,7 +82,7 @@
    余白・フォントのみ φ 比スケールで調和を保持。
    ══════════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
-  .hero {
+  .terms-list {
     grid-template-columns: 1fr;
   }
 
@@ -90,6 +91,11 @@
     padding: var(--gs-xl) var(--gs-lg);
   }
 }
+
+/* ── Auth モーダル: スクロール漏れ防止 ────────────────────────────
+   overscroll-behavior:contain でパネル端でのスクロールチェーンをブロック */
+.auth-modal { overscroll-behavior: contain; }
+.auth-modal-panel { overscroll-behavior: contain; }
 
 /* DM パネル: 760px 以下で1カラム（既存動作と同期） */
 @media (max-width: 760px) {
