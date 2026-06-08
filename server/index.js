@@ -171,6 +171,12 @@ app.use('/api', apiLimiter);
 
 validateProductionConfig();
 
+// データの状態（ステータス）文字列を一元管理する。各所での直書きをやめることで、
+// 打ち間違い（例: 'penidng' が無言で一致しなくなる）による不具合を防ぐ。
+const LIKE_STATUS = Object.freeze({ PENDING: 'pending', ACCEPTED: 'accepted', BLOCKED: 'blocked', AUTO_HIDDEN: 'auto_hidden' });
+const REPORT_STATUS = Object.freeze({ OPEN: 'open', DISMISSED: 'dismissed' });
+const PURCHASE_STATUS = Object.freeze({ DEMO_PAID: 'demo_paid' });
+
 const plans = {
   FREE: {
     name: 'FREE',
@@ -456,7 +462,7 @@ function buildReceivedLikeEntry(fromProfile, forUserId, likeType) {
     fromGender: fromProfile.gender || '',
     fromAgeRange: fromProfile.ageRange || '',
     likeType,
-    status: 'pending',
+    status: LIKE_STATUS.PENDING,
     createdAt: new Date().toISOString()
   };
 }
@@ -533,9 +539,9 @@ async function resolvePendingBetween(userAId, userBId) {
       const betweenPair =
         (r.forUserId === userAId && r.fromProfileId === userBId) ||
         (r.forUserId === userBId && r.fromProfileId === userAId);
-      if (betweenPair && r.status === 'pending') {
+      if (betweenPair && r.status === LIKE_STATUS.PENDING) {
         changed = true;
-        return { ...r, status: 'accepted', acceptedAt: new Date().toISOString() };
+        return { ...r, status: LIKE_STATUS.ACCEPTED, acceptedAt: new Date().toISOString() };
       }
       return r;
     });
@@ -549,13 +555,13 @@ async function setReceivedLikesFromUserStatus(fromUserId, hidden) {
     let changed = false;
     const next = received.map((item) => {
       if (item.fromProfileId !== fromUserId) return item;
-      if (hidden && item.status === 'pending') {
+      if (hidden && item.status === LIKE_STATUS.PENDING) {
         changed = true;
-        return { ...item, status: 'auto_hidden', autoHiddenAt: now };
+        return { ...item, status: LIKE_STATUS.AUTO_HIDDEN, autoHiddenAt: now };
       }
-      if (!hidden && item.status === 'auto_hidden') {
+      if (!hidden && item.status === LIKE_STATUS.AUTO_HIDDEN) {
         changed = true;
-        return { ...item, status: 'pending', unhiddenAt: now };
+        return { ...item, status: LIKE_STATUS.PENDING, unhiddenAt: now };
       }
       return item;
     });
@@ -567,6 +573,17 @@ async function setReceivedLikesFromUserStatus(fromUserId, hidden) {
 function senderFor(message, viewerUserId) {
   if (message.senderUserId) return message.senderUserId === viewerUserId ? 'user' : 'match';
   return message.sender || 'match'; // 旧データ互換
+}
+
+// 会話の識別子。新データは conversationId、旧データはマッチID(match.id)で会話を表す。
+// この解決ロジックを1か所に集約し、各所での書き分けによる取りこぼしを防ぐ。
+function conversationIdOf(match) {
+  return match.conversationId || match.id;
+}
+
+// あるメッセージが指定の会話に属するか。新データは conversationId、旧データは matchId で判定。
+function messageInConversation(message, conversationId, matchId) {
+  return message.conversationId ? message.conversationId === conversationId : message.matchId === matchId;
 }
 
 // 検証済みトークンの短期キャッシュ。
@@ -980,7 +997,7 @@ app.post('/api/like', requireAuth, async (req, res) => {
   const myProfile = userToProfile(me);
   const receivedLike = buildReceivedLikeEntry(myProfile, profileId, selectedType);
   const pendingResult = await updateJson('received_likes.json', [], (received) => {
-    const exists = received.some((r) => r.forUserId === profileId && r.fromProfileId === userId && r.status === 'pending');
+    const exists = received.some((r) => r.forUserId === profileId && r.fromProfileId === userId && r.status === LIKE_STATUS.PENDING);
     if (exists) return { value: undefined, result: false };
     return { value: [receivedLike, ...received], result: true };
   });
@@ -996,7 +1013,7 @@ async function sendReceivedLikesForCurrentUser(req, res) {
   const visibleUserIds = new Set(users.filter(isVisibleUser).map((user) => user.id));
   res.json({
     receivedLikes: received
-      .filter((r) => r.forUserId === req.authedUser.id && r.status === 'pending' && visibleUserIds.has(r.fromProfileId))
+      .filter((r) => r.forUserId === req.authedUser.id && r.status === LIKE_STATUS.PENDING && visibleUserIds.has(r.fromProfileId))
       .slice(0, RECEIVED_LIKES_LIMIT)
   });
 }
@@ -1014,7 +1031,7 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
   if (!receivedLikeId) return res.status(400).json({ message: '対象のいいねが必要です。' });
 
   const received = await readJson('received_likes.json', []);
-  const rl = received.find((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
+  const rl = received.find((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === LIKE_STATUS.PENDING);
   if (!rl) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
 
   const [users, blocks] = await Promise.all([
@@ -1031,9 +1048,9 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
     await updateJson('received_likes.json', [], (current) => {
       let changed = false;
       const next = current.map((item) => {
-        if (item.id === receivedLikeId && item.status === 'pending') {
+        if (item.id === receivedLikeId && item.status === LIKE_STATUS.PENDING) {
           changed = true;
-          return { ...item, status: 'blocked', blockedAt: new Date().toISOString() };
+          return { ...item, status: LIKE_STATUS.BLOCKED, blockedAt: new Date().toISOString() };
         }
         return item;
       });
@@ -1043,10 +1060,10 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
   }
 
   const accepted = await updateJson('received_likes.json', [], (received) => {
-    const idx = received.findIndex((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
+    const idx = received.findIndex((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === LIKE_STATUS.PENDING);
     if (idx < 0) return { value: undefined, result: false };
     const next = [...received];
-    next[idx] = { ...rl, status: 'accepted', acceptedAt: new Date().toISOString() };
+    next[idx] = { ...rl, status: LIKE_STATUS.ACCEPTED, acceptedAt: new Date().toISOString() };
     return { value: next, result: true };
   });
   if (!accepted) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
@@ -1113,7 +1130,7 @@ app.get('/api/dm/:userId', requireAuth, async (req, res) => {
   const userMatches = matches
     .filter((match) => match.userId === viewerId && match.dmUnlocked && visibleUserIds.has(match.profileId))
     .slice(0, DM_THREADS_LIMIT);
-  const convIds = new Set(userMatches.map((match) => match.conversationId || match.id));
+  const convIds = new Set(userMatches.map(conversationIdOf));
   const messagesByConversation = new Map();
   for (const message of messages) {
     const convId = message.conversationId || message.matchId;
@@ -1123,7 +1140,7 @@ app.get('/api/dm/:userId', requireAuth, async (req, res) => {
     messagesByConversation.set(convId, list);
   }
   const threads = userMatches.map((match) => {
-    const allThreadMessages = (messagesByConversation.get(match.conversationId || match.id) || [])
+    const allThreadMessages = (messagesByConversation.get(conversationIdOf(match)) || [])
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     const threadMessages = allThreadMessages
       .slice(-DM_THREAD_MESSAGE_LIMIT)
@@ -1161,7 +1178,7 @@ app.post('/api/dm/read', requireAuth, async (req, res) => {
   const match = matches[matchIndex];
   const targetUser = users.find((user) => user.id === match.profileId);
   if (req.authedUser.autoHidden || !isVisibleUser(targetUser)) return res.status(403).json({ message: 'この会話は現在利用できません。' });
-  const convId = match.conversationId || match.id;
+  const convId = conversationIdOf(match);
 
   const readAt = new Date().toISOString();
   await updateJson('matches.json', [], (currentMatches) => {
@@ -1174,7 +1191,7 @@ app.post('/api/dm/read', requireAuth, async (req, res) => {
   await updateJson('messages.json', [], (messages) => {
     let changed = false;
     const nextMessages = messages.map((message) => {
-      const belongs = message.conversationId ? message.conversationId === convId : message.matchId === matchId;
+      const belongs = messageInConversation(message, convId, matchId);
       const incoming = senderFor(message, viewerId) !== 'user';
       if (belongs && incoming && !message.readAt) {
         changed = true;
@@ -1208,12 +1225,12 @@ app.post('/api/dm', requireAuth, dmLimiter, async (req, res) => {
   if (pairBlocked(blocks, viewerId, match.profileId)) return res.status(403).json({ message: 'ブロック済みの相手にはDMを送信できません。' });
 
   // 会話IDで保存することで、双方向マッチの両側に同じメッセージが見える。
-  const conversationId = match.conversationId || match.id;
+  const conversationId = conversationIdOf(match);
   const createdAt = new Date().toISOString();
   const message = { id: uid('msg'), conversationId, matchId: match.id, senderUserId: viewerId, profileId: match.profileId, body, createdAt, readAt: null };
   const savedMessage = await updateJson('messages.json', [], (messages) => {
     const recentDuplicate = messages.some((existing) =>
-      (existing.conversationId ? existing.conversationId === conversationId : existing.matchId === match.id) &&
+      messageInConversation(existing, conversationId, match.id) &&
       existing.senderUserId === viewerId &&
       existing.body === body &&
       Date.now() - new Date(existing.createdAt).getTime() < 2500
@@ -1235,7 +1252,7 @@ app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
   const users = await readJson('users.json', []);
   if (!users.some((u) => u.id === profileId)) return res.status(404).json({ message: '対象ユーザーが見つかりません。' });
   const actorId = req.authedUser.id;
-  const report = { id: uid('report'), userId: actorId, profileId, reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
+  const report = { id: uid('report'), userId: actorId, profileId, reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: REPORT_STATUS.OPEN, createdAt: new Date().toISOString() };
   const outcome = await updateJson('reports.json', [], (reports) => {
     const mine24h = reports.filter((r) => r.userId === actorId && Date.now() - new Date(r.createdAt).getTime() < DAY_MS);
     // アカウント単位の永続レート制限（再起動で消えない）。
@@ -1256,7 +1273,7 @@ app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
   const allReports = await readJson('reports.json', []);
   const distinctReporters = new Set(
     allReports
-      .filter((r) => r.profileId === profileId && r.status !== 'dismissed' && Date.now() - new Date(r.createdAt).getTime() < REPORT_AUTO_HIDE_WINDOW_MS)
+      .filter((r) => r.profileId === profileId && r.status !== REPORT_STATUS.DISMISSED && Date.now() - new Date(r.createdAt).getTime() < REPORT_AUTO_HIDE_WINDOW_MS)
       .map((r) => r.userId)
   );
   if (distinctReporters.size >= REPORT_AUTO_HIDE_THRESHOLD) {
@@ -1299,9 +1316,9 @@ app.post('/api/block', requireAuth, async (req, res) => {
       const related =
         (item.forUserId === userId && item.fromProfileId === profileId) ||
         (item.forUserId === profileId && item.fromProfileId === userId);
-      if (related && item.status === 'pending') {
+      if (related && item.status === LIKE_STATUS.PENDING) {
         changed = true;
-        return { ...item, status: 'blocked', blockedAt: new Date().toISOString() };
+        return { ...item, status: LIKE_STATUS.BLOCKED, blockedAt: new Date().toISOString() };
       }
       return item;
     });
@@ -1363,9 +1380,9 @@ app.post('/api/admin/unhide', requireAuth, async (req, res) => {
   await updateJson('reports.json', [], (reports) => {
     let changed = false;
     const next = reports.map((r) => {
-      if (r.profileId === profileId && r.status !== 'dismissed') {
+      if (r.profileId === profileId && r.status !== REPORT_STATUS.DISMISSED) {
         changed = true;
-        return { ...r, status: 'dismissed', dismissedAt: new Date().toISOString() };
+        return { ...r, status: REPORT_STATUS.DISMISSED, dismissedAt: new Date().toISOString() };
       }
       return r;
     });
@@ -1391,7 +1408,7 @@ app.post('/api/purchase', requireAuth, async (req, res) => {
   const userId = req.authedUser.id;
   const selected = String(req.body?.plan || 'PLUS').toUpperCase();
   const validPlan = plans[selected] ? selected : 'PLUS';
-  const purchase = { id: uid('purchase'), userId, plan: validPlan, amount: plans[validPlan].price, status: 'demo_paid', createdAt: new Date().toISOString() };
+  const purchase = { id: uid('purchase'), userId, plan: validPlan, amount: plans[validPlan].price, status: PURCHASE_STATUS.DEMO_PAID, createdAt: new Date().toISOString() };
   await updateJson('purchases.json', [], (purchases) => ({ value: [purchase, ...purchases], result: purchase }));
   await updateJson('users.json', [], (users) => {
     const userIdx = users.findIndex((u) => u.id === userId);
@@ -1429,7 +1446,7 @@ app.post('/api/purchase-item', requireAuth, async (req, res) => {
     perk: config.perk,
     kind: config.kind,
     amount: meta.price,
-    status: 'demo_paid',
+    status: PURCHASE_STATUS.DEMO_PAID,
     createdAt: new Date().toISOString(),
     expiresAt: config.kind === 'timed' ? new Date(now + config.durationMs).toISOString() : null,
     remaining: config.kind === 'consumable' ? config.count : null
