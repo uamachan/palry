@@ -13,9 +13,13 @@ function AuthModal({ children, onClose, size }) {
     const panel = panelRef.current;
     if (!panel) return;
 
-    // body scroll lock
-    const prevOverflow = document.body.style.overflow;
+    // iOS対応スクロールロック: position:fixed でタッチスクロール漏れを防ぐ
+    const scrollY = window.scrollY;
+    const prev = { overflow: document.body.style.overflow, position: document.body.style.position, top: document.body.style.top, width: document.body.style.width };
     document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
 
     const getFocusable = () => panel.querySelectorAll(
       'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])'
@@ -43,7 +47,8 @@ function AuthModal({ children, onClose, size }) {
     panel.addEventListener('keydown', trap);
     document.addEventListener('keydown', esc);
     return () => {
-      document.body.style.overflow = prevOverflow;
+      Object.assign(document.body.style, prev);
+      window.scrollTo(0, scrollY);
       panel.removeEventListener('keydown', trap);
       document.removeEventListener('keydown', esc);
     };
