@@ -1,0 +1,169 @@
+@media (max-width: 760px) {
+  html, body, #root {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  /* ログイン/登録モーダル: 左寄り・余白多すぎを修正 */
+  .auth-modal {
+    display: grid !important;
+    place-items: center !important;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) !important;
+    overflow: hidden !important;
+  }
+
+  .auth-modal-panel,
+  .auth-modal-panel--narrow,
+  .auth-modal-panel--profile {
+    width: min(100vw - 20px, 430px) !important;
+    max-width: min(100vw - 20px, 430px) !important;
+    margin: 0 auto !important;
+    border-radius: 24px !important;
+    padding: 18px !important;
+    transform: none !important;
+  }
+
+  .auth-modal-panel--profile {
+    height: calc(100svh - 20px) !important;
+    max-height: calc(100svh - 20px) !important;
+  }
+
+  .auth-modal-panel--narrow {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: calc(100svh - 20px) !important;
+    overflow-y: auto !important;
+  }
+
+  .auth-entry-panel,
+  .auth-modal-panel--narrow .email-signup-panel {
+    min-height: auto !important;
+    height: auto !important;
+    display: grid !important;
+    align-content: start !important;
+    gap: 18px !important;
+    text-align: center !important;
+  }
+
+  .auth-entry-panel .email-signup-header,
+  .auth-modal-panel--narrow .email-signup-header {
+    padding: 0 44px 0 0 !important;
+    text-align: center !important;
+  }
+
+  .auth-entry-panel .email-signup-header h2,
+  .auth-modal-panel--narrow .email-signup-header h2 {
+    font-size: 28px !important;
+    line-height: 1.15 !important;
+  }
+
+  .auth-entry-panel .email-signup-actions,
+  .auth-modal-panel--narrow .email-signup-actions {
+    margin-top: 0 !important;
+    gap: 12px !important;
+  }
+
+  .auth-entry-panel .email-signup-actions button,
+  .auth-modal-panel--narrow .email-signup-actions button {
+    min-height: 54px !important;
+    border-radius: 18px !important;
+    font-size: 16px !important;
+  }
+
+  /* プロフィール作成: スマホは全体を中央寄せ */
+  .auth-modal-panel--profile .profile-setup-panel {
+    width: 100% !important;
+    margin: 0 auto !important;
+    text-align: left !important;
+  }
+
+  .auth-modal-panel--profile .profile-setup-heading {
+    text-align: center !important;
+    padding: 0 48px 0 48px !important;
+    gap: 4px !important;
+  }
+
+  .auth-modal-panel--profile .profile-setup-heading h2 {
+    font-size: 27px !important;
+    line-height: 1.15 !important;
+  }
+
+  .auth-modal-panel--profile .profile-setup-heading p {
+    font-size: 13px !important;
+  }
+
+  .profile-setup-card {
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 12px !important;
+    gap: 10px !important;
+    border-radius: 22px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ステップタブ: 2段グリッドで全表示 */
+  .profile-setup-card .setup-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-auto-rows: 34px !important;
+    gap: 8px !important;
+    height: auto !important;
+    min-height: 76px !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 2px 0 8px !important;
+    border-bottom: 1px solid #e8ded5 !important;
+  }
+
+  .profile-setup-card .setup-tabs button {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 6px !important;
+    border-radius: 999px !important;
+    font-size: 0 !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+  }
+
+  .profile-setup-card .setup-tabs button:nth-child(1)::after { content: '1 基本'; }
+  .profile-setup-card .setup-tabs button:nth-child(2)::after { content: '2 ランク'; }
+  .profile-setup-card .setup-tabs button:nth-child(3)::after { content: '3 スタイル'; }
+  .profile-setup-card .setup-tabs button:nth-child(4)::after { content: '4 追加'; }
+  .profile-setup-card .setup-tabs button:nth-child(5)::after { content: '5 自己紹介'; }
+  .profile-setup-card .setup-tabs button:nth-child(6)::after { content: '6 規約'; }
+
+  .profile-setup-card .setup-tabs button::after {
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+  }
+
+  /* タブが2段になった分、入力欄を自然にスクロール */
+  .profile-setup-card > .pv-basic-grid,
+  .profile-setup-card > .pv-rank-section,
+  .profile-setup-card > .setup-stack,
+  .profile-setup-card > .terms-box {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 4px 2px 12px !important;
+  }
+
+  .pv-photo-card {
+    min-height: 116px !important;
+  }
+
+  .profile-setup-actions {
+    margin-top: auto !important;
+    padding-top: 8px !important;
+    gap: 7px !important;
+  }
+
+  .profile-setup-actions button {
+    min-height: 42px !important;
+    border-radius: 16px !important;
+  }
+}
