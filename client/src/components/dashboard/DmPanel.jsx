@@ -28,7 +28,7 @@ export function profileFromMatch(match) {
     voiceIntro: match.profileVoiceIntro || match.voiceIntro || '',
     matchScore: 100,
     opener: match.opener || `${match.profileName}さんとマッチしました！`,
-    bio: match.profileBio || 'DMで会話しながら相性を確かめましょう。',
+    bio: match.profileBio || match.bio || '',
   };
 }
 
