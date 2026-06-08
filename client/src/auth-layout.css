@@ -149,7 +149,6 @@
 .profile-setup-card .setup-error{
   margin-bottom:8px!important;
 }
-.profile-setup-card>.setup-grid,
 .profile-setup-card>.setup-stack,
 .profile-setup-card>.terms-box{
   grid-row:3!important;
@@ -160,19 +159,13 @@
   gap:10px!important;
   padding-top:2px!important;
 }
-.profile-setup-card .setup-grid.two{
-  grid-template-columns:repeat(2,minmax(0,1fr))!important;
-}
-.profile-setup-card .email-field-label,
-.profile-setup-card .custom-select-field,
-.profile-setup-card .gender-select-block{
+.profile-setup-card .email-field-label{
   gap:5px!important;
   font-size:12px!important;
 }
 .profile-setup-card .email-field-label input,
 .profile-setup-card .email-field-label select,
-.profile-setup-card .email-field-label textarea,
-.profile-setup-card .custom-select-trigger{
+.profile-setup-card .email-field-label textarea{
   min-height:40px!important;
   padding:10px 12px!important;
   border-radius:14px!important;
@@ -182,30 +175,6 @@
   min-height:88px!important;
   max-height:88px!important;
   resize:none!important;
-}
-.photo-upload-card{
-  min-height:84px!important;
-  grid-template-columns:66px minmax(0,1fr)!important;
-  gap:10px!important;
-  padding:10px!important;
-}
-.photo-upload-preview{
-  width:66px!important;
-  height:66px!important;
-  border-radius:18px!important;
-  font-size:28px!important;
-}
-.photo-upload-copy small{
-  display:none!important;
-}
-.gender-options,
-.tag-choice-grid{
-  gap:6px!important;
-}
-.gender-options button,
-.tag-choice-grid button{
-  padding:8px 10px!important;
-  font-size:12px!important;
 }
 .voice-record-box,
 .terms-box{
@@ -282,9 +251,6 @@
     height:42px!important;
     min-height:42px!important;
     max-height:42px!important;
-  }
-  .profile-setup-card .setup-grid.two{
-    grid-template-columns:1fr!important;
   }
   .profile-setup-actions{
     height:120px!important;
