@@ -65,3 +65,9 @@ export function sanitizeMedia(value, kind, max) {
 export function emailKey(email) {
   return cleanText(email, 120).toLowerCase();
 }
+
+/** 数値を 0 以上の整数へ丸める。数値化できない場合は fallback。 */
+export function toNonNegativeInt(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
+}

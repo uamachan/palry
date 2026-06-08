@@ -1,10 +1,25 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readJson, updateJson, uid } from './lib/jsonStore.js';
-import { cleanText, cleanAge, cleanRiotId, sanitizeMedia, emailKey } from './lib/validation.js';
+import { cleanText, cleanRiotId, sanitizeMedia, emailKey, toNonNegativeInt } from './lib/validation.js';
+import {
+  allowedGenders, allowedVcs, allowedWeapons,
+  sanitizeMapsField, enumValue, cleanAgeField,
+  validateProfileEnums
+} from './lib/profile.js';
+import { LIKE_STATUS, REPORT_STATUS, PURCHASE_STATUS } from './lib/statuses.js';
+import { plans, singleItems, singleItemConfig, DAY_MS, quotaFor, isDemoPaymentAllowed } from './lib/catalog.js';
+import { publicUser, isVisibleUser, pairBlocked, userToProfile, readCandidateProfiles } from './lib/users.js';
+import {
+  countTodayUsage, weightedShuffle, activeEntitlements, boostedUserIds, isRealUserId,
+  buildReceivedLikeEntry, pairAlreadyMatched, userHasLiked,
+  tryCreateMutualMatch, resolvePendingBetween, setReceivedLikesFromUserStatus,
+  senderFor, conversationIdOf, messageInConversation
+} from './lib/matching.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,6 +27,9 @@ loadLocalEnv();
 const app = express();
 // Express の既定ヘッダ "X-Powered-By: Express" を消し、サーバー実装の露出を減らす。
 app.disable('x-powered-by');
+// HTTP応答を gzip 圧縮して転送量を削減する（候補プロフィールやDMなどJSONが大きくなりやすい）。
+// クライアントの Accept-Encoding に応じて自動適用。?nocompress や小さなレスポンスは自動スキップ。
+app.use(compression());
 const port = envInt('PORT', 3001, { min: 1, max: 65535 });
 const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
@@ -28,11 +46,6 @@ function envInt(name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {})
     return fallback;
   }
   return value;
-}
-
-function toNonNegativeInt(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
 }
 
 function validateProductionConfig() {
@@ -165,131 +178,6 @@ app.use('/api', apiLimiter);
 
 validateProductionConfig();
 
-const plans = {
-  FREE: {
-    name: 'FREE',
-    price: 0,
-    likeLimit: 10,
-    superLimit: 1,
-    dualLimit: 5,
-    genderFilter: false,
-    unlimited: false,
-    features: ['通常LIKE 10回/day', 'SUPER LIKE 1回/day', '両LIKE 5回', 'マッチ後DM']
-  },
-  PLUS: {
-    name: 'PLUS',
-    price: 980,
-    likeLimit: 40,
-    superLimit: 5,
-    dualLimit: 10,
-    genderFilter: true,
-    unlimited: false,
-    features: ['LIKE 40回/day', 'SUPER LIKE 5回/day', '両LIKE 10回', '性別指定フィルター', '足あと閲覧']
-  },
-  VIP: {
-    name: 'VIP',
-    price: 1980,
-    likeLimit: 'unlimited',
-    superLimit: 'unlimited',
-    dualLimit: 'unlimited',
-    genderFilter: true,
-    unlimited: true,
-    features: ['全制限解除', 'LIKE無制限', 'SUPER/両LIKE無制限', '性別指定フィルター', '上位表示']
-  }
-};
-
-const singleItems = [
-  { name: '性別指定フィルター7日', price: 400, detail: 'FREEでも7日間だけ表示性別を指定できます。' },
-  { name: 'ブースト24時間', price: 300, detail: 'プロフィールを表示候補に出やすくします。' },
-  { name: 'SUPER LIKE 3回', price: 500, detail: '相手に強めのLIKEを送れます。' },
-  { name: 'プロフィール目立たせ7日', price: 700, detail: '検索・候補カードで視認性を上げます。' }
-];
-
-// 単発課金の効果定義。timed = 期限付き特典 / consumable = 回数消費型。
-const DAY_MS = 24 * 60 * 60 * 1000;
-const singleItemConfig = {
-  '性別指定フィルター7日': { perk: 'genderFilter', kind: 'timed', durationMs: 7 * DAY_MS },
-  'ブースト24時間': { perk: 'boost', kind: 'timed', durationMs: DAY_MS },
-  'SUPER LIKE 3回': { perk: 'superCredits', kind: 'consumable', count: 3 },
-  'プロフィール目立たせ7日': { perk: 'spotlight', kind: 'timed', durationMs: 7 * DAY_MS }
-};
-
-const allowedGenders = ['男性', '女性', 'その他/未設定'];
-const valorantRanks = [
-  'Unranked',
-  'Iron 1', 'Iron 2', 'Iron 3',
-  'Bronze 1', 'Bronze 2', 'Bronze 3',
-  'Silver 1', 'Silver 2', 'Silver 3',
-  'Gold 1', 'Gold 2', 'Gold 3',
-  'Platinum 1', 'Platinum 2', 'Platinum 3',
-  'Diamond 1', 'Diamond 2', 'Diamond 3',
-  'Ascendant 1', 'Ascendant 2', 'Ascendant 3',
-  'Immortal 1', 'Immortal 2', 'Immortal 3',
-  'Radiant'
-];
-const valorantRoles = ['デュエリスト', 'イニシエーター', 'コントローラー', 'センチネル'];
-const regions = ['北海道', '東北', '関東', '甲信越', '北陸', '東海', '近畿', '中国', '四国', '九州', '沖縄', '海外'];
-const allowedVcs = ['なし', 'Discord', 'Skype', 'その他'];
-const allowedMaps = ['アセント', 'スプリット', 'ヘイヴン', 'バインド', 'アイスボックス', 'ブリーズ', 'フラクチャー', 'パール', 'ロータス', 'サンセット', 'アビス', 'カロード'];
-const allowedWeapons = ['Vandal', 'Phantom', 'Operator', 'Sheriff', 'Ghost', 'Marshal', 'Judge', 'Odin'];
-
-function sanitizeMapsField(raw) {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((v) => allowedMaps.includes(cleanText(v, 30))).slice(0, 5);
-}
-const rankAliases = new Map([
-  ['Iron', 'Iron 1'],
-  ['Bronze', 'Bronze 1'],
-  ['Silver', 'Silver 1'],
-  ['Gold', 'Gold 1'],
-  ['Platinum', 'Platinum 1'],
-  ['Diamond', 'Diamond 1'],
-  ['Ascendant', 'Ascendant 1'],
-  ['Immortal', 'Immortal 1']
-]);
-
-function enumValue(value, allowed, fallback = '') {
-  const normalized = cleanText(value, 60);
-  return allowed.includes(normalized) ? normalized : fallback;
-}
-
-// クライアントの AGE_RANGES と一致させる。数値年齢（旧形式）も後方互換で受け付ける。
-const AGE_RANGE_OPTIONS = ['10代', '20代前半', '20代後半', '30代', '40代以上'];
-function cleanAgeField(value) {
-  const text = cleanText(value, 20);
-  if (AGE_RANGE_OPTIONS.includes(text)) return text;
-  return cleanAge(text); // 後方互換：数値年齢 13〜80
-}
-
-function normalizeGender(gender) {
-  return enumValue(gender, allowedGenders, 'その他/未設定');
-}
-
-function normalizeRank(rank) {
-  const value = cleanText(rank, 60);
-  return enumValue(rankAliases.get(value) || value, valorantRanks, 'Gold 1');
-}
-
-function normalizeRole(role) {
-  return enumValue(role, valorantRoles, 'デュエリスト');
-}
-
-function normalizeRegion(region) {
-  return enumValue(region, regions, '');
-}
-
-function validateProfileEnums(payload, existing = {}) {
-  const gender = enumValue(payload.gender, allowedGenders);
-  if (!gender) return { status: 400, message: '性別の値が不正です。' };
-  const region = enumValue(payload.region, regions);
-  if (!region) return { status: 400, message: '地域の値が不正です。' };
-  const rankInput = cleanText(payload.rank || existing.rank || 'Gold 1', 60);
-  const rank = enumValue(rankAliases.get(rankInput) || rankInput, valorantRanks);
-  if (!rank) return { status: 400, message: 'ランクの値が不正です。' };
-  const role = enumValue(payload.role || existing.role || 'デュエリスト', valorantRoles);
-  if (!role) return { status: 400, message: 'ロールの値が不正です。' };
-  return { gender, region, rank, role };
-}
 
 function loadLocalEnv() {
   const envPath = path.join(__dirname, '..', '.env');
@@ -306,60 +194,9 @@ function loadLocalEnv() {
   }
 }
 
-function sameDay(isoA, isoB = new Date().toISOString()) {
-  return isoA?.slice(0, 10) === isoB.slice(0, 10);
-}
-
-function countTodayUsage(likes, userId, type) {
-  return likes.filter((like) => like.userId === userId && like.type === type && sameDay(like.createdAt)).length;
-}
-
-function quotaFor(planName, type) {
-  const plan = plans[planName] || plans.FREE;
-  if (plan.unlimited) return Infinity;
-  if (type === 'super') return plan.superLimit;
-  if (type === 'dual') return plan.dualLimit;
-  return plan.likeLimit;
-}
-
-function weightedShuffle(profiles, planName, boostedIds = new Set()) {
-  const planBonus = planName === 'VIP' ? 0.08 : planName === 'PLUS' ? 0.04 : 0;
-  return [...profiles]
-    .map((profile) => {
-      const femaleGuard = profile.gender === '女性' ? 0.22 : 0;
-      // ブースト/目立たせ購入者は候補上位に出やすくする。
-      const boostBonus = boostedIds.has(profile.id) ? 0.5 : 0;
-      const score = Math.random() + Number(profile.matchScore || 70) / 100 + planBonus - femaleGuard + boostBonus;
-      return { profile, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .map((entry) => entry.profile);
-}
 
 // cleanText / cleanAge / sanitizeMedia / emailKey は ./lib/validation.js に集約（単体テスト対象）。
 
-// 本番環境では ENABLE_DEMO_PURCHASE=true を明示しないと決済を通さない（フェイルクローズ）。
-function isDemoPaymentAllowed() {
-  return !isProduction || process.env.ENABLE_DEMO_PURCHASE === 'true';
-}
-
-function publicUser(user) {
-  // 内部識別子・認証関連の秘密はクライアントへ返さない。
-  // firebaseUid はサーバー内部の紐付け専用でフロントは使用しない。
-  const { authCode, authCodeHash, authCodeSalt, otpSecret, firebaseUid, ...safeUser } = user;
-  return safeUser;
-}
-
-function isVisibleUser(user) {
-  return Boolean(user?.firebaseUid) && !user.autoHidden;
-}
-
-function pairBlocked(blocks, aId, bId) {
-  return blocks.some((block) =>
-    (block.userId === aId && block.profileId === bId) ||
-    (block.userId === bId && block.profileId === aId)
-  );
-}
 
 // 管理者メール許可リスト（ADMIN_EMAILS=a@x.com,b@y.com）。
 // 未設定なら誰も管理者でない（管理APIは全拒否＝フェイルクローズ）。
@@ -430,220 +267,6 @@ async function findAndLinkFirebaseProfile(firebaseUser) {
   return profile;
 }
 
-function userToProfile(user) {
-  const hasVoiceIntro = Boolean(user.voiceIntro);
-  return {
-    id: user.id,
-    name: user.name,
-    gender: normalizeGender(user.gender),
-    ageRange: user.age ? (/^\d+$/.test(user.age) ? `${user.age}歳` : user.age) : '年齢未設定',
-    region: normalizeRegion(user.region),
-    rank: normalizeRank(user.rank),
-    peakRank: normalizeRank(user.peakRank || user.rank),
-    role: normalizeRole(user.role),
-    riotId: user.riotId || '',
-    tags: Array.isArray(user.tags) ? user.tags : [],
-    modes: Array.isArray(user.modes) ? user.modes : [],
-    agents: Array.isArray(user.agents) ? user.agents : [],
-    xHandle: user.xHandle || '',
-    vc: user.vc || '',
-    maps: Array.isArray(user.maps) ? user.maps : [],
-    favoriteWeapon: user.favoriteWeapon || '',
-    profilePhoto: user.profilePhoto || '',
-    bio: user.bio || '',
-    voiceIntro: user.voiceIntro || '',
-    voice: user.voice || (hasVoiceIntro ? '声の自己紹介あり' : '未設定'),
-    activeTime: user.activeTime || '',
-    trust: user.verified ? 90 : 72,
-    verified: Boolean(user.verified),
-    reasons: Array.isArray(user.reasons) ? user.reasons : [],
-    matchScore: 82,
-    matchChance: 0.3,
-    guarded: false,
-    opener: `${user.name}さんとマッチしました！`
-  };
-}
-
-// 候補はログイン可能な実アカウントのみ（firebaseUid あり、自分を除く）。
-// ダミー profiles.json や firebaseUid を持たない旧テストユーザーは、
-// いいねを受け取って返せないため候補から除外する。
-async function readCandidateProfiles(excludeUserId = '') {
-  const users = await readJson('users.json', []);
-  return users
-    // autoHidden（複数通報で自動非表示）は新規候補から除外する。既存マッチ/DMには影響しない。
-    .filter((user) => isVisibleUser(user) && user.id !== excludeUserId)
-    .map((user) => ({ ...userToProfile(user), isRealUser: true }));
-}
-
-// --- 単発課金の特典（エンタイトルメント） ---
-
-// あるユーザーの有効な特典を集計する。timed は期限内、consumable は残数を合算。
-function activeEntitlements(singlePurchases, userId, now = Date.now()) {
-  const result = { genderFilter: false, boost: false, spotlight: false, superCredits: 0 };
-  for (const p of singlePurchases) {
-    if (p.userId !== userId) continue;
-    if (p.kind === 'timed') {
-      if (p.expiresAt && new Date(p.expiresAt).getTime() > now && (p.perk in result)) {
-        result[p.perk] = true;
-      }
-    } else if (p.kind === 'consumable' && p.perk === 'superCredits') {
-      result.superCredits += toNonNegativeInt(p.remaining, 0);
-    }
-  }
-  return result;
-}
-
-// boost / spotlight が有効なユーザーID集合（候補ランキングの優先表示用）。
-function boostedUserIds(singlePurchases, now = Date.now()) {
-  const ids = new Set();
-  for (const p of singlePurchases) {
-    if (p.kind === 'timed' && (p.perk === 'boost' || p.perk === 'spotlight')
-      && p.expiresAt && new Date(p.expiresAt).getTime() > now) {
-      ids.add(p.userId);
-    }
-  }
-  return ids;
-}
-
-// --- 実プレイヤー同士の接続（双方向マッチング）ヘルパー ---
-
-function isRealUserId(id, users) {
-  return users.some((user) => user.id === id);
-}
-
-// received_likes の1件を組み立てる。
-// fromProfile = いいねを「送った側」のプロフィール、forUserId = 受け取る側のユーザーID。
-function buildReceivedLikeEntry(fromProfile, forUserId, likeType) {
-  return {
-    id: uid('rl'),
-    forUserId,
-    fromProfileId: fromProfile.id,
-    fromProfileName: fromProfile.name,
-    fromPhoto: fromProfile.profilePhoto || '',
-    fromRank: fromProfile.rank || '',
-    fromRole: fromProfile.role || '',
-    fromGender: fromProfile.gender || '',
-    fromAgeRange: fromProfile.ageRange || '',
-    likeType,
-    status: 'pending',
-    createdAt: new Date().toISOString()
-  };
-}
-
-function pairAlreadyMatched(matches, aId, bId) {
-  return matches.some((m) =>
-    (m.userId === aId && m.profileId === bId) ||
-    (m.userId === bId && m.profileId === aId));
-}
-
-function userHasLiked(likes, userId, profileId) {
-  return likes.some((like) => like.userId === userId && like.profileId === profileId);
-}
-
-function makeMatchRow(ownerUserId, otherProfile, conversationId, isRealUser) {
-  return {
-    id: uid('match'),
-    userId: ownerUserId,
-    profileId: otherProfile.id,
-    profileName: otherProfile.name,
-    profilePhoto: otherProfile.profilePhoto || '',
-    profileRank: otherProfile.rank || '',
-    profileRole: otherProfile.role || '',
-    profileGender: otherProfile.gender || '',
-    profileAgeRange: otherProfile.ageRange || '',
-    profileRegion: otherProfile.region || '',
-    profileBio: otherProfile.bio || '',
-    profileRiotId: otherProfile.riotId || '',
-    profileXHandle: otherProfile.xHandle || '',
-    profileTags: Array.isArray(otherProfile.tags) ? otherProfile.tags : [],
-    profileAgents: Array.isArray(otherProfile.agents) ? otherProfile.agents : [],
-    profileVc: otherProfile.vc || '',
-    profileMaps: Array.isArray(otherProfile.maps) ? otherProfile.maps : [],
-    profileFavoriteWeapon: otherProfile.favoriteWeapon || '',
-    opener: `${otherProfile.name}さんとマッチしました！`,
-    dmUnlocked: true,
-    conversationId,
-    isRealUser: Boolean(isRealUser),
-    createdAt: new Date().toISOString()
-  };
-}
-
-// 相互いいねが成立している場合だけ、2人の実ユーザー間に双方向のマッチ行を作る。
-// 相互判定（likes.json 読み取り）とマッチ作成を matches.json の updateJson 内で
-// 行うことで直列化し、A→B と B→A の同時いいねで二重 pending になる競合を防ぐ。
-// 既にマッチ済み or 新規作成後、対象ペア両側のマッチ行を返す（未成立なら空配列）。
-async function tryCreateMutualMatch(userA, userB) {
-  if (userA?.autoHidden || userB?.autoHidden) return [];
-  await updateJson('matches.json', [], async (matches) => {
-    if (pairAlreadyMatched(matches, userA.id, userB.id)) {
-      return { value: undefined, result: false };
-    }
-    const likes = await readJson('likes.json', []);
-    const reciprocal =
-      likes.some((l) => l.userId === userA.id && l.profileId === userB.id) &&
-      likes.some((l) => l.userId === userB.id && l.profileId === userA.id);
-    if (!reciprocal) return { value: undefined, result: false };
-    const conversationId = uid('conv');
-    const rowForA = makeMatchRow(userA.id, userToProfile(userB), conversationId, true);
-    const rowForB = makeMatchRow(userB.id, userToProfile(userA), conversationId, true);
-    return { value: [rowForB, rowForA, ...matches], result: true };
-  });
-  const matches = await readJson('matches.json', []);
-  return matches.filter((m) =>
-    (m.userId === userA.id && m.profileId === userB.id) ||
-    (m.userId === userB.id && m.profileId === userA.id));
-}
-
-// 対象ペア間で pending のままの received_likes を accepted に変える。
-async function resolvePendingBetween(userAId, userBId) {
-  await updateJson('received_likes.json', [], (received) => {
-    let changed = false;
-    const next = received.map((r) => {
-      const betweenPair =
-        (r.forUserId === userAId && r.fromProfileId === userBId) ||
-        (r.forUserId === userBId && r.fromProfileId === userAId);
-      if (betweenPair && r.status === 'pending') {
-        changed = true;
-        return { ...r, status: 'accepted', acceptedAt: new Date().toISOString() };
-      }
-      return r;
-    });
-    return { value: changed ? next : undefined, result: changed };
-  });
-}
-
-async function setReceivedLikesFromUserStatus(fromUserId, hidden) {
-  const now = new Date().toISOString();
-  return updateJson('received_likes.json', [], (received) => {
-    let changed = false;
-    const next = received.map((item) => {
-      if (item.fromProfileId !== fromUserId) return item;
-      if (hidden && item.status === 'pending') {
-        changed = true;
-        return { ...item, status: 'auto_hidden', autoHiddenAt: now };
-      }
-      if (!hidden && item.status === 'auto_hidden') {
-        changed = true;
-        return { ...item, status: 'pending', unhiddenAt: now };
-      }
-      return item;
-    });
-    return { value: changed ? next : undefined, result: changed };
-  });
-}
-
-// あるメッセージが、ある人の視点で「自分が送った」ものかを判定。
-function senderFor(message, viewerUserId) {
-  if (message.senderUserId) return message.senderUserId === viewerUserId ? 'user' : 'match';
-  return message.sender || 'match'; // 旧データ互換
-}
-
-// メッセージがそのマッチ（会話）に属するか。conversationId 優先、旧データは matchId。
-function messageBelongsToMatch(message, match) {
-  const convId = match.conversationId || match.id;
-  if (message.conversationId) return message.conversationId === convId;
-  return message.matchId === match.id;
-}
 
 // 検証済みトークンの短期キャッシュ。
 // 認証付きリクエストごとに Google Identity Toolkit を呼ぶとレイテンシ・コスト・
@@ -1025,9 +648,14 @@ app.post('/api/like', requireAuth, async (req, res) => {
     });
   }
 
+  // スーパーいいね枠を消費した可能性があるため、最新のエンタイトルメントを返し、
+  // クライアント側の残数表示（superCredits 等）を即時更新できるようにする。
+  const latestPurchases = usedSuperCredit ? await readJson('single_purchases.json', []) : singlePurchases;
+  const updatedEntitlements = activeEntitlements(latestPurchases, userId);
+
   // 候補は実ユーザー限定。念のため非実ユーザーは安全に返す。
   if (!isRealUserId(profileId, users)) {
-    return res.json({ ok: true, like: likeResult === 'created' ? like : null, already_liked: likeResult === 'duplicate', matched: false });
+    return res.json({ ok: true, like: likeResult === 'created' ? like : null, already_liked: likeResult === 'duplicate', matched: false, entitlements: updatedEntitlements });
   }
 
   const me = req.authedUser;
@@ -1039,23 +667,23 @@ app.post('/api/like', requireAuth, async (req, res) => {
   const myMatch = matchRows.find((m) => m.userId === userId) || null;
   if (myMatch) {
     await resolvePendingBetween(userId, profileId);
-    return res.json({ ok: true, like: likeResult === 'created' ? like : null, already_liked: likeResult === 'duplicate', matched: true, match: myMatch });
+    return res.json({ ok: true, like: likeResult === 'created' ? like : null, already_liked: likeResult === 'duplicate', matched: true, match: myMatch, entitlements: updatedEntitlements });
   }
 
   // 既にいいね済みでまだ相互でない → 何もせず終了（pending は初回に作成済み）。
   if (likeResult === 'duplicate') {
-    return res.json({ ok: true, like: null, already_liked: true, matched: false });
+    return res.json({ ok: true, like: null, already_liked: true, matched: false, entitlements: updatedEntitlements });
   }
 
   // 初回いいねでまだ片方だけ → 相手に「いいねが届いた」状態を1件積み、送信者にも返す。
   const myProfile = userToProfile(me);
   const receivedLike = buildReceivedLikeEntry(myProfile, profileId, selectedType);
   const pendingResult = await updateJson('received_likes.json', [], (received) => {
-    const exists = received.some((r) => r.forUserId === profileId && r.fromProfileId === userId && r.status === 'pending');
+    const exists = received.some((r) => r.forUserId === profileId && r.fromProfileId === userId && r.status === LIKE_STATUS.PENDING);
     if (exists) return { value: undefined, result: false };
     return { value: [receivedLike, ...received], result: true };
   });
-  return res.json({ ok: true, like, matched: false, pending_sent: Boolean(pendingResult), receivedLike: pendingResult ? receivedLike : null });
+  return res.json({ ok: true, like, matched: false, pending_sent: Boolean(pendingResult), receivedLike: pendingResult ? receivedLike : null, entitlements: updatedEntitlements });
 });
 
 async function sendReceivedLikesForCurrentUser(req, res) {
@@ -1067,7 +695,7 @@ async function sendReceivedLikesForCurrentUser(req, res) {
   const visibleUserIds = new Set(users.filter(isVisibleUser).map((user) => user.id));
   res.json({
     receivedLikes: received
-      .filter((r) => r.forUserId === req.authedUser.id && r.status === 'pending' && visibleUserIds.has(r.fromProfileId))
+      .filter((r) => r.forUserId === req.authedUser.id && r.status === LIKE_STATUS.PENDING && visibleUserIds.has(r.fromProfileId))
       .slice(0, RECEIVED_LIKES_LIMIT)
   });
 }
@@ -1085,7 +713,7 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
   if (!receivedLikeId) return res.status(400).json({ message: '対象のいいねが必要です。' });
 
   const received = await readJson('received_likes.json', []);
-  const rl = received.find((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
+  const rl = received.find((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === LIKE_STATUS.PENDING);
   if (!rl) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
 
   const [users, blocks] = await Promise.all([
@@ -1102,9 +730,9 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
     await updateJson('received_likes.json', [], (current) => {
       let changed = false;
       const next = current.map((item) => {
-        if (item.id === receivedLikeId && item.status === 'pending') {
+        if (item.id === receivedLikeId && item.status === LIKE_STATUS.PENDING) {
           changed = true;
-          return { ...item, status: 'blocked', blockedAt: new Date().toISOString() };
+          return { ...item, status: LIKE_STATUS.BLOCKED, blockedAt: new Date().toISOString() };
         }
         return item;
       });
@@ -1114,10 +742,10 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
   }
 
   const accepted = await updateJson('received_likes.json', [], (received) => {
-    const idx = received.findIndex((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
+    const idx = received.findIndex((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === LIKE_STATUS.PENDING);
     if (idx < 0) return { value: undefined, result: false };
     const next = [...received];
-    next[idx] = { ...rl, status: 'accepted', acceptedAt: new Date().toISOString() };
+    next[idx] = { ...rl, status: LIKE_STATUS.ACCEPTED, acceptedAt: new Date().toISOString() };
     return { value: next, result: true };
   });
   if (!accepted) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
@@ -1184,7 +812,7 @@ app.get('/api/dm/:userId', requireAuth, async (req, res) => {
   const userMatches = matches
     .filter((match) => match.userId === viewerId && match.dmUnlocked && visibleUserIds.has(match.profileId))
     .slice(0, DM_THREADS_LIMIT);
-  const convIds = new Set(userMatches.map((match) => match.conversationId || match.id));
+  const convIds = new Set(userMatches.map(conversationIdOf));
   const messagesByConversation = new Map();
   for (const message of messages) {
     const convId = message.conversationId || message.matchId;
@@ -1194,7 +822,7 @@ app.get('/api/dm/:userId', requireAuth, async (req, res) => {
     messagesByConversation.set(convId, list);
   }
   const threads = userMatches.map((match) => {
-    const allThreadMessages = (messagesByConversation.get(match.conversationId || match.id) || [])
+    const allThreadMessages = (messagesByConversation.get(conversationIdOf(match)) || [])
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     const threadMessages = allThreadMessages
       .slice(-DM_THREAD_MESSAGE_LIMIT)
@@ -1232,7 +860,7 @@ app.post('/api/dm/read', requireAuth, async (req, res) => {
   const match = matches[matchIndex];
   const targetUser = users.find((user) => user.id === match.profileId);
   if (req.authedUser.autoHidden || !isVisibleUser(targetUser)) return res.status(403).json({ message: 'この会話は現在利用できません。' });
-  const convId = match.conversationId || match.id;
+  const convId = conversationIdOf(match);
 
   const readAt = new Date().toISOString();
   await updateJson('matches.json', [], (currentMatches) => {
@@ -1245,7 +873,7 @@ app.post('/api/dm/read', requireAuth, async (req, res) => {
   await updateJson('messages.json', [], (messages) => {
     let changed = false;
     const nextMessages = messages.map((message) => {
-      const belongs = message.conversationId ? message.conversationId === convId : message.matchId === matchId;
+      const belongs = messageInConversation(message, convId, matchId);
       const incoming = senderFor(message, viewerId) !== 'user';
       if (belongs && incoming && !message.readAt) {
         changed = true;
@@ -1279,12 +907,12 @@ app.post('/api/dm', requireAuth, dmLimiter, async (req, res) => {
   if (pairBlocked(blocks, viewerId, match.profileId)) return res.status(403).json({ message: 'ブロック済みの相手にはDMを送信できません。' });
 
   // 会話IDで保存することで、双方向マッチの両側に同じメッセージが見える。
-  const conversationId = match.conversationId || match.id;
+  const conversationId = conversationIdOf(match);
   const createdAt = new Date().toISOString();
   const message = { id: uid('msg'), conversationId, matchId: match.id, senderUserId: viewerId, profileId: match.profileId, body, createdAt, readAt: null };
   const savedMessage = await updateJson('messages.json', [], (messages) => {
     const recentDuplicate = messages.some((existing) =>
-      (existing.conversationId ? existing.conversationId === conversationId : existing.matchId === match.id) &&
+      messageInConversation(existing, conversationId, match.id) &&
       existing.senderUserId === viewerId &&
       existing.body === body &&
       Date.now() - new Date(existing.createdAt).getTime() < 2500
@@ -1306,7 +934,7 @@ app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
   const users = await readJson('users.json', []);
   if (!users.some((u) => u.id === profileId)) return res.status(404).json({ message: '対象ユーザーが見つかりません。' });
   const actorId = req.authedUser.id;
-  const report = { id: uid('report'), userId: actorId, profileId, reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: 'open', createdAt: new Date().toISOString() };
+  const report = { id: uid('report'), userId: actorId, profileId, reason: cleanText(req.body.reason || '迷惑行為/不適切な内容', 120), status: REPORT_STATUS.OPEN, createdAt: new Date().toISOString() };
   const outcome = await updateJson('reports.json', [], (reports) => {
     const mine24h = reports.filter((r) => r.userId === actorId && Date.now() - new Date(r.createdAt).getTime() < DAY_MS);
     // アカウント単位の永続レート制限（再起動で消えない）。
@@ -1327,7 +955,7 @@ app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
   const allReports = await readJson('reports.json', []);
   const distinctReporters = new Set(
     allReports
-      .filter((r) => r.profileId === profileId && r.status !== 'dismissed' && Date.now() - new Date(r.createdAt).getTime() < REPORT_AUTO_HIDE_WINDOW_MS)
+      .filter((r) => r.profileId === profileId && r.status !== REPORT_STATUS.DISMISSED && Date.now() - new Date(r.createdAt).getTime() < REPORT_AUTO_HIDE_WINDOW_MS)
       .map((r) => r.userId)
   );
   if (distinctReporters.size >= REPORT_AUTO_HIDE_THRESHOLD) {
@@ -1370,9 +998,9 @@ app.post('/api/block', requireAuth, async (req, res) => {
       const related =
         (item.forUserId === userId && item.fromProfileId === profileId) ||
         (item.forUserId === profileId && item.fromProfileId === userId);
-      if (related && item.status === 'pending') {
+      if (related && item.status === LIKE_STATUS.PENDING) {
         changed = true;
-        return { ...item, status: 'blocked', blockedAt: new Date().toISOString() };
+        return { ...item, status: LIKE_STATUS.BLOCKED, blockedAt: new Date().toISOString() };
       }
       return item;
     });
@@ -1434,9 +1062,9 @@ app.post('/api/admin/unhide', requireAuth, async (req, res) => {
   await updateJson('reports.json', [], (reports) => {
     let changed = false;
     const next = reports.map((r) => {
-      if (r.profileId === profileId && r.status !== 'dismissed') {
+      if (r.profileId === profileId && r.status !== REPORT_STATUS.DISMISSED) {
         changed = true;
-        return { ...r, status: 'dismissed', dismissedAt: new Date().toISOString() };
+        return { ...r, status: REPORT_STATUS.DISMISSED, dismissedAt: new Date().toISOString() };
       }
       return r;
     });
@@ -1462,7 +1090,7 @@ app.post('/api/purchase', requireAuth, async (req, res) => {
   const userId = req.authedUser.id;
   const selected = String(req.body?.plan || 'PLUS').toUpperCase();
   const validPlan = plans[selected] ? selected : 'PLUS';
-  const purchase = { id: uid('purchase'), userId, plan: validPlan, amount: plans[validPlan].price, status: 'demo_paid', createdAt: new Date().toISOString() };
+  const purchase = { id: uid('purchase'), userId, plan: validPlan, amount: plans[validPlan].price, status: PURCHASE_STATUS.DEMO_PAID, createdAt: new Date().toISOString() };
   await updateJson('purchases.json', [], (purchases) => ({ value: [purchase, ...purchases], result: purchase }));
   await updateJson('users.json', [], (users) => {
     const userIdx = users.findIndex((u) => u.id === userId);
@@ -1500,7 +1128,7 @@ app.post('/api/purchase-item', requireAuth, async (req, res) => {
     perk: config.perk,
     kind: config.kind,
     amount: meta.price,
-    status: 'demo_paid',
+    status: PURCHASE_STATUS.DEMO_PAID,
     createdAt: new Date().toISOString(),
     expiresAt: config.kind === 'timed' ? new Date(now + config.durationMs).toISOString() : null,
     remaining: config.kind === 'consumable' ? config.count : null

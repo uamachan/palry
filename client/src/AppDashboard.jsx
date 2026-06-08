@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { appTabs, cx, planLabel, TAB_ICONS } from './constants.jsx';
+import { appTabs, cx, TAB_ICONS } from './constants.jsx';
 import SiteHeader from './SiteHeader.jsx';
 import { SafetyCompact } from './Safety.jsx';
 
@@ -53,7 +53,7 @@ export default function AppDashboard(props) {
         openProfileEditor={openProfileEditor}
         logout={logout}
       />
-      <main ref={contentRef} className={cx('appv2-content', activeTab === 'dm' && 'appv2-content--dm')} key={activeTab}>
+      <main ref={contentRef} className={cx('appv2-content', activeTab === 'dm' && 'appv2-content--dm', activeTab !== 'match' && activeTab !== 'dm' && 'appv2-content--scroll')} key={activeTab}>
         <TabPanel {...props} />
       </main>
       <nav className="appv2-bottom-nav" aria-label="アプリメニュー">
