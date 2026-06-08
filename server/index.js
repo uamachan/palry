@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +19,9 @@ loadLocalEnv();
 const app = express();
 // Express の既定ヘッダ "X-Powered-By: Express" を消し、サーバー実装の露出を減らす。
 app.disable('x-powered-by');
+// HTTP応答を gzip 圧縮して転送量を削減する（候補プロフィールやDMなどJSONが大きくなりやすい）。
+// クライアントの Accept-Encoding に応じて自動適用。?nocompress や小さなレスポンスは自動スキップ。
+app.use(compression());
 const port = envInt('PORT', 3001, { min: 1, max: 65535 });
 const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
@@ -511,24 +515,24 @@ function makeMatchRow(ownerUserId, otherProfile, conversationId, isRealUser) {
 // 既にマッチ済み or 新規作成後、対象ペア両側のマッチ行を返す（未成立なら空配列）。
 async function tryCreateMutualMatch(userA, userB) {
   if (userA?.autoHidden || userB?.autoHidden) return [];
-  await updateJson('matches.json', [], async (matches) => {
+  const isPair = (m) =>
+    (m.userId === userA.id && m.profileId === userB.id) ||
+    (m.userId === userB.id && m.profileId === userA.id);
+  // 対象ペアの両側のマッチ行を updateJson の結果として直接返す（matches.json の再読込を回避）。
+  return updateJson('matches.json', [], async (matches) => {
     if (pairAlreadyMatched(matches, userA.id, userB.id)) {
-      return { value: undefined, result: false };
+      return { value: undefined, result: matches.filter(isPair) }; // 既存行をそのまま返す（書き込みなし）
     }
     const likes = await readJson('likes.json', []);
     const reciprocal =
       likes.some((l) => l.userId === userA.id && l.profileId === userB.id) &&
       likes.some((l) => l.userId === userB.id && l.profileId === userA.id);
-    if (!reciprocal) return { value: undefined, result: false };
+    if (!reciprocal) return { value: undefined, result: [] };
     const conversationId = uid('conv');
     const rowForA = makeMatchRow(userA.id, userToProfile(userB), conversationId, true);
     const rowForB = makeMatchRow(userB.id, userToProfile(userA), conversationId, true);
-    return { value: [rowForB, rowForA, ...matches], result: true };
+    return { value: [rowForB, rowForA, ...matches], result: [rowForA, rowForB] };
   });
-  const matches = await readJson('matches.json', []);
-  return matches.filter((m) =>
-    (m.userId === userA.id && m.profileId === userB.id) ||
-    (m.userId === userB.id && m.profileId === userA.id));
 }
 
 // 対象ペア間で pending のままの received_likes を accepted に変える。
