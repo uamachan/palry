@@ -401,9 +401,27 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
             {setupError && <div className="setup-error pv-span-all" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
             <div className="pv-field-group">
               <span className="pv-label">現在のランク <span className="pv-req">必須</span></span>
-              <div className="pv-rank-tiers">
-                {RANK_TIERS.map(({ tier, color, rankList }) => <div key={tier} className={cx('pv-rank-card', rankList.includes(form.rank) && 'pv-rank-card--on')} style={{ '--rc': color }}><div className="pv-rank-card-head"><span className="pv-rank-icon-wrap" aria-hidden="true"><img src={rankIconMap[tier]} alt="" loading="lazy" /></span><span className="pv-rank-tier-name">{tier}</span></div><div className="pv-rank-badge-group" aria-label={`${tier} のランク選択`}>{rankList.map((rank) => <button type="button" key={rank} className={cx('pv-rank-badge', form.rank === rank && 'pv-rank-badge--on')} style={{ '--rc': color }} aria-pressed={form.rank === rank} onClick={() => setForm({ ...form, rank })}>{rankList.length === 1 ? '選択' : rank.replace(`${tier} `, '')}</button>)}</div></div>)}
+              <div className="pv-rank-icon-grid">
+                {RANK_TIERS.map(({ tier, color, rankList }) => (
+                  <button type="button" key={tier} className={cx('pv-rank-icon-btn', rankList.includes(form.rank) && 'pv-rank-icon-btn--on')} style={{ '--rc': color }} aria-pressed={rankList.includes(form.rank)} onClick={() => setForm({ ...form, rank: rankList.includes(form.rank) ? form.rank : rankList[0] })}>
+                    <img src={rankIconMap[tier]} alt={tier} loading="lazy" />
+                    <span className="pv-rank-icon-label">{tier}</span>
+                  </button>
+                ))}
               </div>
+              {(() => {
+                const sel = RANK_TIERS.find(({ rankList }) => rankList.includes(form.rank));
+                if (!sel || sel.rankList.length <= 1) return null;
+                return (
+                  <div className="pv-rank-sub-row">
+                    {sel.rankList.map((rank) => (
+                      <button type="button" key={rank} className={cx('pv-rank-sub-btn', form.rank === rank && 'pv-rank-sub-btn--on')} style={{ '--rc': sel.color }} aria-pressed={form.rank === rank} onClick={() => setForm({ ...form, rank })}>
+                        {rank.replace(`${sel.tier} `, '')}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
             <div className="pv-field-group">
               <span className="pv-label">メインロール <span className="pv-req">必須</span></span>
