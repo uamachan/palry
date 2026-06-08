@@ -5,13 +5,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readJson, updateJson, uid } from './lib/jsonStore.js';
-import { cleanText, cleanRiotId, sanitizeMedia, emailKey } from './lib/validation.js';
+import { cleanText, cleanRiotId, sanitizeMedia, emailKey, toNonNegativeInt } from './lib/validation.js';
 import {
   allowedGenders, allowedVcs, allowedWeapons,
   sanitizeMapsField, enumValue, cleanAgeField,
-  normalizeGender, normalizeRank, normalizeRole, normalizeRegion,
   validateProfileEnums
 } from './lib/profile.js';
+import { LIKE_STATUS, REPORT_STATUS, PURCHASE_STATUS } from './lib/statuses.js';
+import { plans, singleItems, singleItemConfig, DAY_MS, quotaFor, isDemoPaymentAllowed } from './lib/catalog.js';
+import { publicUser, isVisibleUser, pairBlocked, userToProfile, readCandidateProfiles } from './lib/users.js';
+import {
+  countTodayUsage, weightedShuffle, activeEntitlements, boostedUserIds, isRealUserId,
+  buildReceivedLikeEntry, pairAlreadyMatched, userHasLiked,
+  tryCreateMutualMatch, resolvePendingBetween, setReceivedLikesFromUserStatus,
+  senderFor, conversationIdOf, messageInConversation
+} from './lib/matching.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,11 +46,6 @@ function envInt(name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {})
     return fallback;
   }
   return value;
-}
-
-function toNonNegativeInt(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
 }
 
 function validateProductionConfig() {
@@ -175,60 +178,6 @@ app.use('/api', apiLimiter);
 
 validateProductionConfig();
 
-// データの状態（ステータス）文字列を一元管理する。各所での直書きをやめることで、
-// 打ち間違い（例: 'penidng' が無言で一致しなくなる）による不具合を防ぐ。
-const LIKE_STATUS = Object.freeze({ PENDING: 'pending', ACCEPTED: 'accepted', BLOCKED: 'blocked', AUTO_HIDDEN: 'auto_hidden' });
-const REPORT_STATUS = Object.freeze({ OPEN: 'open', DISMISSED: 'dismissed' });
-const PURCHASE_STATUS = Object.freeze({ DEMO_PAID: 'demo_paid' });
-
-const plans = {
-  FREE: {
-    name: 'FREE',
-    price: 0,
-    likeLimit: 10,
-    superLimit: 1,
-    dualLimit: 5,
-    genderFilter: false,
-    unlimited: false,
-    features: ['通常LIKE 10回/day', 'SUPER LIKE 1回/day', '両LIKE 5回', 'マッチ後DM']
-  },
-  PLUS: {
-    name: 'PLUS',
-    price: 980,
-    likeLimit: 40,
-    superLimit: 5,
-    dualLimit: 10,
-    genderFilter: true,
-    unlimited: false,
-    features: ['LIKE 40回/day', 'SUPER LIKE 5回/day', '両LIKE 10回', '性別指定フィルター', '足あと閲覧']
-  },
-  VIP: {
-    name: 'VIP',
-    price: 1980,
-    likeLimit: 'unlimited',
-    superLimit: 'unlimited',
-    dualLimit: 'unlimited',
-    genderFilter: true,
-    unlimited: true,
-    features: ['全制限解除', 'LIKE無制限', 'SUPER/両LIKE無制限', '性別指定フィルター', '上位表示']
-  }
-};
-
-const singleItems = [
-  { name: '性別指定フィルター7日', price: 400, detail: 'FREEでも7日間だけ表示性別を指定できます。' },
-  { name: 'ブースト24時間', price: 300, detail: 'プロフィールを表示候補に出やすくします。' },
-  { name: 'SUPER LIKE 3回', price: 500, detail: '相手に強めのLIKEを送れます。' },
-  { name: 'プロフィール目立たせ7日', price: 700, detail: '検索・候補カードで視認性を上げます。' }
-];
-
-// 単発課金の効果定義。timed = 期限付き特典 / consumable = 回数消費型。
-const DAY_MS = 24 * 60 * 60 * 1000;
-const singleItemConfig = {
-  '性別指定フィルター7日': { perk: 'genderFilter', kind: 'timed', durationMs: 7 * DAY_MS },
-  'ブースト24時間': { perk: 'boost', kind: 'timed', durationMs: DAY_MS },
-  'SUPER LIKE 3回': { perk: 'superCredits', kind: 'consumable', count: 3 },
-  'プロフィール目立たせ7日': { perk: 'spotlight', kind: 'timed', durationMs: 7 * DAY_MS }
-};
 
 function loadLocalEnv() {
   const envPath = path.join(__dirname, '..', '.env');
@@ -245,62 +194,9 @@ function loadLocalEnv() {
   }
 }
 
-function sameDay(isoA, isoB = new Date().toISOString()) {
-  return isoA?.slice(0, 10) === isoB.slice(0, 10);
-}
-
-function countTodayUsage(likes, userId, type) {
-  return likes.filter((like) => like.userId === userId && like.type === type && sameDay(like.createdAt)).length;
-}
-
-function quotaFor(planName, type) {
-  const plan = plans[planName] || plans.FREE;
-  if (plan.unlimited) return Infinity;
-  if (type === 'super') return plan.superLimit;
-  if (type === 'dual') return plan.dualLimit;
-  return plan.likeLimit;
-}
-
-function weightedShuffle(profiles, planName, boostedIds = new Set()) {
-  const planBonus = planName === 'VIP' ? 0.08 : planName === 'PLUS' ? 0.04 : 0;
-  return [...profiles]
-    .map((profile) => {
-      // 閲覧者の性別に関わらず、女性候補は候補順位を下げてマッチ機会を抑制する。
-      // 値を大きくするほど女性が下位（=後ろのカード）に回り、マッチしにくくなる。
-      const femaleGuard = profile.gender === '女性' ? 0.5 : 0;
-      // ブースト/目立たせ購入者は候補上位に出やすくする。
-      const boostBonus = boostedIds.has(profile.id) ? 0.5 : 0;
-      const score = Math.random() + Number(profile.matchScore || 70) / 100 + planBonus - femaleGuard + boostBonus;
-      return { profile, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .map((entry) => entry.profile);
-}
 
 // cleanText / cleanAge / sanitizeMedia / emailKey は ./lib/validation.js に集約（単体テスト対象）。
 
-// 本番環境では ENABLE_DEMO_PURCHASE=true を明示しないと決済を通さない（フェイルクローズ）。
-function isDemoPaymentAllowed() {
-  return !isProduction || process.env.ENABLE_DEMO_PURCHASE === 'true';
-}
-
-function publicUser(user) {
-  // 内部識別子・認証関連の秘密はクライアントへ返さない。
-  // firebaseUid はサーバー内部の紐付け専用でフロントは使用しない。
-  const { authCode, authCodeHash, authCodeSalt, otpSecret, firebaseUid, ...safeUser } = user;
-  return safeUser;
-}
-
-function isVisibleUser(user) {
-  return Boolean(user?.firebaseUid) && !user.autoHidden;
-}
-
-function pairBlocked(blocks, aId, bId) {
-  return blocks.some((block) =>
-    (block.userId === aId && block.profileId === bId) ||
-    (block.userId === bId && block.profileId === aId)
-  );
-}
 
 // 管理者メール許可リスト（ADMIN_EMAILS=a@x.com,b@y.com）。
 // 未設定なら誰も管理者でない（管理APIは全拒否＝フェイルクローズ）。
@@ -371,224 +267,6 @@ async function findAndLinkFirebaseProfile(firebaseUser) {
   return profile;
 }
 
-function userToProfile(user) {
-  const hasVoiceIntro = Boolean(user.voiceIntro);
-  return {
-    id: user.id,
-    name: user.name,
-    gender: normalizeGender(user.gender),
-    ageRange: user.age ? (/^\d+$/.test(user.age) ? `${user.age}歳` : user.age) : '年齢未設定',
-    region: normalizeRegion(user.region),
-    rank: normalizeRank(user.rank),
-    peakRank: normalizeRank(user.peakRank || user.rank),
-    role: normalizeRole(user.role),
-    riotId: user.riotId || '',
-    tags: Array.isArray(user.tags) ? user.tags : [],
-    modes: Array.isArray(user.modes) ? user.modes : [],
-    agents: Array.isArray(user.agents) ? user.agents : [],
-    xHandle: user.xHandle || '',
-    vc: user.vc || '',
-    maps: Array.isArray(user.maps) ? user.maps : [],
-    favoriteWeapon: user.favoriteWeapon || '',
-    profilePhoto: user.profilePhoto || '',
-    bio: user.bio || '',
-    voiceIntro: user.voiceIntro || '',
-    voice: user.voice || (hasVoiceIntro ? '声の自己紹介あり' : '未設定'),
-    activeTime: user.activeTime || '',
-    trust: user.verified ? 90 : 72,
-    verified: Boolean(user.verified),
-    reasons: Array.isArray(user.reasons) ? user.reasons : [],
-    matchScore: 82,
-    matchChance: 0.3,
-    guarded: false,
-    opener: `${user.name}さんとマッチしました！`
-  };
-}
-
-// 候補はログイン可能な実アカウントのみ（firebaseUid あり、自分を除く）。
-// ダミー profiles.json や firebaseUid を持たない旧テストユーザーは、
-// いいねを受け取って返せないため候補から除外する。
-async function readCandidateProfiles(excludeUserId = '') {
-  const users = await readJson('users.json', []);
-  return users
-    // autoHidden（複数通報で自動非表示）は新規候補から除外する。既存マッチ/DMには影響しない。
-    .filter((user) => isVisibleUser(user) && user.id !== excludeUserId)
-    .map((user) => ({ ...userToProfile(user), isRealUser: true }));
-}
-
-// --- 単発課金の特典（エンタイトルメント） ---
-
-// あるユーザーの有効な特典を集計する。timed は期限内、consumable は残数を合算。
-function activeEntitlements(singlePurchases, userId, now = Date.now()) {
-  const result = { genderFilter: false, boost: false, spotlight: false, superCredits: 0 };
-  for (const p of singlePurchases) {
-    if (p.userId !== userId) continue;
-    if (p.kind === 'timed') {
-      if (p.expiresAt && new Date(p.expiresAt).getTime() > now && (p.perk in result)) {
-        result[p.perk] = true;
-      }
-    } else if (p.kind === 'consumable' && p.perk === 'superCredits') {
-      result.superCredits += toNonNegativeInt(p.remaining, 0);
-    }
-  }
-  return result;
-}
-
-// boost / spotlight が有効なユーザーID集合（候補ランキングの優先表示用）。
-function boostedUserIds(singlePurchases, now = Date.now()) {
-  const ids = new Set();
-  for (const p of singlePurchases) {
-    if (p.kind === 'timed' && (p.perk === 'boost' || p.perk === 'spotlight')
-      && p.expiresAt && new Date(p.expiresAt).getTime() > now) {
-      ids.add(p.userId);
-    }
-  }
-  return ids;
-}
-
-// --- 実プレイヤー同士の接続（双方向マッチング）ヘルパー ---
-
-function isRealUserId(id, users) {
-  return users.some((user) => user.id === id);
-}
-
-// received_likes の1件を組み立てる。
-// fromProfile = いいねを「送った側」のプロフィール、forUserId = 受け取る側のユーザーID。
-function buildReceivedLikeEntry(fromProfile, forUserId, likeType) {
-  return {
-    id: uid('rl'),
-    forUserId,
-    fromProfileId: fromProfile.id,
-    fromProfileName: fromProfile.name,
-    fromPhoto: fromProfile.profilePhoto || '',
-    fromRank: fromProfile.rank || '',
-    fromRole: fromProfile.role || '',
-    fromGender: fromProfile.gender || '',
-    fromAgeRange: fromProfile.ageRange || '',
-    likeType,
-    status: LIKE_STATUS.PENDING,
-    createdAt: new Date().toISOString()
-  };
-}
-
-function pairAlreadyMatched(matches, aId, bId) {
-  return matches.some((m) =>
-    (m.userId === aId && m.profileId === bId) ||
-    (m.userId === bId && m.profileId === aId));
-}
-
-function userHasLiked(likes, userId, profileId) {
-  return likes.some((like) => like.userId === userId && like.profileId === profileId);
-}
-
-function makeMatchRow(ownerUserId, otherProfile, conversationId, isRealUser) {
-  return {
-    id: uid('match'),
-    userId: ownerUserId,
-    profileId: otherProfile.id,
-    profileName: otherProfile.name,
-    profilePhoto: otherProfile.profilePhoto || '',
-    profileRank: otherProfile.rank || '',
-    profileRole: otherProfile.role || '',
-    profileGender: otherProfile.gender || '',
-    profileAgeRange: otherProfile.ageRange || '',
-    profileRegion: otherProfile.region || '',
-    profileBio: otherProfile.bio || '',
-    profileRiotId: otherProfile.riotId || '',
-    profileXHandle: otherProfile.xHandle || '',
-    profileTags: Array.isArray(otherProfile.tags) ? otherProfile.tags : [],
-    profileAgents: Array.isArray(otherProfile.agents) ? otherProfile.agents : [],
-    profileVc: otherProfile.vc || '',
-    profileMaps: Array.isArray(otherProfile.maps) ? otherProfile.maps : [],
-    profileFavoriteWeapon: otherProfile.favoriteWeapon || '',
-    opener: `${otherProfile.name}さんとマッチしました！`,
-    dmUnlocked: true,
-    conversationId,
-    isRealUser: Boolean(isRealUser),
-    createdAt: new Date().toISOString()
-  };
-}
-
-// 相互いいねが成立している場合だけ、2人の実ユーザー間に双方向のマッチ行を作る。
-// 相互判定（likes.json 読み取り）とマッチ作成を matches.json の updateJson 内で
-// 行うことで直列化し、A→B と B→A の同時いいねで二重 pending になる競合を防ぐ。
-// 既にマッチ済み or 新規作成後、対象ペア両側のマッチ行を返す（未成立なら空配列）。
-async function tryCreateMutualMatch(userA, userB) {
-  if (userA?.autoHidden || userB?.autoHidden) return [];
-  const isPair = (m) =>
-    (m.userId === userA.id && m.profileId === userB.id) ||
-    (m.userId === userB.id && m.profileId === userA.id);
-  // 対象ペアの両側のマッチ行を updateJson の結果として直接返す（matches.json の再読込を回避）。
-  return updateJson('matches.json', [], async (matches) => {
-    if (pairAlreadyMatched(matches, userA.id, userB.id)) {
-      return { value: undefined, result: matches.filter(isPair) }; // 既存行をそのまま返す（書き込みなし）
-    }
-    const likes = await readJson('likes.json', []);
-    const reciprocal =
-      likes.some((l) => l.userId === userA.id && l.profileId === userB.id) &&
-      likes.some((l) => l.userId === userB.id && l.profileId === userA.id);
-    if (!reciprocal) return { value: undefined, result: [] };
-    const conversationId = uid('conv');
-    const rowForA = makeMatchRow(userA.id, userToProfile(userB), conversationId, true);
-    const rowForB = makeMatchRow(userB.id, userToProfile(userA), conversationId, true);
-    return { value: [rowForB, rowForA, ...matches], result: [rowForA, rowForB] };
-  });
-}
-
-// 対象ペア間で pending のままの received_likes を accepted に変える。
-async function resolvePendingBetween(userAId, userBId) {
-  await updateJson('received_likes.json', [], (received) => {
-    let changed = false;
-    const next = received.map((r) => {
-      const betweenPair =
-        (r.forUserId === userAId && r.fromProfileId === userBId) ||
-        (r.forUserId === userBId && r.fromProfileId === userAId);
-      if (betweenPair && r.status === LIKE_STATUS.PENDING) {
-        changed = true;
-        return { ...r, status: LIKE_STATUS.ACCEPTED, acceptedAt: new Date().toISOString() };
-      }
-      return r;
-    });
-    return { value: changed ? next : undefined, result: changed };
-  });
-}
-
-async function setReceivedLikesFromUserStatus(fromUserId, hidden) {
-  const now = new Date().toISOString();
-  return updateJson('received_likes.json', [], (received) => {
-    let changed = false;
-    const next = received.map((item) => {
-      if (item.fromProfileId !== fromUserId) return item;
-      if (hidden && item.status === LIKE_STATUS.PENDING) {
-        changed = true;
-        return { ...item, status: LIKE_STATUS.AUTO_HIDDEN, autoHiddenAt: now };
-      }
-      if (!hidden && item.status === LIKE_STATUS.AUTO_HIDDEN) {
-        changed = true;
-        return { ...item, status: LIKE_STATUS.PENDING, unhiddenAt: now };
-      }
-      return item;
-    });
-    return { value: changed ? next : undefined, result: changed };
-  });
-}
-
-// あるメッセージが、ある人の視点で「自分が送った」ものかを判定。
-function senderFor(message, viewerUserId) {
-  if (message.senderUserId) return message.senderUserId === viewerUserId ? 'user' : 'match';
-  return message.sender || 'match'; // 旧データ互換
-}
-
-// 会話の識別子。新データは conversationId、旧データはマッチID(match.id)で会話を表す。
-// この解決ロジックを1か所に集約し、各所での書き分けによる取りこぼしを防ぐ。
-function conversationIdOf(match) {
-  return match.conversationId || match.id;
-}
-
-// あるメッセージが指定の会話に属するか。新データは conversationId、旧データは matchId で判定。
-function messageInConversation(message, conversationId, matchId) {
-  return message.conversationId ? message.conversationId === conversationId : message.matchId === matchId;
-}
 
 // 検証済みトークンの短期キャッシュ。
 // 認証付きリクエストごとに Google Identity Toolkit を呼ぶとレイテンシ・コスト・
