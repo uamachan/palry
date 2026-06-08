@@ -1,368 +1,441 @@
-/* Auth and profile setup layout. Loaded from matching-icons.css after global polish. */
-.toast{
-  z-index:calc(var(--z-toast,1100) + 100)!important;
-  pointer-events:none!important;
+/* Auth modal and profile setup layout.
+   This file intentionally owns auth-modal-panel / auth-modal-panel--profile.
+   Keep JSX structure unchanged. */
+
+.toast {
+  z-index: calc(var(--z-toast, 1100) + 100) !important;
+  pointer-events: none !important;
 }
-.auth-modal{
-  padding:10px!important;
-  place-items:center!important;
+
+.auth-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 80 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: clamp(12px, 3vw, 28px) !important;
+  overflow: hidden !important;
 }
-.auth-modal-panel{
-  box-sizing:border-box!important;
-  overflow:hidden!important;
+
+.auth-scrim {
+  position: absolute !important;
+  inset: 0 !important;
+  border: 0 !important;
+  background: rgba(24, 22, 20, 0.52) !important;
+  backdrop-filter: blur(12px) !important;
 }
-.auth-modal-panel--narrow{
-  width:min(520px,calc(100vw - 20px))!important;
-  height:auto!important;
-  min-height:0!important;
-  max-height:calc(100dvh - 20px)!important;
-  padding:22px!important;
+
+.auth-modal-panel,
+.auth-modal-panel--narrow,
+.auth-modal-panel--profile {
+  position: relative !important;
+  z-index: 1 !important;
+  box-sizing: border-box !important;
+  margin: 0 auto !important;
+  width: min(100%, 560px) !important;
+  max-width: calc(100vw - 24px) !important;
+  max-height: calc(100dvh - 24px) !important;
+  padding: clamp(16px, 2.8vw, 26px) !important;
+  border: 1px solid rgba(232, 222, 213, 0.95) !important;
+  border-radius: 30px !important;
+  background: linear-gradient(180deg, #fffdf9 0%, #fff7fb 100%) !important;
+  box-shadow:
+    0 30px 90px rgba(31, 25, 20, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+  overflow: hidden !important;
+  transform: none !important;
 }
-.auth-modal-panel--profile{
-  width:min(760px,calc(100vw - 20px))!important;
-  height:min(720px,calc(100dvh - 20px))!important;
-  max-height:calc(100dvh - 20px)!important;
-  padding:22px!important;
+
+.auth-modal-panel--narrow {
+  width: min(100%, 500px) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.auth-modal-panel--profile {
+  width: min(100%, 880px) !important;
+  height: min(760px, calc(100dvh - 24px)) !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.auth-close {
+  position: absolute !important;
+  top: 14px !important;
+  right: 14px !important;
+  z-index: 5 !important;
+  width: 38px !important;
+  height: 38px !important;
+  border: 1px solid rgba(232, 222, 213, 0.95) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #7a716a !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 21px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  box-shadow: 0 8px 22px rgba(31, 25, 20, 0.12) !important;
+  transition: transform 0.14s ease, background 0.14s ease, color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease !important;
+}
+
+.auth-close:hover,
+.auth-close:focus-visible {
+  background: #fff1f6 !important;
+  border-color: #ffc3d4 !important;
+  color: #e83f70 !important;
+  box-shadow: 0 10px 26px rgba(255, 92, 138, 0.22) !important;
+}
+
+.auth-close:active {
+  transform: scale(0.94) !important;
+  background: #ff5c8a !important;
+  border-color: #ff5c8a !important;
+  color: #fff !important;
 }
 
 .email-signup-panel,
-.profile-setup-panel{
-  height:100%!important;
-  min-height:0!important;
-  max-height:100%!important;
-  overflow:hidden!important;
-  display:grid!important;
-  grid-template-rows:auto minmax(0,1fr)!important;
-  gap:12px!important;
-  padding:0!important;
+.profile-setup-panel {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  overflow: hidden !important;
+  padding: 0 !important;
 }
-.auth-modal-panel--narrow .email-signup-panel{
-  height:auto!important;
-  min-height:0!important;
-  max-height:none!important;
-  overflow:visible!important;
-  grid-template-rows:auto auto!important;
-  align-content:start!important;
-  gap:18px!important;
+
+.auth-modal-panel--narrow .email-signup-panel {
+  height: auto !important;
+  overflow: visible !important;
+  text-align: center !important;
 }
-.auth-modal-panel--profile .email-signup-panel{
-  height:100%!important;
-  max-height:100%!important;
-  overflow:hidden!important;
-  grid-template-rows:auto minmax(0,1fr)!important;
+
+.auth-modal-panel--profile .email-signup-panel,
+.auth-modal-panel--profile .profile-setup-panel {
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
 }
+
 .email-signup-header,
-.profile-setup-heading{
-  min-height:0!important;
-  max-height:none!important;
-  overflow:visible!important;
-  margin:0!important;
-  padding:0 48px 0 0!important;
-  display:grid!important;
-  gap:5px!important;
+.profile-setup-heading {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 52px 0 0 !important;
+  display: grid !important;
+  gap: 5px !important;
 }
+
+.auth-modal-panel--narrow .email-signup-header {
+  padding: 0 44px 0 44px !important;
+  text-align: center !important;
+}
+
 .email-signup-header h2,
-.profile-setup-heading h2{
-  margin:0!important;
-  font-size:clamp(24px,3vw,34px)!important;
-  line-height:1.08!important;
+.profile-setup-heading h2 {
+  margin: 0 !important;
+  font-size: clamp(24px, 3vw, 34px) !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.04em !important;
 }
+
 .email-signup-header p,
-.profile-setup-heading p{
-  margin:0!important;
-  font-size:13px!important;
-  line-height:1.5!important;
+.profile-setup-heading p {
+  margin: 0 !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  color: #7a716a !important;
 }
 
 .email-signup-form.signup-card,
-.email-confirm-card{
-  min-height:0!important;
-  max-height:100%!important;
-  overflow:hidden!important;
-  display:grid!important;
-  align-content:start!important;
-  gap:12px!important;
-  padding:16px!important;
+.email-confirm-card {
+  min-height: 0 !important;
+  max-height: 100% !important;
+  display: grid !important;
+  align-content: start !important;
+  gap: 13px !important;
+  padding: 18px !important;
+  border: 1px solid rgba(232, 222, 213, 0.9) !important;
+  border-radius: 24px !important;
+  background: rgba(255, 255, 255, 0.74) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
+  overflow: hidden !important;
 }
+
 .auth-modal-panel--narrow .email-signup-form.signup-card,
-.auth-modal-panel--narrow .email-confirm-card{
-  max-height:none!important;
-  overflow:visible!important;
-}
-.email-signup-actions{
-  margin-top:auto!important;
-  display:grid!important;
-  gap:9px!important;
-  width:100%!important;
-}
-.auth-modal-panel--narrow .email-signup-actions{
-  margin-top:0!important;
-}
-.email-signup-actions button{
-  width:100%!important;
-  min-height:42px!important;
-}
-.email-signup-actions .google-button{
-  order:2!important;
-}
-.email-signup-actions .reset-password-link{
-  order:4!important;
-}
-.auth-entry-panel .email-signup-actions{
-  align-self:start!important;
+.auth-modal-panel--narrow .email-confirm-card {
+  overflow: visible !important;
 }
 
-.profile-setup-card{
-  position:relative!important;
-  height:100%!important;
-  min-height:0!important;
-  max-height:100%!important;
-  overflow:hidden!important;
-  background:transparent!important;
-  border:0!important;
-  box-shadow:none!important;
-  border-radius:0!important;
-  padding:0!important;
-  display:grid!important;
-  grid-template-rows:8px 44px minmax(0,1fr) 112px!important;
-  gap:10px!important;
-}
-.profile-setup-card .setup-progress{
-  grid-row:1!important;
-  height:7px!important;
-}
-.profile-setup-card .setup-tabs{
-  grid-row:2!important;
-  height:44px!important;
-  min-height:44px!important;
-  max-height:44px!important;
-  overflow-x:auto!important;
-  overflow-y:hidden!important;
-  padding:0 2px 4px!important;
-  align-items:center!important;
-}
-.profile-setup-card .setup-tabs button{
-  min-height:34px!important;
-  padding:8px 11px!important;
-  font-size:12px!important;
-}
-.profile-setup-card .setup-error{
-  margin-bottom:8px!important;
-}
-.profile-setup-card>.setup-stack,
-.profile-setup-card>.terms-box{
-  grid-row:3!important;
-  min-height:0!important;
-  max-height:100%!important;
-  overflow:auto!important;
-  align-content:start!important;
-  gap:10px!important;
-  padding-top:2px!important;
-}
-.profile-setup-card .email-field-label{
-  gap:5px!important;
-  font-size:12px!important;
-}
-.profile-setup-card .email-field-label input,
-.profile-setup-card .email-field-label select,
-.profile-setup-card .email-field-label textarea{
-  min-height:40px!important;
-  padding:10px 12px!important;
-  border-radius:14px!important;
-  font-size:13px!important;
-}
-.profile-setup-card .email-field-label textarea{
-  min-height:88px!important;
-  max-height:88px!important;
-  resize:none!important;
-}
-.voice-record-box,
-.terms-box{
-  padding:12px!important;
-}
-.voice-record-box p,
-.terms-box p{
-  font-size:12px!important;
-  line-height:1.5!important;
-}
-.profile-setup-actions{
-  grid-row:4!important;
-  height:112px!important;
-  min-height:112px!important;
-  max-height:112px!important;
-  overflow:visible!important;
-  margin:0!important;
-  padding:10px 0 0!important;
-  display:grid!important;
-  grid-template-columns:1fr!important;
-  grid-template-rows:40px 40px 20px!important;
-  grid-template-areas:
-    "primary"
-    "back"
-    "cancel"!important;
-  align-items:center!important;
-  justify-items:stretch!important;
-  gap:6px!important;
-  border-top:1px solid var(--line,#e7e0d8)!important;
-  background:var(--paper,#fffdf9)!important;
-  position:relative!important;
-  z-index:30!important;
-}
-.profile-setup-actions button{
-  display:inline-flex!important;
-  visibility:visible!important;
-  opacity:1!important;
-  align-items:center!important;
-  justify-content:center!important;
-  min-height:40px!important;
-  padding:10px 14px!important;
-  white-space:nowrap!important;
-}
-.profile-setup-actions>button:first-child{
-  grid-area:back!important;
-}
-.profile-setup-actions>button:nth-child(2){
-  grid-area:primary!important;
-}
-.profile-setup-actions>.reset-password-link{
-  grid-area:cancel!important;
-  min-height:20px!important;
-  padding:0!important;
-  font-size:12px!important;
+.email-field-label,
+.pv-field {
+  min-width: 0 !important;
 }
 
-@media(max-width:820px){
-  .auth-modal-panel--narrow{
-    width:calc(100vw - 20px)!important;
-    height:auto!important;
-    max-height:calc(100dvh - 20px)!important;
-    padding:16px!important;
-  }
-  .auth-modal-panel--profile{
-    width:calc(100vw - 20px)!important;
-    height:calc(100dvh - 20px)!important;
-    max-height:calc(100dvh - 20px)!important;
-    padding:16px!important;
-  }
-  .profile-setup-card{
-    grid-template-rows:7px 42px minmax(0,1fr) 120px!important;
-  }
-  .profile-setup-card .setup-tabs{
-    height:42px!important;
-    min-height:42px!important;
-    max-height:42px!important;
-  }
-  .profile-setup-actions{
-    height:120px!important;
-    min-height:120px!important;
-    max-height:120px!important;
-    grid-template-rows:42px 42px 20px!important;
-    justify-content:center!important;
-  }
+.email-field-label input,
+.email-field-label select,
+.email-field-label textarea,
+.pv-field input,
+.pv-field select,
+.pv-field textarea {
+  min-width: 0 !important;
+  box-sizing: border-box !important;
 }
 
-/* Mobile final override: make the profile setup fit one screen and scroll cleanly. */
-@media(max-width:820px){
-  html body .auth-modal{
-    padding:0!important;
-    align-items:stretch!important;
-    justify-items:stretch!important;
-    place-items:stretch!important;
-    overflow:hidden!important;
+.email-signup-actions,
+.profile-setup-actions {
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 9px !important;
+  margin-top: auto !important;
+}
+
+.email-signup-actions button,
+.profile-setup-actions button {
+  width: 100% !important;
+  min-height: 44px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  white-space: nowrap !important;
+  transition: transform 0.14s ease, background 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease !important;
+}
+
+.email-signup-actions button:active,
+.profile-setup-actions button:active {
+  transform: translateY(1px) scale(0.98) !important;
+}
+
+.email-signup-actions button:disabled,
+.profile-setup-actions button:disabled {
+  opacity: 0.48 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+}
+
+.auth-modal-panel .primary,
+.auth-modal-panel--profile .primary {
+  background: #181614 !important;
+  color: #fff !important;
+  border-color: #181614 !important;
+  box-shadow: 0 10px 22px rgba(24, 22, 20, 0.16) !important;
+}
+
+.auth-modal-panel .primary:hover,
+.auth-modal-panel .primary:focus-visible,
+.auth-modal-panel--profile .primary:hover,
+.auth-modal-panel--profile .primary:focus-visible {
+  background: #ff5c8a !important;
+  border-color: #ff5c8a !important;
+  color: #fff !important;
+  box-shadow: 0 12px 28px rgba(255, 92, 138, 0.30) !important;
+}
+
+.auth-modal-panel .primary:active,
+.auth-modal-panel--profile .primary:active {
+  background: #e83f70 !important;
+  border-color: #e83f70 !important;
+}
+
+.auth-modal-panel .secondary,
+.auth-modal-panel--profile .secondary,
+.auth-modal-panel .plain,
+.auth-modal-panel--profile .plain {
+  background: #fff !important;
+  color: #5f5650 !important;
+  border-color: #e8ded5 !important;
+}
+
+.auth-modal-panel .secondary:hover,
+.auth-modal-panel .secondary:focus-visible,
+.auth-modal-panel--profile .secondary:hover,
+.auth-modal-panel--profile .secondary:focus-visible,
+.auth-modal-panel .plain:hover,
+.auth-modal-panel .plain:focus-visible,
+.auth-modal-panel--profile .plain:hover,
+.auth-modal-panel--profile .plain:focus-visible {
+  background: #fff1f6 !important;
+  border-color: #ffc3d4 !important;
+  color: #e83f70 !important;
+}
+
+.auth-modal-panel .secondary:active,
+.auth-modal-panel--profile .secondary:active,
+.auth-modal-panel .plain:active,
+.auth-modal-panel--profile .plain:active {
+  background: #71d8be !important;
+  border-color: #71d8be !important;
+  color: #103c34 !important;
+}
+
+.email-signup-actions .google-button {
+  order: 2 !important;
+}
+
+.email-signup-actions .reset-password-link {
+  order: 4 !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+}
+
+.profile-setup-card {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  padding: 16px !important;
+  border: 1px solid rgba(232, 222, 213, 0.9) !important;
+  border-radius: 24px !important;
+  background: rgba(255, 255, 255, 0.74) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  overflow: hidden !important;
+}
+
+.profile-setup-card .setup-progress {
+  flex: 0 0 7px !important;
+  height: 7px !important;
+  min-height: 7px !important;
+  overflow: hidden !important;
+  border-radius: 999px !important;
+}
+
+.profile-setup-card .setup-tabs {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 0 0 10px !important;
+  margin: 0 !important;
+  border-bottom: 1px solid #e8ded5 !important;
+}
+
+.profile-setup-card .setup-tabs button {
+  min-height: 34px !important;
+  padding: 8px 12px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+}
+
+.profile-setup-card .setup-error {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
+.profile-setup-card > .pv-basic-grid,
+.profile-setup-card > .pv-rank-section,
+.profile-setup-card > .setup-stack,
+.profile-setup-card > .terms-box {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding: 4px 4px 16px !important;
+}
+
+.profile-setup-actions {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  padding-top: 10px !important;
+  border-top: 1px solid #e8ded5 !important;
+  background: transparent !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 7px !important;
+}
+
+.profile-setup-actions .reset-password-link {
+  min-height: 26px !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+}
+
+@media (max-width: 820px) {
+  .auth-modal {
+    padding: max(10px, env(safe-area-inset-top, 0px)) 10px max(10px, env(safe-area-inset-bottom, 0px)) !important;
   }
-  html body .auth-modal-panel--profile{
-    width:100vw!important;
-    max-width:100vw!important;
-    height:100dvh!important;
-    max-height:100dvh!important;
-    min-height:100dvh!important;
-    border-radius:0!important;
-    padding:calc(10px + env(safe-area-inset-top,0px)) 14px calc(10px + env(safe-area-inset-bottom,0px))!important;
-    overflow:hidden!important;
+
+  .auth-modal-panel,
+  .auth-modal-panel--narrow,
+  .auth-modal-panel--profile {
+    width: min(100%, 430px) !important;
+    max-width: calc(100vw - 20px) !important;
+    padding: 16px !important;
+    border-radius: 24px !important;
   }
-  html body .auth-modal-panel--profile .profile-setup-panel{
-    height:100%!important;
-    max-height:100%!important;
-    min-height:0!important;
-    display:flex!important;
-    flex-direction:column!important;
-    overflow:hidden!important;
-    gap:8px!important;
+
+  .auth-modal-panel--profile {
+    height: calc(100dvh - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
   }
-  html body .auth-modal-panel--profile .profile-setup-heading{
-    flex:0 0 auto!important;
-    padding-right:52px!important;
+
+  .email-signup-header,
+  .profile-setup-heading {
+    padding-right: 44px !important;
   }
-  html body .auth-modal-panel--profile .profile-setup-card{
-    flex:1 1 auto!important;
-    min-height:0!important;
-    height:auto!important;
-    max-height:none!important;
-    display:flex!important;
-    flex-direction:column!important;
-    overflow:hidden!important;
-    gap:8px!important;
-    padding:12px!important;
-    border-radius:22px!important;
-    background:rgba(255,253,249,.96)!important;
+
+  .auth-modal-panel--narrow .email-signup-header {
+    padding: 0 42px !important;
   }
-  html body .auth-modal-panel--profile .profile-setup-card .setup-progress,
-  html body .auth-modal-panel--profile .profile-setup-card .setup-tabs{
-    flex:0 0 auto!important;
-    grid-row:auto!important;
+
+  .profile-setup-card {
+    padding: 12px !important;
+    border-radius: 20px !important;
+    gap: 10px !important;
   }
-  html body .auth-modal-panel--profile .profile-setup-card .setup-tabs{
-    height:auto!important;
-    min-height:40px!important;
-    max-height:44px!important;
-    overflow-x:auto!important;
-    overflow-y:hidden!important;
+
+  .profile-setup-card .setup-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-auto-rows: 34px !important;
+    gap: 8px !important;
+    min-height: 76px !important;
+    padding: 2px 0 8px !important;
   }
-  html body .auth-modal-panel--profile .profile-setup-card>.pv-basic-grid,
-  html body .auth-modal-panel--profile .profile-setup-card>.pv-rank-section,
-  html body .auth-modal-panel--profile .profile-setup-card>.setup-stack,
-  html body .auth-modal-panel--profile .profile-setup-card>.terms-box{
-    flex:1 1 auto!important;
-    grid-row:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow-y:auto!important;
-    overflow-x:hidden!important;
-    -webkit-overflow-scrolling:touch!important;
-    padding:4px 2px 16px!important;
+
+  .profile-setup-card .setup-tabs button {
+    min-width: 0 !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 6px !important;
+    font-size: 0 !important;
+    overflow: hidden !important;
   }
-  html body .auth-modal-panel--profile .profile-setup-actions{
-    flex:0 0 auto!important;
-    grid-row:auto!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    margin-top:auto!important;
-    padding:10px 0 0!important;
-    display:grid!important;
-    grid-template-columns:1fr!important;
-    grid-template-rows:42px 42px 24px!important;
-    gap:7px!important;
-    position:relative!important;
-    bottom:auto!important;
-    background:rgba(255,253,249,.98)!important;
+
+  .profile-setup-card .setup-tabs button:nth-child(1)::after { content: '1 基本'; }
+  .profile-setup-card .setup-tabs button:nth-child(2)::after { content: '2 ランク'; }
+  .profile-setup-card .setup-tabs button:nth-child(3)::after { content: '3 スタイル'; }
+  .profile-setup-card .setup-tabs button:nth-child(4)::after { content: '4 追加'; }
+  .profile-setup-card .setup-tabs button:nth-child(5)::after { content: '5 自己紹介'; }
+  .profile-setup-card .setup-tabs button:nth-child(6)::after { content: '6 規約'; }
+
+  .profile-setup-card .setup-tabs button::after {
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
   }
-  html body .auth-modal-panel--profile .profile-setup-actions .reset-password-link{
-    align-self:end!important;
-    min-height:24px!important;
-    line-height:24px!important;
-  }
-  html body .auth-modal-panel--profile .pv-photo-card{
-    min-height:118px!important;
-    padding:12px!important;
-  }
-  html body .auth-modal-panel--profile .pv-photo-preview{
-    width:66px!important;
-    height:66px!important;
-  }
-  html body .auth-modal-panel--profile .pv-chip-row,
-  html body .auth-modal-panel--profile .pv-chip-grid,
-  html body .auth-modal-panel--profile .pv-gender-row{
-    gap:6px!important;
+
+  .profile-setup-actions button {
+    min-height: 42px !important;
   }
 }
