@@ -4,6 +4,8 @@ import TinderProfileCard from './TinderProfileCard.jsx';
 import ProfileDetailModal from './ProfileDetailModal.jsx';
 import { SkeletonCard } from '../../ui/primitives.jsx';
 
+const RANK_LABELS = { Iron: 'アイアン', Bronze: 'ブロンズ', Silver: 'シルバー', Gold: 'ゴールド', Platinum: 'プラチナ', Diamond: 'ダイヤモンド', Ascendant: 'アセンダント', Immortal: 'イモータル', Radiant: 'レディアント' };
+
 function useIsMounted() {
   const isMounted = useRef(true);
   useEffect(() => {
@@ -17,7 +19,24 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
   const [actionBusy, setActionBusy] = useState(false);
   const [acceptingLikeId, setAcceptingLikeId] = useState('');
   const [detailProfile, setDetailProfile] = useState(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterWrapRef = useRef(null);
   const isMounted = useIsMounted();
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handleClick = (e) => {
+      if (filterWrapRef.current && !filterWrapRef.current.contains(e.target)) setFilterOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [filterOpen]);
+
+  const filterActive = targetGender !== 'all' || targetRank !== 'all';
+  const filterSummary = [
+    targetGender !== 'all' ? targetGender : null,
+    targetRank !== 'all' ? (RANK_LABELS[targetRank] || targetRank) : null,
+  ].filter(Boolean).join(' · ');
 
   const handleSwipe = useCallback(async (type) => {
     if (actionBusy || !current) return;
@@ -66,36 +85,57 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
         </div>
       </div>
 
-      {/* 候補指定 */}
-      <div className="mp-filter-section">
-        <div className="mp-filter-section-header">
-          候補指定
-          {filterLocked && <span className="mp-lock-hint">PLUS/VIPで解放</span>}
-        </div>
-        <div className="mp-filter-row">
-          <label htmlFor="gender-filter" className="mp-filter-label">性別</label>
-          <select id="gender-filter" className="mp-filter-select" disabled={filterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)} aria-label="性別指定">
-            <option value="all">すべて</option>
-            <option value="女性">女性</option>
-            <option value="男性">男性</option>
-            <option value="その他/未設定">その他</option>
-          </select>
-        </div>
-        <div className="mp-filter-row">
-          <label htmlFor="rank-filter" className="mp-filter-label">ランク帯</label>
-          <select id="rank-filter" className="mp-filter-select" disabled={filterLocked} value={targetRank} onChange={(e) => setTargetRank(e.target.value)} aria-label="ランク帯指定">
-            <option value="all">すべて</option>
-            <option value="Iron">アイアン</option>
-            <option value="Bronze">ブロンズ</option>
-            <option value="Silver">シルバー</option>
-            <option value="Gold">ゴールド</option>
-            <option value="Platinum">プラチナ</option>
-            <option value="Diamond">ダイヤモンド</option>
-            <option value="Ascendant">アセンダント</option>
-            <option value="Immortal">イモータル</option>
-            <option value="Radiant">レディアント</option>
-          </select>
-        </div>
+      {/* 候補指定ボタン */}
+      <div className="mp-filter-btn-wrap" ref={filterWrapRef}>
+        <button
+          type="button"
+          className={cx('mp-filter-btn', filterActive && 'mp-filter-btn--active', filterLocked && 'mp-filter-btn--locked')}
+          onClick={() => { if (!filterLocked) setFilterOpen((o) => !o); }}
+          aria-expanded={filterOpen}
+          aria-label="候補を絞り込む"
+        >
+          <svg className="mp-filter-btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 12.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 1.5c-5.33 0-8 2.67-8 4v1h16v-1c0-1.33-2.67-4-8-4Z"/>
+          </svg>
+          <span className="mp-filter-btn-label">
+            {filterLocked ? 'PLUS/VIPで解放' : filterSummary || '候補を絞る'}
+          </span>
+          {filterActive && !filterLocked && <span className="mp-filter-dot" aria-hidden="true" />}
+        </button>
+
+        {filterOpen && !filterLocked && (
+          <div className="mp-filter-popover" role="dialog" aria-label="絞り込み設定">
+            <div className="mp-filter-popover-row">
+              <label htmlFor="gender-filter" className="mp-filter-popover-label">性別</label>
+              <select id="gender-filter" className="mp-filter-select" value={targetGender} onChange={(e) => setTargetGender(e.target.value)}>
+                <option value="all">すべて</option>
+                <option value="女性">女性</option>
+                <option value="男性">男性</option>
+                <option value="その他/未設定">その他</option>
+              </select>
+            </div>
+            <div className="mp-filter-popover-row">
+              <label htmlFor="rank-filter" className="mp-filter-popover-label">ランク帯</label>
+              <select id="rank-filter" className="mp-filter-select" value={targetRank} onChange={(e) => setTargetRank(e.target.value)}>
+                <option value="all">すべて</option>
+                <option value="Iron">アイアン</option>
+                <option value="Bronze">ブロンズ</option>
+                <option value="Silver">シルバー</option>
+                <option value="Gold">ゴールド</option>
+                <option value="Platinum">プラチナ</option>
+                <option value="Diamond">ダイヤモンド</option>
+                <option value="Ascendant">アセンダント</option>
+                <option value="Immortal">イモータル</option>
+                <option value="Radiant">レディアント</option>
+              </select>
+            </div>
+            {filterActive && (
+              <button type="button" className="mp-filter-clear" onClick={() => { setTargetGender('all'); setTargetRank('all'); setFilterOpen(false); }}>
+                絞り込みをクリア
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* プロフィールカード */}
