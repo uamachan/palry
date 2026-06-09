@@ -34,13 +34,14 @@ const port = envInt('PORT', 3001, { min: 1, max: 65535 });
 const isProduction = process.env.NODE_ENV === 'production';
 
 // 開発者モード: Firebase認証(メール確認)を経ずにプロフィール作成・動作確認を行うための抜け道。
-// 本番では絶対に有効化しないため「ALLOW_DEV_LOGIN=true かつ 非本番」の二条件を必須にする。
+// マスタースイッチは環境変数 ALLOW_DEV_LOGIN のみ。本番(NODE_ENV=production)でも明示有効化でき、
+// 値を false にするか削除して再起動すれば「いつでも」無効化できる。既定はOFF。
 // クライアントの dev-auth.js と一致する固定トークン/識別子を使う。
-const allowDevLogin = process.env.ALLOW_DEV_LOGIN === 'true' && !isProduction;
+const allowDevLogin = process.env.ALLOW_DEV_LOGIN === 'true';
 const DEV_AUTH_TOKEN = 'dev-skip-login';
 const DEV_IDENTITY = { uid: 'dev-user', email: 'dev@palry.local', emailVerified: true };
 if (allowDevLogin) {
-  console.warn('[dev] ALLOW_DEV_LOGIN 有効: Firebase認証をスキップする開発者トークンを受け付けます（本番では無効）。');
+  console.warn(`[dev] ALLOW_DEV_LOGIN 有効${isProduction ? '（本番環境！）' : ''}: Firebase認証をスキップする開発者トークンを受け付けます。停止するには ALLOW_DEV_LOGIN を外して再起動してください。`);
 }
 const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
   .split(',')
@@ -439,6 +440,12 @@ async function requireAuth(req, res, next) {
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, service: 'Pairly API', framework: 'React + Vite + Express' });
+});
+
+// クライアントが開発者モードの有効/無効をランタイムで判定するための公開設定。
+// ALLOW_DEV_LOGIN を切り替えるだけでフロントのボタン表示も追従する（再ビルド不要）。
+app.get('/api/config', (req, res) => {
+  res.json({ devLogin: allowDevLogin });
 });
 
 app.get('/api/plans', (req, res) => {

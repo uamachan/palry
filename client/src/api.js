@@ -42,6 +42,7 @@ async function request(path, options = {}) {
 
 export const api = {
   plans: () => request('/api/plans'),
+  config: () => request('/api/config'),
   profiles: ({ plan = 'FREE', targetGender = 'all', userId = '' } = {}) => request(`/api/profiles?plan=${encodeURIComponent(plan)}&targetGender=${encodeURIComponent(targetGender)}&userId=${encodeURIComponent(userId)}`),
   register: (body) => request('/api/register', { method: 'POST', body: JSON.stringify(body) }),
   login: (body) => request('/api/login', { method: 'POST', body: JSON.stringify(body) }),
