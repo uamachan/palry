@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { cx } from '../../constants.jsx';
+import { cx, rankIconFor } from '../../constants.jsx';
 import ProfileDetailModal from './ProfileDetailModal.jsx';
 
 export const dmStarters = ['よろしくお願いします！', '何時ごろ遊べますか？', 'ランク一緒に行きませんか？'];
@@ -40,6 +40,7 @@ function ProfileChips({ items, empty = '未設定' }) {
 
 function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
   if (!profile) return null;
+  const xLabel = profile.xHandle ? `@${profile.xHandle.replace(/^@/, '')}` : '未設定';
   return (
     <aside className="dm-profile-sidebar" aria-label="相手のプロフィール">
       <div className="dm-profile-cover"></div>
@@ -49,39 +50,47 @@ function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
         </div>
         <h3>{profile.name}</h3>
         <p className="dm-profile-riot">{profile.riotId || 'Riot ID 未設定'}</p>
-        <div className="dm-profile-rank-row">
-          {profile.rank && profile.rank !== '未設定' && <span className="dm-profile-rank-badge">{profile.rank}</span>}
-          {profile.role && profile.role !== '未設定' && <span className="dm-profile-role-badge">{profile.role}</span>}
-        </div>
       </div>
 
-      <div className="dm-profile-meta-chips">
-        {profile.region && <span className="dm-profile-meta-chip"><strong>地域</strong>{profile.region}</span>}
-        {profile.ageRange && <span className="dm-profile-meta-chip"><strong>年齢</strong>{profile.ageRange}</span>}
-        {profile.vc && <span className="dm-profile-meta-chip"><strong>VC</strong>{profile.vc}</span>}
-        {profile.favoriteWeapon && <span className="dm-profile-meta-chip"><strong>武器</strong>{profile.favoriteWeapon}</span>}
+      <div className="dm-profile-section">
+        <b>基本情報</b>
+        <dl className="dm-profile-info">
+          <div>
+            <dt>ランク</dt>
+            <dd className="rank-inline dm-rank-line">
+              <span className="rank-inline-icon" aria-hidden="true"><img src={rankIconFor(profile.rank)} alt="" loading="lazy" /></span>
+              <span>{profile.rank || '未設定'}</span>
+            </dd>
+          </div>
+          <div><dt>ロール</dt><dd>{profile.role || '未設定'}</dd></div>
+          <div><dt>地域</dt><dd>{profile.region || '未設定'}</dd></div>
+          <div><dt>年齢帯</dt><dd>{profile.ageRange || '未設定'}</dd></div>
+          <div><dt>性別</dt><dd>{profile.gender || '未設定'}</dd></div>
+          <div><dt>X</dt><dd>{xLabel}</dd></div>
+        </dl>
       </div>
 
-      {safeArray(profile.tags).length > 0 && (
-        <div className="dm-profile-section">
-          <b>目的</b>
-          <ProfileChips items={profile.tags} />
-        </div>
-      )}
+      <div className="dm-profile-section">
+        <b>目的タグ</b>
+        <ProfileChips items={profile.tags} />
+      </div>
 
-      {safeArray(profile.agents).length > 0 && (
-        <div className="dm-profile-section">
-          <b>エージェント</b>
-          <ProfileChips items={profile.agents} />
-        </div>
-      )}
+      <div className="dm-profile-section">
+        <b>よく使うエージェント</b>
+        <ProfileChips items={profile.agents} />
+      </div>
 
-      {safeArray(profile.maps).length > 0 && (
-        <div className="dm-profile-section">
-          <b>得意MAP</b>
-          <ProfileChips items={profile.maps} />
+      <div className="dm-profile-section">
+        <b>プレイスタイル詳細</b>
+        <dl className="dm-profile-info">
+          <div><dt>VC</dt><dd>{profile.vc || '未設定'}</dd></div>
+          <div><dt>好きな武器</dt><dd>{profile.favoriteWeapon || '未設定'}</dd></div>
+        </dl>
+        <div className="dm-profile-maps">
+          <span className="dm-profile-maps-label">得意MAP</span>
+          <ProfileChips items={profile.maps} empty="未設定" />
         </div>
-      )}
+      </div>
 
       {profile.bio && (
         <div className="dm-profile-section">
