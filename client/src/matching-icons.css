@@ -261,10 +261,6 @@
 
 /* DM format: proper thread / chat / profile columns. */
 @media (min-width: 761px) {
-  .appv2-bottom-nav {
-    display: none !important;
-  }
-
   .appv2-content--dm,
   .appv2-content:has(.dm-panel) {
     min-height: 640px !important;
