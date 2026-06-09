@@ -1135,3 +1135,139 @@
   width: 100% !important;
 }
 
+/* ══════════════════════════════════════════════════
+   全タブ共通: コンテンツをコンパクト化してスクロール不要に
+   (overflow-yは安全網として残す)
+══════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════
+   基本情報: コンパクト化
+══════════════════════════════════════════════════ */
+
+/* 2カラムをより狭く */
+.pv-basic-grid {
+  grid-template-columns: 200px minmax(0, 1fr) !important;
+  gap: 12px !important;
+}
+
+/* 写真カード: 高さを右カラムに合わせつつコンパクト */
+.pv-photo-card {
+  min-height: 0 !important;
+  padding: 12px !important;
+}
+
+.pv-photo-preview {
+  width: 88px !important;
+  height: 88px !important;
+  border-radius: 22px !important;
+}
+
+/* 入力フィールド高さ削減 */
+.pv-field input,
+.pv-field select {
+  min-height: 44px !important;
+  padding: 10px 14px !important;
+}
+
+/* テキストフィールド間隔詰め */
+.pv-text-fields {
+  gap: 10px !important;
+}
+
+/* 年齢帯/性別/地域の間隔詰め */
+.pv-basic-grid {
+  row-gap: 10px !important;
+}
+
+/* 性別ボタンコンパクト */
+.pv-gender-btn {
+  padding: 7px 14px !important;
+  min-height: 36px !important;
+  font-size: 13px !important;
+}
+
+/* 年齢チップコンパクト */
+.pv-chip-row .pv-chip {
+  padding: 5px 12px !important;
+  min-height: 32px !important;
+}
+
+/* フィールドとラベルの間隔詰め (全タブ共通) */
+.pv-basic-grid .pv-field,
+.pv-basic-grid .pv-field-group,
+.setup-stack .pv-field,
+.setup-stack .pv-field-group,
+.pv-rank-section .pv-field,
+.pv-rank-section .pv-field-group {
+  gap: 6px !important;
+}
+
+.pv-label {
+  line-height: 1.3 !important;
+}
+
+/* ══════════════════════════════════════════════════
+   プレイスタイル: エージェント一覧コンパクト
+══════════════════════════════════════════════════ */
+
+/* 目的タグ (10個 → 5列2行) */
+.pv-chip-grid:has(.pv-chip--tag) {
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 6px !important;
+}
+
+/* MAP (12個 → 4列3行) */
+.pv-chip-grid:has(.pv-chip--map) {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 6px !important;
+}
+
+/* エージェント: 7列の極小チップ */
+.pv-chip-grid--compact {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 4px !important;
+}
+
+.pv-chip-grid--compact .pv-chip {
+  padding: 4px 4px !important;
+  font-size: 10.5px !important;
+  border-radius: 8px !important;
+  min-height: 26px !important;
+  text-align: center !important;
+  justify-content: center !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* VC/武器は flex wrap */
+.pv-chip-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+}
+
+/* フィールドグループ間隔詰め */
+.setup-stack {
+  gap: 12px !important;
+}
+
+/* ══════════════════════════════════════════════════
+   自己紹介: テキストエリア高さ削減
+══════════════════════════════════════════════════ */
+
+.pv-bio-area {
+  height: 90px !important;
+  min-height: 0 !important;
+  resize: none !important;
+}
+
+/* 声の自己紹介ボックスコンパクト */
+.voice-record-box {
+  padding: 12px !important;
+}
+
