@@ -103,8 +103,9 @@ function App() {
   const [plansData, setPlansData] = useState(null);
   const [pricingTab, setPricingTab] = useState('plans');
   const [activePlan, setActivePlan] = useState('FREE');
-  const [entitlements, setEntitlements] = useState({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
+  const [entitlements, setEntitlements] = useState({ genderFilter: false, rankFilter: false, boost: false, spotlight: false, superCredits: 0 });
   const [targetGender, setTargetGender] = useState('all');
+  const [targetRank, setTargetRank] = useState('all');
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [editForm, setEditForm] = useState(initialForm());
   const [pendingFirebaseUser, setPendingFirebaseUser] = useState(null);
@@ -185,6 +186,7 @@ function App() {
     setActivePlan(nextPlan);
     setEntitlements({
       genderFilter: nextPlan === 'PLUS' || nextPlan === 'VIP',
+      rankFilter: nextPlan === 'PLUS' || nextPlan === 'VIP',
       boost: false,
       spotlight: nextPlan === 'VIP',
       superCredits: nextPlan === 'VIP' ? 999 : 0,
@@ -397,7 +399,7 @@ function App() {
     setAuditLog([]);
     setProfileEditorOpen(false);
     setPendingFirebaseUser(null);
-    setEntitlements({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
+    setEntitlements({ genderFilter: false, rankFilter: false, boost: false, spotlight: false, superCredits: 0 });
     showToast('ログアウトしました');
   }
 
@@ -412,12 +414,12 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }
 
-  const genderFilterLocked = !plansData?.plans?.[plan]?.genderFilter && !entitlements.genderFilter;
+  const filterLocked = !plansData?.plans?.[plan]?.rankFilter && !entitlements.rankFilter;
 
   async function refreshProfiles() {
     if (!user) return;
     try {
-      const payload = await api.profiles({ plan, targetGender, userId: user.id });
+      const payload = await api.profiles({ plan, targetGender, targetRank, userId: user.id });
       setProfiles(payload.profiles || []);
       setIndex(0);
     } catch (error) {
@@ -459,7 +461,7 @@ function App() {
     });
   }
 
-  useEffect(() => { if (user) refreshProfiles(); }, [user?.id, plan, targetGender, entitlements.genderFilter]);
+  useEffect(() => { if (user) refreshProfiles(); }, [user?.id, plan, targetGender, targetRank, entitlements.rankFilter]);
 
   // 候補カードが尽きたら自動で再取得（新規登録ユーザーをリアルタイムに反映）。
   const deckEmpty = Boolean(user) && index >= profiles.length;
@@ -493,6 +495,14 @@ function App() {
     if (!user) return;
     api.entitlements(user.id).then((payload) => setEntitlements(payload.entitlements || entitlements)).catch(() => null);
   }, [user?.id]);
+  useEffect(() => {
+    if (!activeThreadId || !user) return;
+    return api.subscribeDmThread(activeThreadId, user.id, (messages) => {
+      setDmThreads((threads) => threads.map((t) =>
+        t.match.id === activeThreadId ? { ...t, messages } : t
+      ));
+    });
+  }, [activeThreadId, user?.id]);
   useEffect(() => {
     if (activeTab === 'admin' && user?.isAdmin) {
       api.reports().then((p) => {
@@ -679,6 +689,7 @@ function App() {
       setUser((u) => ({ ...u, plan: confirmedPlan }));
       setEntitlements({
         genderFilter: confirmedPlan === 'PLUS' || confirmedPlan === 'VIP',
+        rankFilter: confirmedPlan === 'PLUS' || confirmedPlan === 'VIP',
         boost: false,
         spotlight: confirmedPlan === 'VIP',
         superCredits: confirmedPlan === 'VIP' ? 999 : 0,
@@ -714,7 +725,7 @@ function App() {
   // 認証フォームの表示条件
   const showAuthForms = (isAuthed && profileEditorOpen) || (!isAuthed && Boolean(authMode));
 
-  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, genderFilterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form, setForm, openApp, openProfileEditor, logout, refreshProfiles }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, genderFilterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form]);
+  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, targetRank, setTargetRank, filterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form, setForm, openApp, openProfileEditor, logout, refreshProfiles }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, targetRank, filterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form]);
 
   if (isUnknownRoute) return <NotFound />;
 
