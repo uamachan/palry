@@ -23,6 +23,7 @@ export function profileFromMatch(match) {
 export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, reportProfile, blockProfile }) {
   const activeThread = dmThreads.find((t) => t.match.id === activeThreadId) || dmThreads[0];
   const [detailProfile, setDetailProfile] = useState(null);
+  const [mobileView, setMobileView] = useState('list'); // 'list' | 'conv'
 
   // 同一スレッドへの多重既読APIコールを防ぐ
   const lastMarkedRef = useRef(null);
@@ -36,7 +37,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
   const hasUserMessage = Boolean(activeThread?.messages?.some((m) => m.sender === 'user' && !m.system));
 
   return (
-    <div className="dm-panel">
+    <div className={cx('dm-panel', `dm-panel--${mobileView}`)}>
       <aside className="dm-thread-list">
         <div className="dm-head"><h3>マッチ後メッセージ</h3><span>{dmThreads.length}件</span></div>
         {dmThreads.length ? dmThreads.map((thread) => {
@@ -45,7 +46,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
             <button
               className={cx('dm-thread', activeThread?.match.id === thread.match.id && 'active', thread.unreadCount > 0 && 'unread')}
               key={thread.match.id}
-              onClick={() => selectDmThread(thread.match.id)}
+              onClick={() => { selectDmThread(thread.match.id); setMobileView('conv'); }}
             >
               <b>{thread.match.profileName}{thread.unreadCount > 0 && <em>{thread.unreadCount}</em>}</b>
               <span>{lastMessage?.body || thread.match.opener}</span>
@@ -57,6 +58,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
         {activeThread ? (
           <>
             <div className="dm-conversation-head">
+              <button type="button" className="dm-back-btn" onClick={() => setMobileView('list')} aria-label="一覧に戻る">&#8592;</button>
               <div className="avatar small">
                 {activeThread.match.profilePhoto
                   ? <img src={activeThread.match.profilePhoto} alt="" loading="lazy" decoding="async" />

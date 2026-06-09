@@ -300,20 +300,28 @@ body,
   font-weight:900;
 }
 
+/* DM back button: hidden on desktop, shown on mobile */
+.dm-back-btn{display:none}
+
 @media(max-width:760px){
   .appv2{
     padding:8px 8px 88px;
   }
+
+  /* Compact single-row header: hide top nav (bottom nav handles navigation) */
   .appv2>.site-header{
     top:8px;
     border-radius:20px;
     gap:8px;
+    flex-wrap:nowrap;
   }
-  .appv2 .site-nav{
-    order:3;
-    width:100%;
-    margin-left:0;
+  .appv2>.site-header .site-nav{
+    display:none;
   }
+  .appv2>.site-header .plan-pill{
+    display:none;
+  }
+
   .appv2-content{
     min-height:calc(100dvh - 122px);
     padding:12px;
@@ -352,4 +360,53 @@ body,
     width:calc(100vw - 16px);
     border-radius:22px;
   }
+
+  /* DM panel: toggle between thread list and conversation */
+  .appv2-content .dm-panel{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    gap:0;
+    padding:0;
+  }
+  .appv2-content .dm-panel--list .dm-thread-list{
+    flex:1;
+    overflow-y:auto;
+    max-height:none;
+    height:auto;
+    border-radius:0;
+    padding:12px;
+  }
+  .appv2-content .dm-panel--list .dm-conversation{
+    display:none;
+  }
+  .appv2-content .dm-panel--conv .dm-thread-list{
+    display:none;
+  }
+  .appv2-content .dm-panel--conv .dm-conversation{
+    flex:1;
+    min-height:0;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr) auto auto;
+    border-radius:0;
+    padding:0;
+  }
+
+  /* DM back button */
+  .dm-back-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    width:32px;
+    height:32px;
+    border:1px solid var(--line,#e7e0d8);
+    background:#fff;
+    color:var(--muted,#77706a);
+    border-radius:50%;
+    font-size:18px;
+    font-weight:900;
+    padding:0;
+  }
+  .dm-back-btn:hover{color:var(--ink,#181614);border-color:var(--ink,#181614)}
 }

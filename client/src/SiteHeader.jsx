@@ -93,6 +93,8 @@ export default function SiteHeader({
                   </div>
                   <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); openProfileEditor?.(); }}>プロフィール編集</button>
                   <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); (onGoApp || onOpenApp)?.(); }}>マッチングへ</button>
+                  {setActiveTab && <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); setActiveTab('pricing'); }}>料金プラン</button>}
+                  {setActiveTab && <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); setActiveTab('safety'); }}>安全・規約</button>}
                   <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); logout?.(); }}>ログアウト</button>
                 </div>
               )}
