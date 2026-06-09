@@ -1001,3 +1001,137 @@
   }
 }
 
+/* ══════════════════════════════════════════════════
+   ランク/ロール選択 — 一画面表示・スクロールなし
+══════════════════════════════════════════════════ */
+
+/* rank section: スクロールさせず内容をコンパクトに収める */
+.profile-setup-card > .pv-rank-section {
+  overflow: visible !important;
+  flex: 0 0 auto !important;
+  gap: 16px !important;
+}
+
+/* 10ティアを 5列×2行 で均等表示 */
+.pv-rank-icon-grid {
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 6px !important;
+}
+
+/* 全ボタン同サイズ */
+.pv-rank-icon-btn {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  padding: 8px 4px 6px !important;
+  border: 2px solid #e7e0d8 !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  cursor: pointer !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s !important;
+}
+
+.pv-rank-icon-btn img {
+  display: block !important;
+  width: 100% !important;
+  max-width: 44px !important;
+  height: auto !important;
+  aspect-ratio: 1 !important;
+  object-fit: contain !important;
+}
+
+.pv-rank-icon-label {
+  font-size: 9.5px !important;
+  font-weight: 800 !important;
+  color: #5f5650 !important;
+  text-align: center !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+}
+
+.pv-rank-icon-btn--on {
+  border-color: var(--rc, #ff4f83) !important;
+  background: #fff4f6 !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rc, #ff4f83) 35%, transparent) !important;
+}
+
+.pv-rank-icon-btn--on .pv-rank-icon-label {
+  color: var(--rc, #ff4f83) !important;
+}
+
+/* ランク詳細選択（1/2/3） */
+.pv-rank-sub-row {
+  display: flex !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+  padding-top: 2px !important;
+}
+
+.pv-rank-sub-btn {
+  padding: 7px 20px !important;
+  border: 2px solid #e7e0d8 !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+}
+
+.pv-rank-sub-btn--on {
+  background: var(--rc, #ff4f83) !important;
+  border-color: var(--rc, #ff4f83) !important;
+  color: #fff !important;
+}
+
+/* ロールカード: コンパクトに */
+.pv-rank-section .pv-role-card {
+  min-height: 88px !important;
+  padding: 10px 8px !important;
+  gap: 6px !important;
+}
+
+.pv-rank-section .pv-role-icon img {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+/* ══════════════════════════════════════════════════
+   戻る/次へ ボタンを大きく・横並び
+══════════════════════════════════════════════════ */
+.profile-setup-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  grid-template-columns: unset !important;
+}
+
+.profile-setup-actions .secondary {
+  flex: 1 1 auto !important;
+  min-height: 54px !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+}
+
+.profile-setup-actions .primary {
+  flex: 0 0 100% !important;
+  width: 100% !important;
+  min-height: 54px !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+}
+
+.profile-setup-actions .reset-password-link {
+  flex: 0 0 100% !important;
+  width: 100% !important;
+}
+
