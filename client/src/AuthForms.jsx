@@ -166,7 +166,7 @@ function EmailVerificationSection({ pendingEmail, onCheck, onResend, onShowLogin
   );
 }
 
-const AGE_RANGES = ['10代', '20代', '30代', '40代', '50代', '60代', '70代', '80代', '90代'];
+const AGE_RANGES = ['10代', '20代', '30代', '40代', '50代以上'];
 
 function isValidAgeRange(value) {
   return AGE_RANGES.includes(value);
@@ -470,7 +470,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
         {activeSetupTab === '自己紹介' && (
           <div className="setup-stack">
             <label className="pv-field"><span className="pv-label">Xアカウント（任意）</span><input value={form.xHandle} maxLength="40" onChange={(e) => setForm({ ...form, xHandle: e.target.value })} placeholder="@pairly" /></label>
-            <div className="pv-field"><span className="pv-label">自己紹介 <small>(最大240文字)</small></span><textarea className="pv-bio-area" value={form.bio} maxLength="240" onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="遊ぶ時間、VC、募集したい相手、得意なことなど" rows={5} /><span className="pv-char-count">{(form.bio || '').length} / 240</span></div>
+            <div className="pv-field"><span className="pv-label">自己紹介 <small>(最大240文字)</small></span><textarea className="pv-bio-area" value={form.bio} maxLength="240" onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="遊ぶ時間、VC、募集したい相手、得意なことなど" rows={10} /><span className="pv-char-count">{(form.bio || '').length} / 240</span></div>
             <div className="voice-record-box"><div><b>声の自己紹介</b><p>任意で20秒まで録音できます。声を載せると雰囲気が伝わりやすくなります。</p></div><button type="button" className={isRecordingVoice ? 'danger' : 'secondary'} onClick={isRecordingVoice ? stopVoiceRecording : startVoiceRecording}>{isRecordingVoice ? '録音停止' : '録音する'}</button>{form.voiceIntro && <span className="pv-voice-done">録音済み</span>}</div>
           </div>
         )}

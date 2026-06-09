@@ -408,9 +408,9 @@ function App() {
 
   const genderFilterLocked = !plansData?.plans?.[plan]?.genderFilter && !entitlements.genderFilter;
 
-  async function refreshProfiles() {
+  async function refreshProfiles(showLoading = true) {
     if (!user) return;
-    setProfilesLoading(true);
+    if (showLoading) setProfilesLoading(true);
     try {
       const payload = await api.profiles({ plan, targetGender, userId: user.id });
       setProfiles(payload.profiles || []);
@@ -418,7 +418,7 @@ function App() {
     } catch (error) {
       showToast(error.message || 'プロフィール取得に失敗しました');
     } finally {
-      setProfilesLoading(false);
+      if (showLoading) setProfilesLoading(false);
     }
   }
 
@@ -462,7 +462,7 @@ function App() {
   const deckEmpty = !profilesLoading && Boolean(user) && index >= profiles.length;
   useEffect(() => {
     if (!deckEmpty) return;
-    const id = setTimeout(() => refreshProfiles(), 4000);
+    const id = setTimeout(() => refreshProfiles(false), 4000);
     return () => clearTimeout(id);
   }, [deckEmpty]);
   useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); refreshFootprints(); } }, [user?.id]);
