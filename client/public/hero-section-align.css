@@ -1,22 +1,33 @@
-/* Keep the hero section on the same grid/width as Pricing and other sections. */
+/* Landing layout polish: make the top page feel centered instead of left-heavy. */
+html body #root .site-page {
+  width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+/* Hero: centered headline block, same comfortable width rhythm as pricing. */
 .site-page > .hero.section,
 html body #root .site-page > .hero.section#top {
   width: 100% !important;
   max-width: 1180px !important;
+  min-height: 520px !important;
   margin-left: auto !important;
   margin-right: auto !important;
-  padding-left: 22px !important;
-  padding-right: 22px !important;
+  padding: 92px 22px 72px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  justify-items: center !important;
+  align-items: center !important;
+  text-align: center !important;
   box-sizing: border-box !important;
 }
 
 .site-page > .hero.section .hero-copy,
 html body #root .site-page > .hero.section#top .hero-copy {
-  width: 100% !important;
-  max-width: 720px !important;
-  margin: 0 !important;
-  justify-self: start !important;
-  text-align: left !important;
+  width: min(100%, 760px) !important;
+  max-width: 760px !important;
+  margin: 0 auto !important;
+  justify-self: center !important;
+  text-align: center !important;
 }
 
 .site-page > .hero.section .hero-copy .eyebrow,
@@ -29,21 +40,106 @@ html body #root .site-page > .hero.section#top .hero-copy h1,
 html body #root .site-page > .hero.section#top .hero-copy p,
 html body #root .site-page > .hero.section#top .hero-actions,
 html body #root .site-page > .hero.section#top .notice-line {
-  text-align: left !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
+  text-align: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.site-page > .hero.section .hero-copy h1,
+html body #root .site-page > .hero.section#top .hero-copy h1 {
+  max-width: 760px !important;
+  font-size: clamp(48px, 5.4vw, 78px) !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.055em !important;
+}
+
+.site-page > .hero.section .hero-copy h1 span,
+html body #root .site-page > .hero.section#top .hero-copy h1 span {
+  text-align: center !important;
+}
+
+.site-page > .hero.section .hero-copy p,
+html body #root .site-page > .hero.section#top .hero-copy p {
+  max-width: 680px !important;
+  font-size: 17px !important;
+  line-height: 1.95 !important;
 }
 
 .site-page > .hero.section .hero-actions,
 html body #root .site-page > .hero.section#top .hero-actions {
-  justify-content: flex-start !important;
-  justify-items: start !important;
+  width: 100% !important;
+  justify-content: center !important;
+  justify-items: center !important;
+}
+
+.site-page > .hero.section .hero-actions button,
+html body #root .site-page > .hero.section#top .hero-actions button {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.site-page > .hero.section .notice-line,
+html body #root .site-page > .hero.section#top .notice-line {
+  max-width: 700px !important;
+  color: #8a817a !important;
+}
+
+/* Other landing sections: center titles/tabs so the whole page has one visual axis. */
+html body #root .site-page > .section:not(.hero),
+html body #root .site-page > .pricing-section.section,
+html body #root .site-page > .pending-profile-section.section {
+  width: 100% !important;
+  max-width: 1180px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 22px !important;
+  padding-right: 22px !important;
+  box-sizing: border-box !important;
+}
+
+html body #root .site-page .section-head {
+  width: min(100%, 760px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  text-align: center !important;
+}
+
+html body #root .site-page .section-head h2,
+html body #root .site-page .section-head p,
+html body #root .site-page .section-head span {
+  text-align: center !important;
+}
+
+html body #root .site-page .price-tabs {
+  justify-content: center !important;
+}
+
+html body #root .site-page .price-grid,
+html body #root .site-page .single-grid,
+html body #root .site-page .terms-list {
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+@media (min-width: 1041px) {
+  html body #root .site-page .price-grid {
+    grid-template-columns: repeat(3, minmax(0, 360px)) !important;
+    justify-content: center !important;
+  }
+
+  html body #root .site-page .single-grid {
+    grid-template-columns: repeat(4, minmax(0, 260px)) !important;
+    justify-content: center !important;
+  }
 }
 
 @media (max-width: 1040px) {
   .site-page > .hero.section,
   html body #root .site-page > .hero.section#top {
-    grid-template-columns: 1fr !important;
+    min-height: auto !important;
+    padding-top: 76px !important;
+    padding-bottom: 62px !important;
   }
 }
 
@@ -54,35 +150,37 @@ html body #root .site-page > .hero.section#top .hero-actions {
     margin: 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
-    text-align: initial !important;
+    text-align: center !important;
     overflow-x: hidden !important;
   }
 
   .site-page > .hero.section,
   html body #root .site-page > .hero.section#top {
     width: 100% !important;
-    max-width: 1180px !important;
+    max-width: 100% !important;
     min-width: 0 !important;
+    min-height: auto !important;
     margin-left: auto !important;
     margin-right: auto !important;
-    padding: 50px 14px !important;
+    padding: 58px 18px 54px !important;
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
-    justify-items: start !important;
+    justify-items: center !important;
     align-items: start !important;
-    text-align: left !important;
+    text-align: center !important;
     overflow: visible !important;
   }
 
   .site-page > .hero.section .hero-copy,
   html body #root .site-page > .hero.section#top .hero-copy {
-    width: 100% !important;
-    max-width: 100% !important;
+    width: min(100%, 430px) !important;
+    max-width: 430px !important;
     min-width: 0 !important;
-    margin: 0 !important;
-    display: block !important;
-    text-align: left !important;
-    justify-self: stretch !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    justify-items: center !important;
+    text-align: center !important;
+    justify-self: center !important;
   }
 
   .site-page > .hero.section .hero-copy .eyebrow,
@@ -94,50 +192,59 @@ html body #root .site-page > .hero.section#top .hero-actions {
   html body #root .site-page > .hero.section#top .hero-copy p,
   html body #root .site-page > .hero.section#top .notice-line {
     width: 100% !important;
-    max-width: 650px !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    text-align: left !important;
+    max-width: 390px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
   }
 
   .site-page > .hero.section .hero-copy h1,
   html body #root .site-page > .hero.section#top .hero-copy h1 {
-    font-size: 38px !important;
+    font-size: clamp(38px, 10.5vw, 54px) !important;
     line-height: 1.08 !important;
-    letter-spacing: -0.05em !important;
+    letter-spacing: -0.055em !important;
   }
 
   .site-page > .hero.section .hero-copy h1 span,
   html body #root .site-page > .hero.section#top .hero-copy h1 span {
     display: block !important;
     width: 100% !important;
-    text-align: left !important;
+    text-align: center !important;
   }
 
   .site-page > .hero.section .hero-copy p,
   html body #root .site-page > .hero.section#top .hero-copy p {
-    font-size: 17px !important;
-    line-height: 2 !important;
+    font-size: 16px !important;
+    line-height: 1.85 !important;
   }
 
   .site-page > .hero.section .hero-actions,
   html body #root .site-page > .hero.section#top .hero-actions {
     width: 100% !important;
-    max-width: 650px !important;
-    margin: 26px 0 0 !important;
-    display: flex !important;
-    flex-wrap: wrap !important;
-    justify-content: flex-start !important;
-    justify-items: start !important;
+    max-width: 390px !important;
+    margin: 26px auto 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    justify-content: center !important;
+    justify-items: center !important;
     gap: 12px !important;
   }
 
   .site-page > .hero.section .hero-actions button,
   html body #root .site-page > .hero.section#top .hero-actions button {
-    width: auto !important;
+    width: min(100%, 360px) !important;
     min-width: 0 !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
     justify-content: center !important;
+  }
+
+  html body #root .site-page > .section:not(.hero),
+  html body #root .site-page > .pricing-section.section,
+  html body #root .site-page > .pending-profile-section.section {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 18px !important;
+    padding-right: 18px !important;
   }
 }
