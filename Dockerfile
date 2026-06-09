@@ -9,9 +9,11 @@ FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
 
-# 依存をインストール（devDependencies も含む: vite build に必要）
-COPY package.json package-lock.json ./
-RUN npm ci
+# 依存をインストール。
+# package-lock.json がある場合は再現性の高い npm ci、無い場合は npm install にフォールバックする。
+# これにより lockfile 未コミット状態でも Docker / Render のビルドが止まらない。
+COPY package*.json ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # ソースをコピー
 COPY . .
