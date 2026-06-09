@@ -180,9 +180,15 @@ function App() {
 
   function completeAuth(nextUser, message) {
     setUser(nextUser);
-    setPlan(nextUser.plan || 'FREE');
-    setActivePlan(nextUser.plan || 'FREE');
-    setEntitlements({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
+    const nextPlan = nextUser.plan || 'FREE';
+    setPlan(nextPlan);
+    setActivePlan(nextPlan);
+    setEntitlements({
+      genderFilter: nextPlan === 'PLUS' || nextPlan === 'VIP',
+      boost: false,
+      spotlight: nextPlan === 'VIP',
+      superCredits: nextPlan === 'VIP' ? 999 : 0,
+    });
     setAuthMode(null);
     setProfileSetupPrompt(false);
     setPendingFirebaseUser(null);
@@ -671,6 +677,12 @@ function App() {
       const confirmedPlan = payload?.purchase?.plan || payload?.plan || nextPlan;
       setPlan(confirmedPlan);
       setUser((u) => ({ ...u, plan: confirmedPlan }));
+      setEntitlements({
+        genderFilter: confirmedPlan === 'PLUS' || confirmedPlan === 'VIP',
+        boost: false,
+        spotlight: confirmedPlan === 'VIP',
+        superCredits: confirmedPlan === 'VIP' ? 999 : 0,
+      });
       track('purchase', { kind: 'plan', item: confirmedPlan });
       showToast(`${planLabel(confirmedPlan)} に切り替えました（デモ）`);
     } catch (e) {

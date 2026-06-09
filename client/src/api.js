@@ -208,7 +208,14 @@ export const api = {
       .filter((p) => {
         if (excludedUids.has(p.id)) return false;
         if (p.autoHidden === true) return false;
-        if (targetGender !== 'all' && p.gender && p.gender !== targetGender) return false;
+        if (targetGender !== 'all') {
+          const g = p.gender || '';
+          if (targetGender === 'その他/未設定') {
+            if (g !== '' && g !== 'その他/未設定') return false;
+          } else {
+            if (g !== targetGender) return false;
+          }
+        }
         return true;
       });
 
