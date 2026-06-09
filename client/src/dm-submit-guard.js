@@ -127,6 +127,16 @@ document.addEventListener('submit', (event) => {
   }
 }, true);
 
+// DM入力が変更されたら重複送信ガードのボディキャッシュをクリアする。
+// こうすることで、送信エラー後に同じ内容を再送しようとしても 2500ms 待たされずに済む。
+document.addEventListener('input', (event) => {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement)) return;
+  const form = input.closest('.dm-form');
+  if (!form) return;
+  form.dataset.lastSubmitBody = '';
+}, true);
+
 window.requestAnimationFrame(() => {
   document.querySelectorAll('input[data-copyable], input[data-riot-id="true"]').forEach((input) => {
     ensureRiotIdHint(input);

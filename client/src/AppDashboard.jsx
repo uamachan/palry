@@ -53,7 +53,7 @@ export default function AppDashboard(props) {
         openProfileEditor={openProfileEditor}
         logout={logout}
       />
-      <main ref={contentRef} className={cx('appv2-content', activeTab === 'dm' && 'appv2-content--dm')} key={activeTab}>
+      <main ref={contentRef} className={cx('appv2-content', activeTab === 'dm' && 'appv2-content--dm')}>
         <TabPanel {...props} />
       </main>
       <nav className="appv2-bottom-nav" aria-label="アプリメニュー">

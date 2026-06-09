@@ -45,6 +45,8 @@ function getFirebaseMods() {
   return firebaseModsPromise;
 }
 
+const DEFAULT_ENTITLEMENTS = { genderFilter: false, boost: false, spotlight: false, superCredits: 0 };
+
 function initialForm() {
   return { email: '', emailConfirm: '', password: '', name: '', riotId: '', age: '', gender: '', region: '', profilePhoto: '', rank: 'Gold 1', role: defaultRole, tags: [], agents: [], xHandle: '', bio: '', voiceIntro: '', agreed: false, vc: '', maps: [], favoriteWeapon: '' };
 }
@@ -101,7 +103,7 @@ function App() {
   const [plansData, setPlansData] = useState(null);
   const [pricingTab, setPricingTab] = useState('plans');
   const [activePlan, setActivePlan] = useState('FREE');
-  const [entitlements, setEntitlements] = useState({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
+  const [entitlements, setEntitlements] = useState(DEFAULT_ENTITLEMENTS);
   const [targetGender, setTargetGender] = useState('all');
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [editForm, setEditForm] = useState(initialForm());
@@ -172,7 +174,7 @@ function App() {
     setUser(nextUser);
     setPlan(nextUser.plan || 'FREE');
     setActivePlan(nextUser.plan || 'FREE');
-    setEntitlements({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
+    setEntitlements(DEFAULT_ENTITLEMENTS);
     setAuthMode(null);
     setProfileSetupPrompt(false);
     setPendingFirebaseUser(null);
@@ -361,7 +363,7 @@ function App() {
     setAuditLog([]);
     setProfileEditorOpen(false);
     setPendingFirebaseUser(null);
-    setEntitlements({ genderFilter: false, boost: false, spotlight: false, superCredits: 0 });
+    setEntitlements(DEFAULT_ENTITLEMENTS);
     showToast('ログアウトしました');
   }
 

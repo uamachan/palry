@@ -22,17 +22,29 @@ export function profileFromMatch(match) {
 
 export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, reportProfile, blockProfile }) {
   const activeThread = dmThreads.find((t) => t.match.id === activeThreadId) || dmThreads[0];
-  const [detailProfile, setDetailProfile] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
   const [mobileView, setMobileView] = useState('list'); // 'list' | 'conv'
 
+  // 外部（通知パネル・いいね返し）からのスレッド選択時にモバイル会話ビューへ切り替える
+  const prevActiveThreadIdRef = useRef(activeThreadId);
+  useEffect(() => {
+    if (prevActiveThreadIdRef.current !== activeThreadId && activeThreadId) {
+      setMobileView('conv');
+    }
+    prevActiveThreadIdRef.current = activeThreadId;
+  }, [activeThreadId]);
+
   // 同一スレッドへの多重既読APIコールを防ぐ
+  // モバイルではスレッド一覧表示中（mobileView='list'）は会話が非表示のため既読にしない
   const lastMarkedRef = useRef(null);
   useEffect(() => {
     const threadId = activeThread?.match?.id;
     if (!threadId || lastMarkedRef.current === threadId) return;
+    const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width:760px)').matches;
+    if (isMobile && mobileView === 'list') return;
     lastMarkedRef.current = threadId;
     markDmRead(threadId);
-  }, [activeThread?.match?.id, markDmRead]);
+  }, [activeThread?.match?.id, mobileView, markDmRead]);
 
   const hasUserMessage = Boolean(activeThread?.messages?.some((m) => m.sender === 'user' && !m.system));
 
@@ -66,7 +78,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
               </div>
               <div><h3>{activeThread.match.profileName}</h3><span>メッセージ解放済み</span></div>
               <div className="dm-head-actions">
-                <button type="button" onClick={() => setDetailProfile(profileFromMatch(activeThread.match))}>プロフィール</button>
+                <button type="button" onClick={() => setShowDetail(true)}>プロフィール</button>
                 <button type="button" onClick={() => reportProfile(activeThread.match.profileId, activeThread.match.profileName)}>通報</button>
                 <button type="button" className="danger" onClick={() => blockProfile(activeThread.match.profileId, activeThread.match.profileName)}>ブロック</button>
               </div>
@@ -93,7 +105,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
               <input value={dmDraft} maxLength="500" onChange={(e) => setDmDraft(e.target.value)} placeholder="メッセージを入力" />
               <button className="primary" type="submit" disabled={dmSending || !dmDraft.trim()}>{dmSending ? '送信中' : '送信'}</button>
             </form>
-            {detailProfile && <ProfileDetailModal profile={profileFromMatch(activeThread.match)} onClose={() => setDetailProfile(null)} />}
+            {showDetail && <ProfileDetailModal profile={profileFromMatch(activeThread.match)} onClose={() => setShowDetail(false)} />}
           </>
         ) : (
           <div className="locked-panel"><h3>メッセージはマッチ後に解放</h3><p>お互いにいいねすると、ここに1対1の会話が表示されます。</p></div>

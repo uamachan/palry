@@ -501,8 +501,6 @@ select option{background:#fffdf9;color:#181614;font-weight:700}
 .appv2-content .dm-starters{padding-top:7px}
 @media(max-width:760px){
   .auth-modal-panel--profile{width:min(500px,calc(100vw - 16px))}
-  .appv2-content .dm-panel{grid-template-rows:auto minmax(0,1fr);grid-template-columns:1fr}
-  .appv2-content .dm-thread-list{max-height:112px}
 }
 
 /* ── アクセシビリティ補完 ─────────────────────────── */
