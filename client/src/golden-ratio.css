@@ -96,4 +96,19 @@
   .dm-panel {
     grid-template-columns: 1fr;
   }
+
+  /* ── スマホ トップ(ヒーロー): 見出し・本文・ボタンを中央寄せ ──────
+     hero-copy はブロック自体は中央寄せだが text-align が左のままで
+     左寄りに見えていた。文字とボタンを明示的に中央へ揃える。 */
+  .hero-copy {
+    text-align: center;
+  }
+  .hero-copy p,
+  .hero-copy .notice-line {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .hero-actions {
+    justify-content: center;
+  }
 }
