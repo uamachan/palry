@@ -14,17 +14,45 @@ export const ranks = [
   'Radiant'
 ];
 
+export const rankImages = {
+  'Iron 1': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/3/smallicon.png',
+  'Iron 2': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/4/smallicon.png',
+  'Iron 3': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/5/smallicon.png',
+  'Bronze 1': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/6/smallicon.png',
+  'Bronze 2': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/7/smallicon.png',
+  'Bronze 3': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/8/smallicon.png',
+  'Silver 1': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/9/smallicon.png',
+  'Silver 2': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/10/smallicon.png',
+  'Silver 3': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/11/smallicon.png',
+  'Gold 1': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/12/smallicon.png',
+  'Gold 2': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/13/smallicon.png',
+  'Gold 3': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/14/smallicon.png',
+  'Platinum 1': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/15/smallicon.png',
+  'Platinum 2': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/16/smallicon.png',
+  'Platinum 3': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/17/smallicon.png',
+  'Diamond 1': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/18/smallicon.png',
+  'Diamond 2': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/19/smallicon.png',
+  'Diamond 3': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/20/smallicon.png',
+  'Ascendant 1': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/21/smallicon.png',
+  'Ascendant 2': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/22/smallicon.png',
+  'Ascendant 3': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/23/smallicon.png',
+  'Immortal 1': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/24/smallicon.png',
+  'Immortal 2': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/25/smallicon.png',
+  'Immortal 3': 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/26/smallicon.png',
+  Radiant: 'https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/27/smallicon.png'
+};
+
 export const rankIconMap = {
   Unranked: '/assets/ranks/unranked.svg',
-  Iron: '/assets/ranks/iron.svg',
-  Bronze: '/assets/ranks/bronze.svg',
-  Silver: '/assets/ranks/silver.svg',
-  Gold: '/assets/ranks/gold.svg',
-  Platinum: '/assets/ranks/platinum.svg',
-  Diamond: '/assets/ranks/diamond.svg',
-  Ascendant: '/assets/ranks/ascendant.svg',
-  Immortal: '/assets/ranks/immortal.svg',
-  Radiant: '/assets/ranks/radiant.svg'
+  Iron: rankImages['Iron 1'],
+  Bronze: rankImages['Bronze 1'],
+  Silver: rankImages['Silver 1'],
+  Gold: rankImages['Gold 1'],
+  Platinum: rankImages['Platinum 1'],
+  Diamond: rankImages['Diamond 1'],
+  Ascendant: rankImages['Ascendant 1'],
+  Immortal: rankImages['Immortal 1'],
+  Radiant: rankImages.Radiant
 };
 
 export function rankTierFromRank(rank) {
@@ -35,7 +63,8 @@ export function rankTierFromRank(rank) {
 }
 
 export function rankIconFor(rank) {
-  return rankIconMap[rankTierFromRank(rank)];
+  const value = String(rank || '').trim();
+  return rankImages[value] || rankIconMap[rankTierFromRank(value)];
 }
 
 export const roles = ['デュエリスト', 'イニシエーター', 'コントローラー', 'センチネル'];
