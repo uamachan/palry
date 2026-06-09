@@ -26,6 +26,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # 開発者モード（ログインをスキップしてプロフィール作成）を常時有効化。
+      # 無効化したいときは false にするか、この2行を削除して再デプロイ。
+      - key: ALLOW_DEV_LOGIN
+        value: true
       - key: NODE_VERSION
         value: 24.14.1
       - key: PORT
