@@ -32,6 +32,16 @@ app.disable('x-powered-by');
 app.use(compression());
 const port = envInt('PORT', 3001, { min: 1, max: 65535 });
 const isProduction = process.env.NODE_ENV === 'production';
+
+// 開発者モード: Firebase認証(メール確認)を経ずにプロフィール作成・動作確認を行うための抜け道。
+// 本番では絶対に有効化しないため「ALLOW_DEV_LOGIN=true かつ 非本番」の二条件を必須にする。
+// クライアントの dev-auth.js と一致する固定トークン/識別子を使う。
+const allowDevLogin = process.env.ALLOW_DEV_LOGIN === 'true' && !isProduction;
+const DEV_AUTH_TOKEN = 'dev-skip-login';
+const DEV_IDENTITY = { uid: 'dev-user', email: 'dev@palry.local', emailVerified: true };
+if (allowDevLogin) {
+  console.warn('[dev] ALLOW_DEV_LOGIN 有効: Firebase認証をスキップする開発者トークンを受け付けます（本番では無効）。');
+}
 const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
   .split(',')
   .map((origin) => origin.trim())
@@ -372,6 +382,8 @@ async function verifyFirebaseIdentity(idToken) {
     error.status = 401;
     throw error;
   }
+  // 開発者トークンは Firebase 検証をスキップし固定の開発用 identity を返す（本番では allowDevLogin=false のため無効）。
+  if (allowDevLogin && token === DEV_AUTH_TOKEN) return { ...DEV_IDENTITY };
   const cached = getCachedIdentity(token);
   if (cached) return cached;
 
