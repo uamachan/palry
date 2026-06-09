@@ -45,15 +45,33 @@ function apiError(message, httpStatus) {
 
 async function fetchUserProfile(uid) {
   if (!uid) return null;
-  const { doc, getDoc, db } = await getMods();
-  const snap = await getDoc(doc(db, 'users', uid));
-  if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() };
+  try {
+    const { doc, getDoc, db } = await getMods();
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...snap.data() };
+  } catch (e) {
+    // Firestore 未作成 / ルールエラー時は null を返して 404 扱いにする
+    // → main.jsx がプロフィール作成フローへ誘導する
+    console.warn('[pairly] Firestore read failed:', e.message);
+    return null;
+  }
 }
 
 async function writeUserProfile(uid, data) {
   const { doc, setDoc, db } = await getMods();
-  await setDoc(doc(db, 'users', uid), data, { merge: true });
+  try {
+    await setDoc(doc(db, 'users', uid), data, { merge: true });
+  } catch (e) {
+    console.error('[pairly] Firestore write failed:', e.message);
+    if (e.message?.includes('Database') || e.message?.includes('not-found') || e.code === 'not-found') {
+      throw new Error('Firestoreデータベースが見つかりません。Firebase Console で Firestore を有効化してください（プロジェクト: ren12-9388b）');
+    }
+    if (e.code === 'permission-denied') {
+      throw new Error('Firestoreの書き込みが拒否されました。セキュリティルールを確認してください。');
+    }
+    throw e;
+  }
   return fetchUserProfile(uid);
 }
 
