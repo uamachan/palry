@@ -25,9 +25,8 @@ body,
   padding:10px 14px;
   border:1px solid var(--line,#e7e0d8);
   border-radius:24px;
-  background:rgba(255,253,249,.96);
+  background:rgba(255,253,249,.98);
   box-shadow:0 14px 34px rgba(31,25,20,.08);
-  backdrop-filter:blur(14px);
 }
 
 .appv2 .brand img,
@@ -205,6 +204,7 @@ body,
   place-items:center;
   flex:0 0 auto;
   box-shadow:0 10px 26px rgba(31,25,20,.1);
+  transition:transform .12s ease;
 }
 .mp-btn-lg{
   width:68px;
@@ -235,6 +235,10 @@ body,
   transform:translateY(-1px);
   box-shadow:0 14px 30px rgba(31,25,20,.14);
 }
+/* 押した瞬間に縮むことで、JS処理を待たずに即時の手応えを返す（体感の軽さ）。 */
+.mp-btn:not(:disabled):active{
+  transform:scale(.93);
+}
 
 .notifications-panel,
 .dm-panel,
@@ -253,9 +257,8 @@ body,
   width:min(620px,calc(100vw - 20px));
   border:1px solid var(--line,#e7e0d8);
   border-radius:24px;
-  background:rgba(255,253,249,.96);
+  background:rgba(255,253,249,.98);
   box-shadow:0 18px 44px rgba(31,25,20,.16);
-  backdrop-filter:blur(14px);
   padding:8px;
   display:flex;
   justify-content:space-around;

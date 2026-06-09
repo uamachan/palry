@@ -25,7 +25,7 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
     const dir = type === 'pass' ? 'left' : type === 'super' ? 'up' : 'right';
     try {
       setSwipeDir(dir);
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 200));
       if (!isMounted.current) return;
       setSwipeDir(null);
       await swipe(type);
