@@ -96,7 +96,7 @@ function App() {
   const [reports, setReports] = useState([]);
   const [flaggedUsers, setFlaggedUsers] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
-  const [profilesLoading, setProfilesLoading] = useState(false);
+  const [profilesLoading] = useState(false);
   const [dmLoading, setDmLoading] = useState(false);
   const [likesLoading, setLikesLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('match');
@@ -408,17 +408,14 @@ function App() {
 
   const genderFilterLocked = !plansData?.plans?.[plan]?.genderFilter && !entitlements.genderFilter;
 
-  async function refreshProfiles(showLoading = true) {
+  async function refreshProfiles() {
     if (!user) return;
-    if (showLoading) setProfilesLoading(true);
     try {
       const payload = await api.profiles({ plan, targetGender, userId: user.id });
       setProfiles(payload.profiles || []);
       setIndex(0);
     } catch (error) {
       showToast(error.message || 'プロフィール取得に失敗しました');
-    } finally {
-      if (showLoading) setProfilesLoading(false);
     }
   }
 
@@ -459,10 +456,10 @@ function App() {
   useEffect(() => { if (user) refreshProfiles(); }, [user?.id, plan, targetGender, entitlements.genderFilter]);
 
   // 候補カードが尽きたら自動で再取得（新規登録ユーザーをリアルタイムに反映）。
-  const deckEmpty = !profilesLoading && Boolean(user) && index >= profiles.length;
+  const deckEmpty = Boolean(user) && index >= profiles.length;
   useEffect(() => {
     if (!deckEmpty) return;
-    const id = setTimeout(() => refreshProfiles(false), 4000);
+    const id = setTimeout(() => refreshProfiles(), 4000);
     return () => clearTimeout(id);
   }, [deckEmpty]);
   useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); refreshFootprints(); } }, [user?.id]);
