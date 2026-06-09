@@ -27,6 +27,17 @@ export const rankIconMap = {
   Radiant: '/assets/ranks/radiant.svg'
 };
 
+export function rankTierFromRank(rank) {
+  const value = String(rank || '').trim();
+  if (rankIconMap[value]) return value;
+  const tier = value.split(/\s+/)[0];
+  return rankIconMap[tier] ? tier : 'Unranked';
+}
+
+export function rankIconFor(rank) {
+  return rankIconMap[rankTierFromRank(rank)];
+}
+
 export const roles = ['デュエリスト', 'イニシエーター', 'コントローラー', 'センチネル'];
 export const defaultRole = roles[0];
 
