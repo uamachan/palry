@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { browserSessionPersistence, getAuth, setPersistence } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -51,6 +52,7 @@ if (!auth) {
 
 export const firebaseApp = app;
 export const firebaseAuth = auth;
+export const firebaseDb = app ? getFirestore(app) : null;
 
 export const firebaseReady = setPersistence(firebaseAuth, browserSessionPersistence)
   .then(() => true)
