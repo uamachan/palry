@@ -12,7 +12,7 @@ function useIsMounted() {
   return isMounted;
 }
 
-export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, genderFilterLocked, receivedLikes, acceptLike, profilesLoading, refreshProfiles }) {
+export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, targetRank, setTargetRank, filterLocked, receivedLikes, acceptLike, profilesLoading, refreshProfiles }) {
   const [swipeDir, setSwipeDir] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [acceptingLikeId, setAcceptingLikeId] = useState('');
@@ -66,16 +66,36 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
         </div>
       </div>
 
-      {/* 性別フィルター */}
-      <div className="mp-filter-row">
-        <label htmlFor="gender-filter" className="mp-filter-label">性別指定</label>
-        <select id="gender-filter" className="mp-filter-select" disabled={genderFilterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)} aria-label="性別指定">
-          <option value="all">すべて</option>
-          <option value="女性">女性</option>
-          <option value="男性">男性</option>
-          <option value="その他/未設定">その他</option>
-        </select>
-        {genderFilterLocked && <span className="mp-lock-hint" aria-label="性別フィルターはPLUSまたはVIPプランで解放できます">PLUS/VIPで解放</span>}
+      {/* 候補指定 */}
+      <div className="mp-filter-section">
+        <div className="mp-filter-section-header">
+          候補指定
+          {filterLocked && <span className="mp-lock-hint">PLUS/VIPで解放</span>}
+        </div>
+        <div className="mp-filter-row">
+          <label htmlFor="gender-filter" className="mp-filter-label">性別</label>
+          <select id="gender-filter" className="mp-filter-select" disabled={filterLocked} value={targetGender} onChange={(e) => setTargetGender(e.target.value)} aria-label="性別指定">
+            <option value="all">すべて</option>
+            <option value="女性">女性</option>
+            <option value="男性">男性</option>
+            <option value="その他/未設定">その他</option>
+          </select>
+        </div>
+        <div className="mp-filter-row">
+          <label htmlFor="rank-filter" className="mp-filter-label">ランク帯</label>
+          <select id="rank-filter" className="mp-filter-select" disabled={filterLocked} value={targetRank} onChange={(e) => setTargetRank(e.target.value)} aria-label="ランク帯指定">
+            <option value="all">すべて</option>
+            <option value="Iron">アイアン</option>
+            <option value="Bronze">ブロンズ</option>
+            <option value="Silver">シルバー</option>
+            <option value="Gold">ゴールド</option>
+            <option value="Platinum">プラチナ</option>
+            <option value="Diamond">ダイヤモンド</option>
+            <option value="Ascendant">アセンダント</option>
+            <option value="Immortal">イモータル</option>
+            <option value="Radiant">レディアント</option>
+          </select>
+        </div>
       </div>
 
       {/* プロフィールカード */}

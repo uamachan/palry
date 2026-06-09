@@ -18,6 +18,7 @@ async function getMods() {
       query: fs.query,
       where: fs.where,
       limit: fs.limit,
+      onSnapshot: fs.onSnapshot,
       db: fb.firebaseDb,
       auth: fb.firebaseAuth,
     }));
@@ -79,9 +80,9 @@ async function writeUserProfile(uid, data) {
 
 const PLANS_DATA = {
   plans: {
-    FREE:  { dailyLikes: 10,  dailySuperLikes: 1, dualLikes: 5,  genderFilter: false, footprints: false, spotlight: false },
-    PLUS:  { dailyLikes: 40,  dailySuperLikes: 5, dualLikes: 10, genderFilter: true,  footprints: true,  spotlight: false },
-    VIP:   { dailyLikes: -1,  dailySuperLikes: -1, dualLikes: -1, genderFilter: true,  footprints: true,  spotlight: true  },
+    FREE:  { dailyLikes: 10,  dailySuperLikes: 1, dualLikes: 5,  genderFilter: false, rankFilter: false, footprints: false, spotlight: false },
+    PLUS:  { dailyLikes: 40,  dailySuperLikes: 5, dualLikes: 10, genderFilter: true,  rankFilter: true,  footprints: true,  spotlight: false },
+    VIP:   { dailyLikes: -1,  dailySuperLikes: -1, dualLikes: -1, genderFilter: true,  rankFilter: true,  footprints: true,  spotlight: true  },
   },
   subscriptions: [
     { id: 'FREE', name: 'FREE', price: 0,    period: '無料' },
@@ -97,8 +98,10 @@ const PLANS_DATA = {
 };
 
 function buildEntitlements(plan) {
+  const paid = plan === 'PLUS' || plan === 'VIP';
   return {
-    genderFilter: plan === 'PLUS' || plan === 'VIP',
+    genderFilter: paid,
+    rankFilter: paid,
     boost: false,
     spotlight: plan === 'VIP',
     superCredits: plan === 'VIP' ? 999 : 0,
@@ -182,7 +185,7 @@ export const api = {
   },
 
   // ── プロフィール候補 ──────────────────────────────────────────────────
-  profiles: async ({ plan = 'FREE', targetGender = 'all' } = {}) => {
+  profiles: async ({ plan = 'FREE', targetGender = 'all', targetRank = 'all' } = {}) => {
     const uid = await getUid();
     if (!uid) return { profiles: [] };
 
@@ -215,6 +218,10 @@ export const api = {
           } else {
             if (g !== targetGender) return false;
           }
+        }
+        if (targetRank !== 'all') {
+          const tier = (p.rank || '').split(' ')[0];
+          if (tier !== targetRank) return false;
         }
         return true;
       });
@@ -521,6 +528,38 @@ export const api = {
 
   purchaseItem: async () => {
     return { entitlements: buildEntitlements('FREE') };
+  },
+
+  // ── リアルタイムDM購読 ────────────────────────────────────────────────
+  subscribeDmThread: (matchId, uid, onUpdate) => {
+    let unsubscribeFirestore = null;
+    let cancelled = false;
+    getMods().then(({ collection, query, where, onSnapshot, db }) => {
+      if (cancelled) return;
+      unsubscribeFirestore = onSnapshot(
+        query(collection(db, 'messages'), where('matchId', '==', matchId)),
+        (snap) => {
+          if (cancelled) return;
+          const messages = snap.docs
+            .map((d) => {
+              const msg = d.data();
+              return {
+                id: d.id,
+                sender: msg.senderUid === uid ? 'user' : 'other',
+                body: msg.body,
+                createdAt: msg.createdAt,
+                readAt: msg.readAt || null,
+              };
+            })
+            .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+          onUpdate(messages);
+        }
+      );
+    }).catch(() => null);
+    return () => {
+      cancelled = true;
+      unsubscribeFirestore?.();
+    };
   },
 
   // ── 管理者（スタブ） ──────────────────────────────────────────────────
