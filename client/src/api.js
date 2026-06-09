@@ -4,10 +4,18 @@ import { isDevSession, DEV_TOKEN } from './dev-auth.js';
 // 静的インポートにすると vendor-firebase チャンクが起動時に同期ロードされ
 // FCP/LCP が大幅に遅れてしまうため使わない。
 
-// フロントを静的サイト、APIを別Renderサービスで出す場合に使う。
-// 未設定なら同一オリジンの /api を叩く。
-// 例: VITE_API_BASE_URL=https://palry-api.onrender.com
-const API_BASE = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+// フロントをCloudflare、APIをRenderで出す場合に使う。
+// VITE_API_BASE_URL が未設定でも workers.dev からはRender APIへ送る。
+const configuredApiBase = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const runtimeApiBase = (() => {
+  if (configuredApiBase) return configuredApiBase;
+  if (typeof window === 'undefined') return '';
+  const host = window.location.hostname;
+  if (host === 'palry.renr211215.workers.dev') return 'https://palry.onrender.com';
+  if (host.endsWith('.workers.dev')) return 'https://palry.onrender.com';
+  return '';
+})();
+const API_BASE = runtimeApiBase;
 
 /** 現在ユーザーの Firebase ID トークンを取得する。未ログイン時は null。 */
 async function getToken() {
