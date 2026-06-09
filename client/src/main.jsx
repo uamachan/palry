@@ -10,7 +10,7 @@ import SiteHeader from './SiteHeader.jsx';
 import { appTabs, defaultRole, planLabel } from './constants.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import { initAnalytics, track, shouldAskConsent, setConsent } from './analytics.js';
-import { DEV_LOGIN_ENABLED, DEV_TOKEN, DEV_EMAIL, DEV_UID, isDevSession, startDevSession, endDevSession } from './dev-auth.js';
+import { DEV_TOKEN, DEV_EMAIL, DEV_UID, isDevSession, startDevSession, endDevSession } from './dev-auth.js';
 import { initMonitoring } from './monitoring.js';
 import { NotFound } from './ui/primitives.jsx';
 import './dm-submit-guard.js';
@@ -112,6 +112,8 @@ function App() {
   const [authReady, setAuthReady] = useState(false);
   const [pendingScrollId, setPendingScrollId] = useState(null);
   const [askConsent, setAskConsent] = useState(false);
+  // 開発者モードの可否。ローカル(npm run dev)は既定ON、デプロイ環境はサーバの /api/config に追従。
+  const [devLoginAllowed, setDevLoginAllowed] = useState(Boolean(import.meta.env.DEV));
   // ルーティング未導入のため、ルート('/')以外の URL は存在しないページとして 404 を出す。
   const [isUnknownRoute] = useState(() => typeof window !== 'undefined' && window.location.pathname !== '/');
 
@@ -125,6 +127,12 @@ function App() {
 
   useEffect(() => {
     api.plans().then(setPlansData).catch(() => null);
+    // サーバの開発者モード可否を取得。無効なら残存セッションを掃除する。
+    api.config().then((cfg) => {
+      const allowed = Boolean(cfg?.devLogin) || Boolean(import.meta.env.DEV);
+      setDevLoginAllowed(allowed);
+      if (!allowed) endDevSession();
+    }).catch(() => null);
     getFirebaseMods().then(({ onAuthStateChanged, firebaseAuth, firebaseReady }) => {
       firebaseReady.catch(() => null).finally(() => {
         onAuthStateChanged(firebaseAuth, async (fbUser) => {
@@ -239,7 +247,7 @@ function App() {
 
   // 開発者モード: Firebaseログイン/メール認証を飛ばして直接プロフィール作成画面へ。
   function startDevMode() {
-    if (!DEV_LOGIN_ENABLED) return;
+    if (!devLoginAllowed) return;
     startDevSession();
     setPendingFirebaseUser({ uid: DEV_UID, email: DEV_EMAIL, emailVerified: true });
     setForm((f) => ({ ...initialForm(), email: DEV_EMAIL, emailConfirm: DEV_EMAIL, agreed: false }));
@@ -735,7 +743,7 @@ function App() {
             createAccount={createAccount}
             register={register}
             startDevMode={startDevMode}
-            devEnabled={DEV_LOGIN_ENABLED}
+            devEnabled={devLoginAllowed}
             continueWithGoogle={continueWithGoogle}
             loginWithFirebase={loginWithFirebase}
             resendVerificationEmail={resendVerificationEmail}
