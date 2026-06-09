@@ -1,0 +1,143 @@
+/* Keep the hero section on the same grid/width as Pricing and other sections. */
+.site-page > .hero.section,
+html body #root .site-page > .hero.section#top {
+  width: 100% !important;
+  max-width: 1180px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 22px !important;
+  padding-right: 22px !important;
+  box-sizing: border-box !important;
+}
+
+.site-page > .hero.section .hero-copy,
+html body #root .site-page > .hero.section#top .hero-copy {
+  width: 100% !important;
+  max-width: 720px !important;
+  margin: 0 !important;
+  justify-self: start !important;
+  text-align: left !important;
+}
+
+.site-page > .hero.section .hero-copy .eyebrow,
+.site-page > .hero.section .hero-copy h1,
+.site-page > .hero.section .hero-copy p,
+.site-page > .hero.section .hero-actions,
+.site-page > .hero.section .notice-line,
+html body #root .site-page > .hero.section#top .hero-copy .eyebrow,
+html body #root .site-page > .hero.section#top .hero-copy h1,
+html body #root .site-page > .hero.section#top .hero-copy p,
+html body #root .site-page > .hero.section#top .hero-actions,
+html body #root .site-page > .hero.section#top .notice-line {
+  text-align: left !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.site-page > .hero.section .hero-actions,
+html body #root .site-page > .hero.section#top .hero-actions {
+  justify-content: flex-start !important;
+  justify-items: start !important;
+}
+
+@media (max-width: 1040px) {
+  .site-page > .hero.section,
+  html body #root .site-page > .hero.section#top {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root .site-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: initial !important;
+    overflow-x: hidden !important;
+  }
+
+  .site-page > .hero.section,
+  html body #root .site-page > .hero.section#top {
+    width: 100% !important;
+    max-width: 1180px !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding: 50px 14px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    justify-items: start !important;
+    align-items: start !important;
+    text-align: left !important;
+    overflow: visible !important;
+  }
+
+  .site-page > .hero.section .hero-copy,
+  html body #root .site-page > .hero.section#top .hero-copy {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    text-align: left !important;
+    justify-self: stretch !important;
+  }
+
+  .site-page > .hero.section .hero-copy .eyebrow,
+  .site-page > .hero.section .hero-copy h1,
+  .site-page > .hero.section .hero-copy p,
+  .site-page > .hero.section .notice-line,
+  html body #root .site-page > .hero.section#top .hero-copy .eyebrow,
+  html body #root .site-page > .hero.section#top .hero-copy h1,
+  html body #root .site-page > .hero.section#top .hero-copy p,
+  html body #root .site-page > .hero.section#top .notice-line {
+    width: 100% !important;
+    max-width: 650px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    text-align: left !important;
+  }
+
+  .site-page > .hero.section .hero-copy h1,
+  html body #root .site-page > .hero.section#top .hero-copy h1 {
+    font-size: 38px !important;
+    line-height: 1.08 !important;
+    letter-spacing: -0.05em !important;
+  }
+
+  .site-page > .hero.section .hero-copy h1 span,
+  html body #root .site-page > .hero.section#top .hero-copy h1 span {
+    display: block !important;
+    width: 100% !important;
+    text-align: left !important;
+  }
+
+  .site-page > .hero.section .hero-copy p,
+  html body #root .site-page > .hero.section#top .hero-copy p {
+    font-size: 17px !important;
+    line-height: 2 !important;
+  }
+
+  .site-page > .hero.section .hero-actions,
+  html body #root .site-page > .hero.section#top .hero-actions {
+    width: 100% !important;
+    max-width: 650px !important;
+    margin: 26px 0 0 !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+    justify-items: start !important;
+    gap: 12px !important;
+  }
+
+  .site-page > .hero.section .hero-actions button,
+  html body #root .site-page > .hero.section#top .hero-actions button {
+    width: auto !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    justify-content: center !important;
+  }
+}
