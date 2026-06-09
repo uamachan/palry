@@ -1,3 +1,5 @@
+import { isDevSession, DEV_TOKEN } from './dev-auth.js';
+
 // firebase.js は動的インポートで遅延ロードする。
 // 静的インポートにすると vendor-firebase チャンクが起動時に同期ロードされ
 // FCP/LCP が大幅に遅れてしまうため使わない。
@@ -9,6 +11,8 @@ const API_BASE = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, 
 
 /** 現在ユーザーの Firebase ID トークンを取得する。未ログイン時は null。 */
 async function getToken() {
+  // 開発者モード中は Firebase を介さず固定トークンを返す（サーバ側も非本番のみ受理）。
+  if (isDevSession()) return DEV_TOKEN;
   try {
     const { firebaseAuth } = await import('./firebase.js');
     return await firebaseAuth?.currentUser?.getIdToken() ?? null;

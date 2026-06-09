@@ -10,6 +10,7 @@ import SiteHeader from './SiteHeader.jsx';
 import { appTabs, defaultRole, planLabel } from './constants.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import { initAnalytics, track, shouldAskConsent, setConsent } from './analytics.js';
+import { DEV_LOGIN_ENABLED, DEV_TOKEN, DEV_EMAIL, DEV_UID, isDevSession, startDevSession, endDevSession } from './dev-auth.js';
 import { initMonitoring } from './monitoring.js';
 import { NotFound } from './ui/primitives.jsx';
 import './dm-submit-guard.js';
@@ -236,6 +237,17 @@ function App() {
     if (message) showToast(message);
   }
 
+  // 開発者モード: Firebaseログイン/メール認証を飛ばして直接プロフィール作成画面へ。
+  function startDevMode() {
+    if (!DEV_LOGIN_ENABLED) return;
+    startDevSession();
+    setPendingFirebaseUser({ uid: DEV_UID, email: DEV_EMAIL, emailVerified: true });
+    setForm((f) => ({ ...initialForm(), email: DEV_EMAIL, emailConfirm: DEV_EMAIL, agreed: false }));
+    setProfileSetupPrompt(false);
+    setAuthMode('profileSetup');
+    showToast('開発者モード: ログインをスキップしました');
+  }
+
   async function loginWithFirebase(e) {
     e.preventDefault();
     try {
@@ -307,6 +319,14 @@ function App() {
   async function register(e) {
     e.preventDefault();
     try {
+      // 開発者モードは Firebase を介さず、固定の開発トークンでプロフィールを作成する。
+      if (isDevSession()) {
+        const { password, emailConfirm, ...profileData } = form;
+        const payload = await api.register({ ...profileData, idToken: DEV_TOKEN, email: DEV_EMAIL });
+        track('sign_up', { method: 'dev' });
+        completeAuth(payload.user, payload.message || '開発者モードでプロフィールを作成しました');
+        return;
+      }
       const { firebaseAuth } = await getFirebaseMods();
       const current = firebaseAuth.currentUser;
       if (!current) return showToast('Firebaseログインが必要です');
@@ -343,6 +363,7 @@ function App() {
   }
 
   async function logout() {
+    endDevSession();
     const { signOut, firebaseAuth } = await getFirebaseMods();
     await signOut(firebaseAuth).catch(() => null);
     setUser(null);
@@ -713,6 +734,8 @@ function App() {
             pendingFirebaseUser={pendingFirebaseUser}
             createAccount={createAccount}
             register={register}
+            startDevMode={startDevMode}
+            devEnabled={DEV_LOGIN_ENABLED}
             continueWithGoogle={continueWithGoogle}
             loginWithFirebase={loginWithFirebase}
             resendVerificationEmail={resendVerificationEmail}
