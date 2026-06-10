@@ -46,6 +46,15 @@ service cloud.firestore {
         && (!('autoHidden' in request.resource.data));
     }
 
+    function validMatchId(matchId, participants) {
+      return participants.size() == 2
+        && participants[0] != participants[1]
+        && (
+          matchId == participants[0] + '_match_' + participants[1] ||
+          matchId == participants[1] + '_match_' + participants[0]
+        );
+    }
+
     match /users/{uid} {
       // 候補一覧表示のためログイン済みユーザーはプロフィールを読める。
       allow read: if signedIn();
@@ -94,9 +103,7 @@ service cloud.firestore {
     match /matches/{matchId} {
       allow read: if isParticipant(resource.data.participants);
       allow create, update: if isParticipant(request.resource.data.participants)
-        && matchId == request.resource.data.participants[0] + '_match_' + request.resource.data.participants[1]
-        && request.resource.data.participants.size() == 2
-        && request.resource.data.participants[0] != request.resource.data.participants[1]
+        && validMatchId(matchId, request.resource.data.participants)
         && hasOnlyKeys(['id', 'participants', 'createdAt'])
         && request.resource.data.id == matchId;
       allow delete: if false;
