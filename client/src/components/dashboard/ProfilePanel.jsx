@@ -2,11 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { rankIconFor } from '../../constants.jsx';
 import VoiceIntroPlayer from './VoiceIntroPlayer.jsx';
 
-function photoSrcOf(photo) {
+function getPhotoUrl(photo) {
   if (!photo) return '';
   if (typeof photo === 'string') return photo;
   return photo.url || photo.src || photo.photo || photo.image || '';
 }
 
-function uniquePhotos(photos) {
-  return photos
+export default function ProfilePanel({ user }) {
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const rankLabel =
