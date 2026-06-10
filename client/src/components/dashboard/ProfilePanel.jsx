@@ -8,5 +8,12 @@ function photoSrcOf(photo) {
   return photo.url || photo.src || photo.photo || photo.image || '';
 }
 
+function uniqPhotos(photos) {
+  return photos.map(photoSrcOf).filter(Boolean).filter((photo, index, list) => list.indexOf(photo) === index).slice(0, 3);
+}
+
 export default function ProfilePanel({ user }) {
-  const [activePhotoIndex, setActivePhotoIndex]
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const rankLabel = user.rank || 'Unranked';
+  const profilePhotos = useMemo(() => uniqPhotos([
+    ...(Array
