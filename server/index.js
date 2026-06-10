@@ -393,17 +393,13 @@ function appendAudit(action, actorId, targetId, meta = {}) {
 }
 
 async function findAndLinkFirebaseProfile(firebaseUser) {
-  let profile = null;
   const firebaseUid = cleanText(firebaseUser.uid, 120);
   const firebaseEmail = cleanText(firebaseUser.email, 120);
   const firebaseEmailKey = emailKey(firebaseEmail);
 
-  await updateJson('users.json', [], (users) => {
+  return updateJson('users.json', [], (users) => {
     const byUid = users.find((user) => user.firebaseUid === firebaseUid);
-    if (byUid) {
-      profile = byUid;
-      return { value: undefined, result: profile };
-    }
+    if (byUid) return { value: undefined, result: byUid };
 
     const byEmailIndex = users.findIndex((user) => firebaseEmailKey && emailKey(user.email) === firebaseEmailKey);
     if (byEmailIndex < 0) return { value: undefined, result: null };
@@ -423,11 +419,8 @@ async function findAndLinkFirebaseProfile(firebaseUser) {
     };
     const next = [...users];
     next[byEmailIndex] = updated;
-    profile = updated;
-    return { value: next, result: profile };
+    return { value: next, result: updated };
   });
-
-  return profile;
 }
 
 function userToProfile(user) {
@@ -574,24 +567,26 @@ function makeMatchRow(ownerUserId, otherProfile, conversationId, isRealUser) {
 // 既にマッチ済み or 新規作成後、対象ペア両側のマッチ行を返す（未成立なら空配列）。
 async function tryCreateMutualMatch(userA, userB) {
   if (userA?.autoHidden || userB?.autoHidden) return [];
-  await updateJson('matches.json', [], async (matches) => {
+  // マッチ行はロック内の mutator が返す result フィールドから取得し、
+  // ロック外の unlocked readJson（TOCTOU）を避ける。
+  const result = await updateJson('matches.json', [], async (matches) => {
     if (pairAlreadyMatched(matches, userA.id, userB.id)) {
-      return { value: undefined, result: false };
+      // 既にマッチ済み: 現在のマッチ行をそのまま返す
+      return { value: undefined, result: matches.filter((m) =>
+        (m.userId === userA.id && m.profileId === userB.id) ||
+        (m.userId === userB.id && m.profileId === userA.id)) };
     }
     const likes = await readJson('likes.json', []);
     const reciprocal =
       likes.some((l) => l.userId === userA.id && l.profileId === userB.id) &&
       likes.some((l) => l.userId === userB.id && l.profileId === userA.id);
-    if (!reciprocal) return { value: undefined, result: false };
+    if (!reciprocal) return { value: undefined, result: [] };
     const conversationId = uid('conv');
     const rowForA = makeMatchRow(userA.id, userToProfile(userB), conversationId, true);
     const rowForB = makeMatchRow(userB.id, userToProfile(userA), conversationId, true);
-    return { value: [rowForB, rowForA, ...matches], result: true };
+    return { value: [rowForB, rowForA, ...matches], result: [rowForA, rowForB] };
   });
-  const matches = await readJson('matches.json', []);
-  return matches.filter((m) =>
-    (m.userId === userA.id && m.profileId === userB.id) ||
-    (m.userId === userB.id && m.profileId === userA.id));
+  return Array.isArray(result) ? result : [];
 }
 
 // 対象ペア間で pending のままの received_likes を accepted に変える。
@@ -652,6 +647,9 @@ function messageBelongsToMatch(message, match) {
 const TOKEN_CACHE_TTL_MS = envInt('TOKEN_CACHE_TTL_MS', 5 * 60 * 1000, { min: 1000, max: 60 * 60 * 1000 });
 const TOKEN_CACHE_MAX = 5000;
 const tokenCache = new Map(); // token -> { value, expiresAt }
+// super-like のクレジット読み取り→いいね書き込み→クレジット消費を
+// ユーザーごとに直列化し、購入分の二重消費を防ぐ。
+const userSuperLikeQueues = new Map();
 let firebaseAdminAuthPromise = null;
 
 function getCachedIdentity(token) {
@@ -980,19 +978,15 @@ app.post('/api/like', requireAuth, async (req, res) => {
   const selectedType = ['like', 'super', 'dual'].includes(type) ? type : 'like';
   const limit = quotaFor(planName, selectedType);
 
-  const [profiles, users, matches, blocks, singlePurchases] = await Promise.all([
+  const [profiles, users, matches, blocks] = await Promise.all([
     readCandidateProfiles(userId),
     readJson('users.json', []),
     readJson('matches.json', []),
-    readJson('blocks.json', []),
-    readJson('single_purchases.json', [])
+    readJson('blocks.json', [])
   ]);
   const profile = profiles.find((item) => item.id === profileId);
   if (!profile) return res.status(404).json({ message: 'プロフィールが見つかりません。' });
 
-  // SUPER LIKE 3回 の購入分は、プランの本日上限を超えても消費して送れる。
-  const superCredits = selectedType === 'super' ? activeEntitlements(singlePurchases, userId).superCredits : 0;
-  const effectiveLimit = limit === Infinity ? Infinity : limit + superCredits;
   if (pairBlocked(blocks, userId, profileId)) {
     return res.status(403).json({ message: 'ブロック済みの相手にはいいねできません。' });
   }
@@ -1001,29 +995,54 @@ app.post('/api/like', requireAuth, async (req, res) => {
     return res.json({ ok: true, already_matched: true, matched: true, match });
   }
 
-  // 利用枠チェックと like 追加を 1ファイルにつき直列・原子的に行い、
-  // 同時リクエストでの枠の二重消費を防ぐ。
+  // super-like のみ: クレジット読み取り → いいね書き込み → クレジット消費を
+  // ユーザーごとに直列化し、購入分の二重消費を防ぐ。
+  // 通常 like はクレジット不要なので直列化不要。
   const like = { id: uid('like'), userId, profileId, type: selectedType, plan: planName, createdAt: new Date().toISOString() };
-  let usedSuperCredit = false;
-  const likeResult = await updateJson('likes.json', [], (likes) => {
-    if (userHasLiked(likes, userId, profileId)) return { value: undefined, result: 'duplicate' };
-    const used = countTodayUsage(likes, userId, selectedType);
-    if (used >= effectiveLimit) return { value: undefined, result: 'quota' };
-    usedSuperCredit = selectedType === 'super' && used >= limit; // プラン上限超過 = 購入分を消費
-    return { value: [...likes, like], result: 'created' };
-  });
-  if (likeResult === 'quota') return res.status(402).json({ message: '本日の利用枠を使い切りました。PLUS/VIPで上限を増やせます。' });
-
-  // 購入したスーパーいいねを1回分消費する。
-  if (likeResult === 'created' && usedSuperCredit) {
-    await updateJson('single_purchases.json', [], (purchases) => {
-      const idx = purchases.findIndex((p) => p.userId === userId && p.perk === 'superCredits' && toNonNegativeInt(p.remaining, 0) > 0);
-      if (idx < 0) return { value: undefined, result: false };
-      const next = [...purchases];
-      next[idx] = { ...next[idx], remaining: toNonNegativeInt(next[idx].remaining, 0) - 1 };
-      return { value: next, result: true };
+  let likeResult;
+  if (selectedType === 'super') {
+    const prevQueue = userSuperLikeQueues.get(userId) || Promise.resolve();
+    const queueEntry = prevQueue.catch(() => {}).then(async () => {
+      // SUPER LIKE 3回 の購入分は、プランの本日上限を超えても消費して送れる。
+      // ここで読んだ credits は同じユーザーの直前の操作がすべて完了した後の値。
+      const sp = await readJson('single_purchases.json', []);
+      const superCredits = activeEntitlements(sp, userId).superCredits;
+      const effectiveLimit = limit === Infinity ? Infinity : limit + superCredits;
+      let usedSuperCredit = false;
+      const result = await updateJson('likes.json', [], (likes) => {
+        if (userHasLiked(likes, userId, profileId)) return { value: undefined, result: 'duplicate' };
+        const used = countTodayUsage(likes, userId, 'super');
+        if (used >= effectiveLimit) return { value: undefined, result: 'quota' };
+        usedSuperCredit = used >= limit; // プラン上限超過 = 購入分を消費
+        return { value: [...likes, like], result: 'created' };
+      });
+      if (result === 'created' && usedSuperCredit) {
+        await updateJson('single_purchases.json', [], (purchases) => {
+          const idx = purchases.findIndex((p) => p.userId === userId && p.perk === 'superCredits' && toNonNegativeInt(p.remaining, 0) > 0);
+          if (idx < 0) return { value: undefined, result: false };
+          const next = [...purchases];
+          next[idx] = { ...next[idx], remaining: toNonNegativeInt(next[idx].remaining, 0) - 1 };
+          return { value: next, result: true };
+        });
+      }
+      return result;
+    });
+    userSuperLikeQueues.set(userId, queueEntry);
+    queueEntry.finally(() => {
+      if (userSuperLikeQueues.get(userId) === queueEntry) userSuperLikeQueues.delete(userId);
+    });
+    likeResult = await queueEntry;
+  } else {
+    // 利用枠チェックと like 追加を 1ファイルにつき直列・原子的に行い、
+    // 同時リクエストでの枠の二重消費を防ぐ。
+    likeResult = await updateJson('likes.json', [], (likes) => {
+      if (userHasLiked(likes, userId, profileId)) return { value: undefined, result: 'duplicate' };
+      const used = countTodayUsage(likes, userId, selectedType);
+      if (used >= limit) return { value: undefined, result: 'quota' };
+      return { value: [...likes, like], result: 'created' };
     });
   }
+  if (likeResult === 'quota') return res.status(402).json({ message: '本日の利用枠を使い切りました。PLUS/VIPで上限を増やせます。' });
 
   // 候補は実ユーザー限定。念のため非実ユーザーは安全に返す。
   if (!isRealUserId(profileId, users)) {
@@ -1035,6 +1054,9 @@ app.post('/api/like', requireAuth, async (req, res) => {
   if (!targetUser || targetUser.autoHidden) return res.status(404).json({ message: 'プロフィールが見つかりません。' });
 
   // 相互いいねが成立していれば、その場で双方向マッチ（競合に強い直列化版）。
+  // likes.json と matches.json は別ファイルのため、両方の書き込みが完了する間に
+  // プロセスがクラッシュした場合は不整合が残る（JSON ファイルストアの制約）。
+  // 再起動後に tryCreateMutualMatch を呼ぶ処理（次回いいね等）が補完する。
   const matchRows = await tryCreateMutualMatch(me, targetUser);
   const myMatch = matchRows.find((m) => m.userId === userId) || null;
   if (myMatch) {
@@ -1117,12 +1139,14 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
     const idx = received.findIndex((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === 'pending');
     if (idx < 0) return { value: undefined, result: false };
     const next = [...received];
-    next[idx] = { ...rl, status: 'accepted', acceptedAt: new Date().toISOString() };
+    next[idx] = { ...received[idx], status: 'accepted', acceptedAt: new Date().toISOString() };
     return { value: next, result: true };
   });
   if (!accepted) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
 
   // いいねを返す＝自分も相手をいいねしたとみなし、likes.json にも記録（真の相互いいね）。
+  // 枠チェックは意図的にスキップ: accept-like は相手の先行いいねへの返礼であり
+  // 「自分から新規いいね」ではないため、日次クォータを消費させない仕様。
   await updateJson('likes.json', [], (likes) => {
     const exists = likes.some((l) => l.userId === userId && l.profileId === rl.fromProfileId);
     if (exists) return { value: undefined, result: false };
@@ -1314,7 +1338,13 @@ app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
     // 同一相手への24時間以内の重複通報を防ぐ。
     if (mine24h.some((r) => r.profileId === profileId)) return { value: undefined, result: { code: 'duplicate' } };
     const next = [report, ...reports];
-    return { value: next.length > MAX_REPORTS_STORED ? next.slice(0, MAX_REPORTS_STORED) : next, result: { code: 'ok', report } };
+    // 自動エスカレーション用のしきい値判定をロック内で行い、競合による見落しを防ぐ。
+    const reporters = new Set(
+      next
+        .filter((r) => r.profileId === profileId && r.status !== 'dismissed' && Date.now() - new Date(r.createdAt).getTime() < REPORT_AUTO_HIDE_WINDOW_MS)
+        .map((r) => r.userId)
+    );
+    return { value: next.length > MAX_REPORTS_STORED ? next.slice(0, MAX_REPORTS_STORED) : next, result: { code: 'ok', report, reporters: reporters.size } };
   });
   if (!outcome) return res.status(500).json({ message: '通報の保存に失敗しました。' });
   if (outcome.code === 'too_many') return res.status(429).json({ message: '本日の通報回数の上限に達しました。時間をおいてください。' });
@@ -1324,23 +1354,17 @@ app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
 
   // 自動エスカレーション: 異なる通報者がしきい値に達したら候補から自動非表示にする。
   // dismissed（管理者が確認済み）の通報はカウントしない。
-  const allReports = await readJson('reports.json', []);
-  const distinctReporters = new Set(
-    allReports
-      .filter((r) => r.profileId === profileId && r.status !== 'dismissed' && Date.now() - new Date(r.createdAt).getTime() < REPORT_AUTO_HIDE_WINDOW_MS)
-      .map((r) => r.userId)
-  );
-  if (distinctReporters.size >= REPORT_AUTO_HIDE_THRESHOLD) {
+  if (outcome.reporters >= REPORT_AUTO_HIDE_THRESHOLD) {
     const hidden = await updateJson('users.json', [], (users) => {
       const idx = users.findIndex((u) => u.id === profileId);
       if (idx < 0 || users[idx].autoHidden) return { value: undefined, result: false };
       const next = [...users];
-      next[idx] = { ...next[idx], autoHidden: true, autoHiddenAt: new Date().toISOString(), autoHiddenReporters: distinctReporters.size };
+      next[idx] = { ...next[idx], autoHidden: true, autoHiddenAt: new Date().toISOString(), autoHiddenReporters: outcome.reporters };
       return { value: next, result: true };
     });
     if (hidden) {
       await setReceivedLikesFromUserStatus(profileId, true);
-      appendAudit('auto_hide', null, profileId, { reporters: distinctReporters.size });
+      appendAudit('auto_hide', null, profileId, { reporters: outcome.reporters });
     }
   }
 

@@ -54,7 +54,13 @@ function safeFilePath(file) {
 
 let dataDirReady = null;
 function ensureDataDir() {
-  if (!dataDirReady) dataDirReady = fs.mkdir(dataDir, { recursive: true });
+  if (!dataDirReady) {
+    const p = fs.mkdir(dataDir, { recursive: true });
+    dataDirReady = p;
+    // 失敗した Promise をキャッシュしたままにすると次回呼び出しで永遠に rejection を返す。
+    // 失敗時はリセットして次回再試行できるようにする。
+    p.catch(() => { if (dataDirReady === p) dataDirReady = null; });
+  }
   return dataDirReady;
 }
 
@@ -79,8 +85,11 @@ function sleep(ms) {
 
 async function releaseFileLock(lockPath, token) {
   try {
-    const current = await fs.readFile(lockPath, 'utf8');
-    if (current.includes(token)) {
+    const text = await fs.readFile(lockPath, 'utf8');
+    let lockData;
+    try { lockData = JSON.parse(text); } catch { /* 壊れたロックファイルは無条件で削除 */ }
+    // 部分文字列マッチ（includes）ではなく厳密な token 一致で自分のロックかを判定する。
+    if (!lockData || lockData.token === token) {
       await fs.rm(lockPath, { force: true });
     }
   } catch {
