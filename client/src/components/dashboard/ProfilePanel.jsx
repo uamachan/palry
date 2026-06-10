@@ -3,14 +3,18 @@ import { rankIconFor } from '../../constants.jsx';
 import VoiceIntroPlayer from './VoiceIntroPlayer.jsx';
 
 function collectPhotos(user) {
-  const candidates = [
-    ...(Array.isArray(user.profilePhotos) ? user.profilePhotos : []),
-    ...(Array.isArray(user.photos) ? user.photos : []),
-    ...(Array.isArray(user.photoUrls) ? user.photoUrls : []),
-    user.profilePhoto,
-    user.photo,
-    user.avatar,
-  ];
+  const sources = [user || {}, (user && user.profile) || {}];
+  const candidates = [];
+  for (const source of sources) {
+    candidates.push(
+      ...(Array.isArray(source.profilePhotos) ? source.profilePhotos : []),
+      ...(Array.isArray(source.photos) ? source.photos : []),
+      ...(Array.isArray(source.photoUrls) ? source.photoUrls : []),
+      source.profilePhoto,
+      source.photo,
+      source.avatar,
+    );
+  }
   const seen = new Set();
   const result = [];
   for (const item of candidates) {
@@ -24,10 +28,11 @@ function collectPhotos(user) {
 }
 
 export default function ProfilePanel({ user }) {
+  const safeUser = user || {};
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
 
-  const rankLabel = user.rank || user.currentRank || user.valorantRank || 'Unranked';
-  const photos = collectPhotos(user);
+  const rankLabel = safeUser.rank || safeUser.currentRank || safeUser.valorantRank || 'Unranked';
+  const photos = collectPhotos(safeUser);
 
   useEffect(() => {
     if (activePhotoIndex >= photos.length && photos.length > 0) {
@@ -46,7 +51,7 @@ export default function ProfilePanel({ user }) {
           <div className="avatar">
             {displayPhoto
               ? <img src={displayPhoto} alt="" />
-              : <span>{user.name?.slice(0, 1) || 'P'}</span>}
+              : <span>{safeUser.name?.slice(0, 1) || 'P'}</span>}
           </div>
           {photos.length >= 1 && (
             <div className="pv-photo-tabs">
@@ -65,26 +70,26 @@ export default function ProfilePanel({ user }) {
           )}
         </div>
 
-        <b>{user.name}</b>
-        <span>{user.gender} / {user.age || '年齢未設定'} / {user.region || '地域未設定'}</span>
+        <b>{safeUser.name}</b>
+        <span>{safeUser.gender} / {safeUser.age || '年齢未設定'} / {safeUser.region || '地域未設定'}</span>
 
         <span className="rank-inline profile-rank-line" data-copyable>
           <span className="rank-inline-icon" aria-hidden="true">
             <img src={rankIconFor(rankLabel)} alt="" loading="lazy" />
           </span>
-          <span>{user.riotId} / {rankLabel} / {user.role}</span>
+          <span>{safeUser.riotId} / {rankLabel} / {safeUser.role}</span>
         </span>
 
-        {Boolean(user.tags?.length) && (
+        {Boolean(safeUser.tags?.length) && (
           <div className="tag-row">
-            {user.tags.map((tag) => (
+            {safeUser.tags.map((tag) => (
               <span className="intent-tag" key={tag}>{tag}</span>
             ))}
           </div>
         )}
 
-        <p>{user.bio || '自己紹介は未入力です。'}</p>
-        <VoiceIntroPlayer src={user.voiceIntro} />
+        <p>{safeUser.bio || '自己紹介は未入力です。'}</p>
+        <VoiceIntroPlayer src={safeUser.voiceIntro} />
       </div>
     </div>
   );
