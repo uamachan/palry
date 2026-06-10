@@ -1,0 +1,170 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isParticipant(participants) {
+      return signedIn() && participants is list && request.auth.uid in participants;
+    }
+
+    function hasOnlyKeys(keys) {
+      return request.resource.data.keys().hasOnly(keys);
+    }
+
+    function validProfileCreate(uid) {
+      return isSelf(uid)
+        && hasOnlyKeys([
+          'id', 'email', 'name', 'riotId', 'ageRange', 'age', 'gender', 'region',
+          'profilePhoto', 'rank', 'role', 'tags', 'agents', 'xHandle', 'bio',
+          'voiceIntro', 'vc', 'maps', 'favoriteWeapon', 'plan', 'verified',
+          'agreedAt', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.id == uid
+        && (!('plan' in request.resource.data) || request.resource.data.plan == 'FREE')
+        && (!('verified' in request.resource.data) || request.resource.data.verified == true)
+        && (!('autoHidden' in request.resource.data));
+    }
+
+    function validProfileUpdate(uid) {
+      return isSelf(uid)
+        && hasOnlyKeys([
+          'id', 'email', 'name', 'riotId', 'ageRange', 'age', 'gender', 'region',
+          'profilePhoto', 'rank', 'role', 'tags', 'agents', 'xHandle', 'bio',
+          'voiceIntro', 'vc', 'maps', 'favoriteWeapon', 'plan', 'verified',
+          'agreedAt', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.id == uid
+        && request.resource.data.plan == resource.data.plan
+        && (!('verified' in request.resource.data) || request.resource.data.verified == resource.data.verified)
+        && (!('autoHidden' in request.resource.data));
+    }
+
+    function validMatchId(matchId, participants) {
+      return participants.size() == 2
+        && participants[0] != participants[1]
+        && (
+          matchId == participants[0] + '_match_' + participants[1] ||
+          matchId == participants[1] + '_match_' + participants[0]
+        );
+    }
+
+    match /users/{uid} {
+      // 候補一覧表示のためログイン済みユーザーはプロフィールを読める。
+      allow read: if signedIn();
+      allow create: if validProfileCreate(uid);
+      allow update: if validProfileUpdate(uid);
+      allow delete: if false;
+    }
+
+    match /likes/{likeId} {
+      allow read: if signedIn() && (
+        resource.data.fromUid == request.auth.uid ||
+        resource.data.toUid == request.auth.uid
+      );
+      allow create, update: if signedIn()
+        && likeId == request.auth.uid + '_' + request.resource.data.toUid
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid is string
+        && request.resource.data.toUid != request.auth.uid
+        && request.resource.data.type in ['like', 'super', 'dual']
+        && hasOnlyKeys(['fromUid', 'toUid', 'type', 'createdAt']);
+      allow delete: if false;
+    }
+
+    match /receivedLikes/{receivedLikeId} {
+      allow read: if signedIn() && (
+        resource.data.forUid == request.auth.uid ||
+        resource.data.fromUid == request.auth.uid
+      );
+      allow create: if signedIn()
+        && receivedLikeId == request.resource.data.forUid + '_from_' + request.auth.uid
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.forUid is string
+        && request.resource.data.forUid != request.auth.uid
+        && request.resource.data.status == 'pending'
+        && hasOnlyKeys([
+          'forUid', 'fromUid', 'fromProfileName', 'fromProfilePhoto',
+          'fromProfileRank', 'fromProfileRole', 'type', 'status', 'createdAt'
+        ]);
+      allow update: if signedIn()
+        && resource.data.forUid == request.auth.uid
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['accepted', 'blocked'];
+      allow delete: if false;
+    }
+
+    match /matches/{matchId} {
+      allow read: if isParticipant(resource.data.participants);
+      allow create, update: if isParticipant(request.resource.data.participants)
+        && validMatchId(matchId, request.resource.data.participants)
+        && hasOnlyKeys(['id', 'participants', 'createdAt'])
+        && request.resource.data.id == matchId;
+      allow delete: if false;
+    }
+
+    match /messages/{messageId} {
+      allow read: if signedIn() && exists(/databases/$(database)/documents/matches/$(resource.data.matchId))
+        && request.auth.uid in get(/databases/$(database)/documents/matches/$(resource.data.matchId)).data.participants;
+      allow create: if signedIn()
+        && exists(/databases/$(database)/documents/matches/$(request.resource.data.matchId))
+        && request.auth.uid in get(/databases/$(database)/documents/matches/$(request.resource.data.matchId)).data.participants
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() <= 500
+        && hasOnlyKeys(['matchId', 'senderUid', 'body', 'createdAt', 'readAt']);
+      allow update: if signedIn()
+        && exists(/databases/$(database)/documents/matches/$(resource.data.matchId))
+        && request.auth.uid in get(/databases/$(database)/documents/matches/$(resource.data.matchId)).data.participants
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['readAt']);
+      allow delete: if false;
+    }
+
+    match /blocks/{blockId} {
+      allow read: if signedIn() && (
+        resource.data.byUid == request.auth.uid ||
+        resource.data.targetUid == request.auth.uid
+      );
+      allow create, update: if signedIn()
+        && blockId == request.auth.uid + '_block_' + request.resource.data.targetUid
+        && request.resource.data.byUid == request.auth.uid
+        && request.resource.data.targetUid is string
+        && request.resource.data.targetUid != request.auth.uid
+        && hasOnlyKeys(['byUid', 'targetUid', 'createdAt']);
+      allow delete: if false;
+    }
+
+    match /footprints/{footprintId} {
+      allow read: if signedIn() && resource.data.actorUid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.profileId is string
+        && hasOnlyKeys(['actorUid', 'profileId', 'name', 'rank', 'gender', 'action', 'createdAt']);
+      allow update, delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow read: if signedIn() && resource.data.reporterUid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.profileId is string
+        && request.resource.data.profileId != request.auth.uid
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() <= 200
+        && request.resource.data.status == 'open'
+        && hasOnlyKeys(['reporterUid', 'profileId', 'reason', 'status', 'createdAt']);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

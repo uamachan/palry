@@ -1,165 +1,110 @@
 # Production Code Review — Pairly
 
-このドキュメントは、Pairly を本番環境へ出す前のコードレビュー結果と、公開前に必ず確認する項目をまとめたものです。
+このドキュメントは、Renderを使わない現在の構成に合わせた本番レビューです。
 
-## 結論
+## 現在の結論
 
-Pairly は現在、**小規模な本番運用の最低ラインには近い状態**です。
-ただし、データ保存は JSON ファイル方式のため、長期運用・大量ユーザー・複数インスタンス構成にはまだ弱いです。
+現在は **Cloudflare Pages / Workers Static Assets + Firebase Auth + Firestore** 構成を前提にします。
 
-まずは Render の単一 Web Service + Persistent Disk 構成で公開するのが現実的です。
-本格運用に入る前には Supabase / PostgreSQL / Firebase Firestore などの DB 化を推奨します。
+```txt
+Cloudflare
+  └─ React + Vite の静的配信
+Firebase Authentication
+  └─ ログイン・メール認証・Google認証
+Firestore
+  └─ プロフィール、LIKE、マッチ、DM、通報、ブロック保存
+Firestore Rules
+  └─ APIサーバーの代わりにデータアクセスを制限
+```
+
+Cloudflareの静的配信では Express の `/api` は起動しません。
+そのため、フロントは `/api/login` ではなく Firestore を直接利用します。
 
 ---
 
-## 推奨する本番構成
+## 必須設定
 
-### パターンA: Express 1台でフロントとAPIを配信する構成
+### Cloudflare
 
-一番おすすめです。
-`npm run build` で作った `dist` を Express が配信し、同じドメインで `/api` も受けます。
-
-Render の設定例:
-
-```bash
-Build Command: npm install && npm run build
-Start Command: npm start
+```txt
+Build command: npm run build
+Build output directory: dist
 ```
 
-この構成では、フロントの API 呼び出しは同一オリジンの `/api/...` になるため、`VITE_API_BASE_URL` は空で問題ありません。
+`wrangler.jsonc` は静的アセット配信用です。
 
-### パターンB: フロントとAPIを別サービスに分ける構成
+### Firebase Authentication
 
-静的サイトサービス + APIサーバーを分ける場合は、フロント側に API URL を指定します。
+- メール/パスワードログインを有効化
+- Googleログインを使うなら Google Provider を有効化
+- Authorized domains に本番ドメインを追加
 
-```bash
-VITE_API_BASE_URL=https://your-api-service.onrender.com
+例:
+
+```txt
+palry.pages.dev
+example.com
+www.example.com
 ```
 
-API側では、CORS許可のためにフロントURLを指定します。
+### Firestore
+
+Firestore Database を作成し、`firestore.rules` を必ずデプロイしてください。
 
 ```bash
-CLIENT_ORIGIN=https://your-frontend-service.onrender.com
+firebase deploy --only firestore:rules
 ```
-
-`/api/login` が 404 になる場合は、ほぼこの設定ミスです。
-フロントだけのドメインへ `/api/login` を投げていると 404 になります。
 
 ---
 
 ## 必須の環境変数
 
-API / Express 側:
+Cloudflare側に以下を設定します。
 
 ```bash
-NODE_ENV=production
-PORT=3001
-CLIENT_ORIGIN=https://your-domain.example
-DATA_DIR=/var/data/pairly
-FIREBASE_WEB_API_KEY=your_firebase_web_api_key
-VITE_FIREBASE_API_KEY=your_firebase_web_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project-id
-VITE_FIREBASE_APP_ID=your_firebase_app_id
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+VITE_FIREBASE_MEASUREMENT_ID=...
 ```
 
-フロントとAPIを分ける場合のみ、フロント側に追加:
-
-```bash
-VITE_API_BASE_URL=https://your-api-service.onrender.com
-```
+`VITE_API_BASE_URL` は現在のCloudflare + Firestore直利用構成では不要です。
+古い設定で残っていても、現在の `client/src/api.js` では使いません。
 
 ---
 
 ## データ保存レビュー
 
-現在の保存方式:
+現在の保存先は Firestore です。
+
+主なコレクション:
 
 ```txt
-users.json
-likes.json
-matches.json
-received_likes.json
-messages.json
-single_purchases.json
-```
-
-保存先は `DATA_DIR` です。
-本番では以下を推奨します。
-
-```bash
-DATA_DIR=/var/data/pairly
-```
-
-Render では Persistent Disk を追加し、Mount Path を以下にします。
-
-```txt
-/var/data
+users
+likes
+receivedLikes
+matches
+messages
+blocks
+footprints
+reports
 ```
 
 ### 良い点
 
-- `updateJson()` でファイル単位の書き込みキューがある
-- 一時ファイルへ書いてから rename するため、書き込み途中の破損リスクが低い
-- `DATA_DIR` により本番の永続ディスクへ逃がせる
+- Cloudflare静的配信でもデータが保存できる
+- 再デプロイしてもプロフィールやDMが消えない
+- Firestore Rulesにより、最低限の本人確認と書き換え制限を入れられる
 
 ### 注意点
 
-- 複数インスタンスで動かすと JSON ファイル競合が起きる可能性がある
-- バックアップ機能はまだない
-- 検索や集計が増えると遅くなる
-- 本格的に課金・大量ユーザーを扱うなら DB 化が必要
-
-### 本番公開時の最低条件
-
-- Render Persistent Disk を作成する
-- Mount Path を `/var/data` にする
-- `DATA_DIR=/var/data/pairly` を設定する
-- 単一インスタンスで運用する
-
----
-
-## 認証レビュー
-
-現在は Firebase Authentication を使用しています。
-サーバー側では Firebase ID token を `accounts:lookup` で検証し、ログイン済みユーザーだけがAPIを使える構成です。
-
-### 良い点
-
-- `/api/profile`, `/api/profiles`, `/api/like`, `/api/dm` などは認証必須
-- メール認証済みユーザーのみプロフィール作成・ログイン可能
-- Firebase UID と `users.json` の `firebaseUid` を紐づけて復元している
-- メールアドレス一致で既存プロフィールをリンクする時、`emailVerified` を必須にしている
-
-### 確認すること
-
-Firebase Console の Authentication > Settings > Authorized domains に本番ドメインを追加してください。
-
-例:
-
-```txt
-palry.onrender.com
-```
-
----
-
-## CORS / API 接続レビュー
-
-API側は `CLIENT_ORIGIN` に一致するオリジンだけ許可します。
-
-本番でよく出るエラー:
-
-```txt
-/api/login 404
-```
-
-これは API がないドメインへリクエストしている可能性が高いです。
-
-対策:
-
-- Express 1台構成なら、`VITE_API_BASE_URL` は空
-- フロント/API分離なら、フロント側に `VITE_API_BASE_URL` を設定
-- API側に `CLIENT_ORIGIN` を設定
+- クライアント直アクセスなので、サーバー側だけで行う厳密なレート制限はできない
+- 本物の課金確定はクライアントだけでは安全にできない
+- 通報の自動非表示や管理者処理は、将来的にCloudflare Workers/Firebase Functions等へ移すのが望ましい
+- プロフィール一覧はログイン済みユーザーが読める設計なので、非公開項目は `users` に入れない方がよい
 
 ---
 
@@ -167,69 +112,50 @@ API側は `CLIENT_ORIGIN` に一致するオリジンだけ許可します。
 
 ### 実装済み
 
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- `Permissions-Policy`
-- 本番のみ Content-Security-Policy
-- APIレート制限
-- 入力値の `cleanText()` 処理
-- 画像/音声URLの `sanitizeMedia()` 処理
-- 管理APIは `ADMIN_EMAILS` による許可制
+- Firebase Auth必須
+- `firestore.rules` を追加
+- 他人の `users/{uid}` 更新を拒否
+- 通常プロフィール更新で `plan` の勝手な変更を拒否
+- DMはマッチ参加者だけが読み書き可能
+- LIKE / receivedLikes / blocks / reports は本人に紐づく形に制限
+- 未定義コレクションは拒否
 
-### 注意点
+### まだ弱いところ
 
-- `style-src 'unsafe-inline'` は現状のUI都合で残っている
-- 画像/音声を Base64 で JSON に保存しているため、容量が増えやすい
-- 管理画面を本番で使うなら `ADMIN_EMAILS` を必ず設定する
-- 本格運用では画像/音声は Firebase Storage などへ逃がすのが望ましい
+- 課金ボタンはデモ扱い。Firestore Rulesにより通常更新でVIP化は拒否されるため、今のままでは本物のプラン変更は通りません。
+- 管理画面はフロント側スタブ寄り。管理者操作を本格化するなら Cloudflare Workers / Firebase Functions が必要です。
+- 画像や音声をBase64でFirestoreに入れると容量・料金面で不利です。Firebase Storageへ移すのが望ましいです。
 
 ---
 
-## パフォーマンスレビュー
+## `/api/login 404` について
 
-### 良い点
+Cloudflare静的配信では `/api/login` は存在しません。
+このエラーが出る場合は、以下のどちらかです。
 
-- Firebase は動的 import で遅延ロードされている
-- `AppDashboard` はログイン後画面として分離されている
-- APIベースURLを環境変数化したため、構成変更に強くなった
+1. 古いビルドがCloudflareに残っている
+2. `client/src/api.js` がExpress API版のままデプロイされている
 
-### 改善余地
-
-- `styles.css` が大きくなった場合は分割推奨
-- Base64画像を大量に扱うと HTML/JSON/APIレスポンスが重くなる
-- DOM量が増えたら、DMやプロフィール一覧の仮想化を検討
+現在の修正後は、`client/src/api.js` がFirestore直利用なので `/api/login` を叩きません。
 
 ---
 
 ## 公開前チェックリスト
 
-### Render
-
-- [ ] Build Command が `npm install && npm run build`
-- [ ] Start Command が `npm start`
-- [ ] Node version が `>=22.12.0 <25`
-- [ ] Persistent Disk を追加した
-- [ ] Persistent Disk の Mount Path が `/var/data`
-- [ ] `DATA_DIR=/var/data/pairly` を設定した
-
-### 環境変数
-
-- [ ] `NODE_ENV=production`
-- [ ] `CLIENT_ORIGIN` が本番フロントURLと一致している
-- [ ] `FIREBASE_WEB_API_KEY` が設定されている
-- [ ] `VITE_FIREBASE_API_KEY` が設定されている
-- [ ] `VITE_FIREBASE_AUTH_DOMAIN` が設定されている
-- [ ] `VITE_FIREBASE_PROJECT_ID` が設定されている
-- [ ] `VITE_FIREBASE_APP_ID` が設定されている
-- [ ] フロント/API分離時は `VITE_API_BASE_URL` を設定した
-
 ### Firebase
 
-- [ ] Authentication のメール/パスワードログインが有効
-- [ ] Googleログインを使う場合は Google Provider が有効
-- [ ] Authorized domains に本番ドメインを追加
-- [ ] Web API Key が正しい
+- [ ] Firestore Databaseを作成した
+- [ ] `firestore.rules` をデプロイした
+- [ ] Authenticationのメール/パスワードを有効化した
+- [ ] Googleログインを使う場合はProviderを有効化した
+- [ ] Authorized domainsに本番ドメインを追加した
+
+### Cloudflare
+
+- [ ] Build command が `npm run build`
+- [ ] Output directory が `dist`
+- [ ] Firebaseの `VITE_FIREBASE_*` 環境変数を設定した
+- [ ] 最新コミットで再デプロイした
 
 ### 動作確認
 
@@ -237,53 +163,17 @@ API側は `CLIENT_ORIGIN` に一致するオリジンだけ許可します。
 - [ ] メール認証後、プロフィール作成できる
 - [ ] ログアウト後、再ログインしてプロフィールが復元される
 - [ ] マッチング画面へ入れる
-- [ ] いいね送信できる
-- [ ] 相互いいねでマッチ成立する
+- [ ] LIKE送信できる
+- [ ] 相互LIKEでマッチ成立する
 - [ ] DM送信できる
 - [ ] ページ更新後もDM履歴が残る
-- [ ] 再デプロイ後もプロフィールが残る
 
 ---
 
-## 現時点の判定
+## 次にやるべきこと
 
-### 小規模公開
-
-条件付きで可。
-
-条件:
-
-- Render単一インスタンス
-- Persistent Diskあり
-- Firebase設定完了
-- `DATA_DIR` 正しく設定
-- 管理者メール `ADMIN_EMAILS` を必要に応じて設定
-
-### 本格運用
-
-まだ早いです。
-
-本格運用前にやるべきこと:
-
-1. JSON保存から DB へ移行
-2. 画像/音声を Storage へ移行
-3. 課金処理をデモから本物の決済へ変更
-4. 管理画面の権限・監査ログを強化
-5. 通報・ブロック・削除依頼対応の運用ルールを作る
-6. 利用規約・プライバシーポリシーを正式版にする
-
----
-
-## 推奨する次の作業
-
-最初の本番公開は以下の順番で進めてください。
-
-1. Renderで Persistent Disk を追加
-2. 環境変数を設定
-3. `npm start` でExpress本番起動
-4. `/api/health` を確認
-5. 新規登録と再ログイン保存テスト
-6. 1回再デプロイして、プロフィールが残るか確認
-
-`/api/health` が見えない場合、その環境ではAPIが起動していません。
-その状態では `/api/login` も必ず失敗します。
+1. Cloudflareで最新コミットを再デプロイ
+2. Firebase ConsoleでFirestore Rulesを反映
+3. 本番ドメインをFirebase AuthenticationのAuthorized domainsへ追加
+4. 実機で登録→プロフィール作成→LIKE→マッチ→DMまで確認
+5. 本物の課金を入れるなら、Cloudflare WorkersかFirebase Functionsで課金確定APIを作る
