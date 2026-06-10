@@ -1,13 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { rankIconFor } from '../../constants.jsx';
-import VoiceIntroPlayer from './VoiceIntroPlayer.jsx';
+import React,{useMemo,useState}from'react';
+import{rankIconFor}from'../../constants.jsx';
+import VoiceIntroPlayer from'./VoiceIntroPlayer.jsx';
 
-function getPhotoUrl(photo) {
-  if (!photo) return '';
-  if (typeof photo === 'string') return photo;
-  return photo.url || photo.src || photo.photo || photo.image || '';
-}
-
-export default function ProfilePanel({ user }) {
-  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
-  const rankLabel =
+const photoUrl=(p)=>!p?'':typeof p==='string'?p:p.url||p.src||p.photo||p.image||'';
+const pickPhotos=(u)=>[...(Array.isArray(u?.profilePhotos)?u.profilePhotos:[]),...(Array.isArray(u?.photos)?u.photos:[]),...(Array.isArray(u?.photoUrls)?u.photoUrls:[]),u?.profilePhoto].map(photoUrl).filter(Boolean).filter((p
