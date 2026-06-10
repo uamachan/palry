@@ -437,9 +437,11 @@ export const api = {
   },
 
   purchase: async ({ plan }) => {
-    const uid = await currentUserOrThrow();
-    await writeUserProfile(uid, { plan, updatedAt: now() });
-    return { purchase: { plan } };
+    await currentUserOrThrow();
+    // Cloudflare + Firestore直利用では、クライアントだけで本物のプラン変更を保存しない。
+    // Firestore Rulesも通常プロフィール更新による plan 変更を拒否する。
+    // ここはUI確認用のデモレスポンスだけ返す。
+    return { purchase: { plan, demo: true }, entitlements: buildEntitlements(plan) };
   },
 
   purchaseItem: async () => ({ entitlements: buildEntitlements('FREE') }),
