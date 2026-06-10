@@ -983,12 +983,14 @@ app.post('/api/like', requireAuth, async (req, res) => {
   const selectedType = ['like', 'dual'].includes(type) ? type : 'like';
   const limit = quotaFor(planName, selectedType);
 
-  const [profiles, users, matches, blocks] = await Promise.all([
-    readCandidateProfiles(userId),
+  const [users, matches, blocks] = await Promise.all([
     readJson('users.json', []),
     readJson('matches.json', []),
     readJson('blocks.json', [])
   ]);
+  const profiles = users
+    .filter((user) => isVisibleUser(user) && user.id !== userId)
+    .map((user) => ({ ...userToProfile(user), isRealUser: true }));
   const profile = profiles.find((item) => item.id === profileId);
   if (!profile) return res.status(404).json({ message: 'プロフィールが見つかりません。' });
 
@@ -1123,7 +1125,14 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
   // 相互 like は存在するがマッチ行がない孤立状態になる。
   // accept-like は received_like を 'accepted' に変えているため再試行も不可能で、
   // 次回どちらかが /api/like を送るまで自己修復されない（JSON ストアの制約）。
-  const matchRows = await tryCreateMutualMatch(me, fromUser);
+  //
+  // autoHidden は like 書き込み後に変わる可能性があるため、tryCreateMutualMatch に渡す直前に
+  // 最新の users.json から再取得し、競合ウィンドウを最小化する。
+  const latestFromUser = (await readJson('users.json', [])).find((u) => u.id === rl.fromProfileId);
+  if (!latestFromUser || latestFromUser.autoHidden) {
+    return res.json({ ok: true, match: null, matched: false });
+  }
+  const matchRows = await tryCreateMutualMatch(me, latestFromUser);
   await resolvePendingBetween(userId, rl.fromProfileId);
   const myMatch = matchRows.find((m) => m.userId === userId) || null;
   return res.json({ ok: true, match: myMatch, matched: !!myMatch });
