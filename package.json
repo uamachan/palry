@@ -9,6 +9,7 @@
     "local": "concurrently \"node server/index.js\" \"vite --host localhost --open /\"",
     "prebuild": "node scripts/generate-sitemap.mjs",
     "build": "vite build",
+    "deploy": "npm run build && wrangler deploy",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "db:validate": "prisma validate --schema prisma/schema.prisma",
     "db:generate": "prisma generate --schema prisma/schema.prisma",
