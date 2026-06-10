@@ -57,7 +57,7 @@ body,
 
 .appv2-content{
   width:min(1260px,100%);
-  margin:0 auto 16px;
+  margin:0 auto 24px;
   min-height:calc(100dvh - 108px);
   border:1px solid var(--line,#e7e0d8);
   border-radius:28px;
