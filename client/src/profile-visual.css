@@ -722,6 +722,44 @@
   gap: 7px !important;
 }
 
+.pv-photo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pv-photo-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.pv-photo-tab {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line, #e7e0d8);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted, #77706a);
+  font-size: 12px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background .1s, color .1s, border-color .1s;
+}
+
+.pv-photo-tab:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.pv-photo-tab.active {
+  background: var(--ink, #181614);
+  color: #fff;
+  border-color: var(--ink, #181614);
+}
+
 .pv-chip,
 .pv-gender-btn {
   background: #FFFDF9 !important;
