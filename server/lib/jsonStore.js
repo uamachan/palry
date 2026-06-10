@@ -87,9 +87,10 @@ async function releaseFileLock(lockPath, token) {
   try {
     const text = await fs.readFile(lockPath, 'utf8');
     let lockData;
-    try { lockData = JSON.parse(text); } catch { /* 壊れたロックファイルは無条件で削除 */ }
-    // 部分文字列マッチ（includes）ではなく厳密な token 一致で自分のロックかを判定する。
-    if (!lockData || lockData.token === token) {
+    try { lockData = JSON.parse(text); } catch { /* 壊れたロックファイルは stale 回収（JSON_LOCK_STALE_MS）に任せる */ }
+    // JSON がパースできない場合は他プロセスのロックを誤削除しないよう何もしない。
+    // トークンが一致した場合のみ削除する。
+    if (lockData && lockData.token === token) {
       await fs.rm(lockPath, { force: true });
     }
   } catch {

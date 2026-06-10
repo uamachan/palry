@@ -781,7 +781,12 @@ async function requireAuth(req, res, next) {
     return res.status(error.status || 401).json({ message: error.message || '認証に失敗しました。' });
   }
   if (!firebaseUser.emailVerified) return res.status(403).json({ message: 'メール認証を完了してください。' });
-  const user = await findAndLinkFirebaseProfile(firebaseUser);
+  let user;
+  try {
+    user = await findAndLinkFirebaseProfile(firebaseUser);
+  } catch {
+    return res.status(503).json({ message: 'データの読み込みに失敗しました。しばらくしてから再試行してください。' });
+  }
   if (!user) return res.status(404).json({ message: 'Pairlyプロフィールが見つかりません。' });
   req.authedUser = user;
   next();
@@ -804,7 +809,12 @@ app.post('/api/register', authLimiter, async (req, res) => {
     return res.status(error.status || 500).json({ message: error.message || 'Firebase認証の確認に失敗しました。' });
   }
   if (!firebaseUser.emailVerified) return res.status(403).json({ message: 'メール認証を完了してからプロフィールを作成してください。' });
-  const existingProfile = await findAndLinkFirebaseProfile(firebaseUser);
+  let existingProfile;
+  try {
+    existingProfile = await findAndLinkFirebaseProfile(firebaseUser);
+  } catch {
+    return res.status(503).json({ message: 'データの読み込みに失敗しました。しばらくしてから再試行してください。' });
+  }
   if (existingProfile) {
     return res.json({ user: { ...publicUser(existingProfile), isAdmin: isAdmin(existingProfile) }, message: '保存済みプロフィールでログインしました。' });
   }
@@ -867,7 +877,12 @@ app.post('/api/login', authLimiter, async (req, res) => {
     return res.status(error.status || 500).json({ message: error.message || 'Firebase認証の確認に失敗しました。' });
   }
   if (!firebaseUser.emailVerified) return res.status(403).json({ message: 'メール認証を完了してください。' });
-  const found = await findAndLinkFirebaseProfile(firebaseUser);
+  let found;
+  try {
+    found = await findAndLinkFirebaseProfile(firebaseUser);
+  } catch {
+    return res.status(503).json({ message: 'データの読み込みに失敗しました。しばらくしてから再試行してください。' });
+  }
   if (!found) return res.status(404).json({ message: 'Pairlyプロフィールが見つかりません。先にアカウント作成してください。' });
   res.json({ user: { ...publicUser(found), isAdmin: isAdmin(found) } });
 });
@@ -930,7 +945,7 @@ app.get('/api/profiles', requireAuth, async (req, res) => {
   const targetGender = rawTargetGender === 'all' || allowedGenders.includes(rawTargetGender) ? rawTargetGender : 'all';
   const userId = req.authedUser.id;
   if (req.authedUser.autoHidden) {
-    return res.json({ profiles: [], plan: plans[planName] || plans.FREE, entitlements: { genderFilter: false, boost: false, spotlight: false, superCredits: 0 }, genderFilterAllowed: false, targetGenderApplied: false });
+    return res.json({ profiles: [], plan: plans[planName] || plans.FREE, entitlements: { genderFilter: false, boost: false, spotlight: false }, genderFilterAllowed: false, targetGenderApplied: false });
   }
   const [profiles, blocks, singlePurchases] = await Promise.all([
     readCandidateProfiles(userId),
@@ -1101,10 +1116,14 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
     if (exists) return { value: undefined, result: false };
     return { value: [...likes, { id: uid('like'), userId, profileId: rl.fromProfileId, type: 'like', plan: me.plan || 'FREE', createdAt: new Date().toISOString() }], result: true };
   });
+  // likes.json と matches.json は別ファイルのため、両書き込みの間にクラッシュすると
+  // 相互 like は存在するがマッチ行がない孤立状態になる。
+  // accept-like は received_like を 'accepted' に変えているため再試行も不可能で、
+  // 次回どちらかが /api/like を送るまで自己修復されない（JSON ストアの制約）。
   const matchRows = await tryCreateMutualMatch(me, fromUser);
   await resolvePendingBetween(userId, rl.fromProfileId);
   const myMatch = matchRows.find((m) => m.userId === userId) || null;
-  return res.json({ ok: true, match: myMatch, matched: true });
+  return res.json({ ok: true, match: myMatch, matched: !!myMatch });
 });
 
 app.get('/api/matches/:userId', requireAuth, async (req, res) => {
