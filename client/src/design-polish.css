@@ -63,8 +63,12 @@ body,
   border-radius:28px;
   background:var(--paper,#fffdf9);
   box-shadow:0 14px 36px rgba(31,25,20,.07);
-  padding:18px;
+  padding:20px;
   overflow:hidden;
+}
+.appv2-content--scroll{
+  overflow-y:auto;
+  padding-bottom:96px;
 }
 
 .mp-wrap{
