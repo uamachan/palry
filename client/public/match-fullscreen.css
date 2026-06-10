@@ -72,19 +72,19 @@
     grid-area: actions !important;
     width: min(100%, 560px) !important;
     max-width: 560px !important;
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 16px !important;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 32px !important;
     justify-self: center !important;
     margin: 0 auto !important;
     padding: 0 !important;
   }
 
   html body #root .mp-actions .mp-btn {
-    width: 100% !important;
-    min-height: 64px !important;
-    height: 64px !important;
-    border-radius: 20px !important;
+    width: 68px !important;
+    height: 68px !important;
+    flex: 0 0 68px !important;
+    border-radius: 50% !important;
   }
 }
 
