@@ -1,16 +1,12 @@
 {
-  // Cloudflare のビルドが wrangler を実行する際、設定ファイルが無いと
-  // Vite プロジェクトを自動検出して vite.config.js を解析しようとし、失敗する。
-  // ここで「静的アセット配信のみ（Worker スクリプト無し）」を明示することで
-  // その自動検出を止め、ビルド(dist/)をそのまま配信してビルドを通す。
-  //
-  // 注意: これはフロントエンド(Vite製SPA)のみの配信。バックエンド(/api の
-  // Express サーバー)は Cloudflare では動かないため、API は別ホスト(Render 等)
-  // を参照する必要がある。まずはビルド通過が目的の最小構成。
+  // Cloudflare Workers の Static Assets 配信用設定。
+  // worker.js は dist/ の静的ファイルを env.ASSETS から返すだけの入口。
   "name": "palry",
-  "compatibility_date": "2025-06-01",
+  "compatibility_date": "2026-06-10",
+  "main": "worker.js",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS"
   }
 }

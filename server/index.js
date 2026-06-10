@@ -43,10 +43,12 @@ const DEV_IDENTITY = { uid: 'dev-user', email: 'dev@palry.local', emailVerified:
 if (allowDevLogin) {
   console.warn(`[dev] ALLOW_DEV_LOGIN 有効${isProduction ? '（本番環境！）' : ''}: Firebase認証をスキップする開発者トークンを受け付けます。停止するには ALLOW_DEV_LOGIN を外して再起動してください。`);
 }
-const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+const defaultAllowedOrigins = isProduction ? [] : ['http://localhost:5173'];
+const configuredAllowedOrigins = (process.env.CLIENT_ORIGIN || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+const allowedOrigins = configuredAllowedOrigins.length ? configuredAllowedOrigins : defaultAllowedOrigins;
 
 function envInt(name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {
   const raw = process.env[name];
@@ -62,7 +64,6 @@ function envInt(name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {})
 function validateProductionConfig() {
   if (!isProduction) return;
   const missing = [
-    'CLIENT_ORIGIN',
     'VITE_FIREBASE_API_KEY',
     'VITE_FIREBASE_AUTH_DOMAIN',
     'VITE_FIREBASE_PROJECT_ID',
@@ -70,6 +71,9 @@ function validateProductionConfig() {
   ].filter((key) => !process.env[key]);
   if (missing.length) {
     console.warn(`[production config] Missing environment variables: ${missing.join(', ')}`);
+  }
+  if (!configuredAllowedOrigins.length) {
+    console.warn('[production config] CLIENT_ORIGIN is not set. Same-origin API calls are allowed, but cross-origin frontends will be rejected.');
   }
 }
 
@@ -119,11 +123,27 @@ function rateLimit({ windowMs, max, message, keyGenerator }) {
 }
 
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '8mb' }));
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
+
+function isSameOriginRequest(req, origin) {
+  if (!origin) return true;
+  try {
+    const parsed = new URL(origin);
+    const host = req.get('host');
+    const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+    const protocol = forwardedProto || req.protocol;
+    return Boolean(host) && parsed.host === host && parsed.protocol === `${protocol}:`;
+  } catch {
+    return false;
   }
+}
+
+app.use(cors((req, callback) => {
+  const origin = req.headers.origin;
+  if (!origin) return callback(null, { origin: false });
+  if (allowedOrigins.includes(origin) || isSameOriginRequest(req, origin)) {
+    return callback(null, { origin: true });
+  }
+  return callback(new Error('Not allowed by CORS'));
 }));
 // Content-Security-Policy（本番のみ）。XSS 時の被害を抑える。
 // Firebase 認証（Google ログインの iframe/gapi）と data URL の写真/音声を
@@ -200,7 +220,7 @@ function loadLocalEnv() {
     const index = trimmed.indexOf('=');
     if (index < 1) continue;
     const key = trimmed.slice(0, index).trim();
-    const value = trimmed.slice(index + 1).trim().replace(/^['"]|['"]$/g, '');
+    const value = trimmed.slice(index + 1).trim().replace(/^[\'"]|[\'"]$/g, '');
     if (!process.env[key]) process.env[key] = value;
   }
 }
@@ -214,7 +234,7 @@ function loadLocalEnv() {
 const adminEmails = new Set(
   (process.env.ADMIN_EMAILS || '')
     .split(',')
-    .map((e) => e.trim().toLowerCase())
+    .map((email) => emailKey(email))
     .filter(Boolean)
 );
 function isAdmin(user) {
@@ -728,35 +748,19 @@ app.post('/api/accept-like', requireAuth, async (req, res) => {
   const receivedLikeId = cleanText(req.body?.receivedLikeId, 80);
   const userId = req.authedUser.id;
   const me = req.authedUser;
-  if (me.autoHidden) return res.status(403).json({ message: '現在この操作は利用できません。' });
   if (!receivedLikeId) return res.status(400).json({ message: '対象のいいねが必要です。' });
+  if (req.authedUser.autoHidden) return res.status(403).json({ message: '現在この操作は利用できません。' });
 
-  const received = await readJson('received_likes.json', []);
-  const rl = received.find((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === LIKE_STATUS.PENDING);
-  if (!rl) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
-
-  const [users, blocks] = await Promise.all([
+  const [received, users, blocks] = await Promise.all([
+    readJson('received_likes.json', []),
     readJson('users.json', []),
     readJson('blocks.json', [])
   ]);
+  const rl = received.find((r) => r.id === receivedLikeId && r.forUserId === userId && r.status === LIKE_STATUS.PENDING);
+  if (!rl) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
   const fromUser = users.find((u) => u.id === rl.fromProfileId);
-  if (!fromUser) return res.status(404).json({ message: '対象のいいねが見つかりません。' });
-  if (fromUser.autoHidden) {
-    await setReceivedLikesFromUserStatus(fromUser.id, true);
-    return res.status(404).json({ message: '対象のいいねが見つかりません。' });
-  }
+  if (!fromUser || !isVisibleUser(fromUser)) return res.status(404).json({ message: '相手のプロフィールが見つかりません。' });
   if (pairBlocked(blocks, userId, rl.fromProfileId)) {
-    await updateJson('received_likes.json', [], (current) => {
-      let changed = false;
-      const next = current.map((item) => {
-        if (item.id === receivedLikeId && item.status === LIKE_STATUS.PENDING) {
-          changed = true;
-          return { ...item, status: LIKE_STATUS.BLOCKED, blockedAt: new Date().toISOString() };
-        }
-        return item;
-      });
-      return { value: changed ? next : undefined, result: changed };
-    });
     return res.status(403).json({ message: 'ブロック済みの相手とはマッチできません。' });
   }
 
@@ -958,23 +962,21 @@ app.post('/api/report', requireAuth, reportLimiter, async (req, res) => {
     const mine24h = reports.filter((r) => r.userId === actorId && Date.now() - new Date(r.createdAt).getTime() < DAY_MS);
     // アカウント単位の永続レート制限（再起動で消えない）。
     if (mine24h.length >= MAX_REPORTS_PER_DAY) return { value: undefined, result: { code: 'too_many' } };
-    // 同一相手への24時間以内の重複通報を防ぐ。
-    if (mine24h.some((r) => r.profileId === profileId)) return { value: undefined, result: { code: 'duplicate' } };
-    const next = [report, ...reports];
-    return { value: next.length > MAX_REPORTS_STORED ? next.slice(0, MAX_REPORTS_STORED) : next, result: { code: 'ok', report } };
+    const duplicate = reports.some((r) => r.userId === actorId && r.profileId === profileId && r.status === REPORT_STATUS.OPEN);
+    if (duplicate) return { value: undefined, result: { code: 'duplicate' } };
+    const next = [report, ...reports].slice(0, MAX_REPORTS_STORED);
+    return { value: next, result: { code: 'created', report } };
   });
-  if (!outcome) return res.status(500).json({ message: '通報の保存に失敗しました。' });
-  if (outcome.code === 'too_many') return res.status(429).json({ message: '本日の通報回数の上限に達しました。時間をおいてください。' });
-  if (outcome.code === 'duplicate') return res.status(409).json({ message: 'このユーザーはすでに通報済みです。時間をおいてください。' });
+  if (outcome.code === 'too_many') return res.status(429).json({ message: '本日の通報上限に達しました。' });
+  if (outcome.code === 'duplicate') return res.status(409).json({ message: 'このユーザーはすでに通報済みです。' });
 
-  appendAudit('report', actorId, profileId, { reason: report.reason, ip: clientIp(req) });
+  appendAudit('report', actorId, profileId, { ip: clientIp(req), reason: report.reason });
 
-  // 自動エスカレーション: 異なる通報者がしきい値に達したら候補から自動非表示にする。
-  // dismissed（管理者が確認済み）の通報はカウントしない。
-  const allReports = await readJson('reports.json', []);
+  // 一定数以上の異なるユーザーから通報されたプロフィールは候補/通知/DMから自動的に隠す。
+  const reports = await readJson('reports.json', []);
   const distinctReporters = new Set(
-    allReports
-      .filter((r) => r.profileId === profileId && r.status !== REPORT_STATUS.DISMISSED && Date.now() - new Date(r.createdAt).getTime() < REPORT_AUTO_HIDE_WINDOW_MS)
+    reports
+      .filter((r) => r.profileId === profileId && r.status === REPORT_STATUS.OPEN && Date.now() - new Date(r.createdAt).getTime() <= REPORT_AUTO_HIDE_WINDOW_MS)
       .map((r) => r.userId)
   );
   if (distinctReporters.size >= REPORT_AUTO_HIDE_THRESHOLD) {
@@ -1221,17 +1223,8 @@ function shutdown(signal) {
     console.log('HTTP server closed.');
     process.exit(0);
   });
-  // 一定時間で閉じきれなければ強制終了。
-  setTimeout(() => {
-    console.error('Forced shutdown after timeout.');
-    process.exit(1);
-  }, 10000).unref?.();
+  // 一定時間で閉じきれない接続があってもコンテナ停止をブロックしない。
+  setTimeout(() => process.exit(0), 10_000).unref?.();
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('unhandledRejection', (reason) => {
-  console.error('[unhandledRejection]', reason);
-});
-process.on('uncaughtException', (error) => {
-  console.error('[uncaughtException]', error);
-});
