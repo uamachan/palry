@@ -11,7 +11,7 @@ body,
   min-height:100dvh;
   background:linear-gradient(180deg,#f7f3ed 0%,#f2eee8 100%);
   overflow-x:hidden;
-  padding:12px clamp(10px,2vw,22px) 92px;
+  padding:12px clamp(10px,2vw,22px) 120px;
 }
 
 .appv2>.site-header{
@@ -309,7 +309,7 @@ body,
 
 @media(max-width:760px){
   .appv2{
-    padding:8px 8px 88px;
+    padding:8px 8px 108px;
   }
   .appv2>.site-header{
     top:8px;

@@ -279,7 +279,7 @@
   }
   .appv2{
     min-height:100svh!important;
-    padding:6px 6px calc(84px + env(safe-area-inset-bottom,0px))!important;
+    padding:6px 6px calc(108px + env(safe-area-inset-bottom,0px))!important;
   }
   .appv2>.site-header{
     width:100%!important;
