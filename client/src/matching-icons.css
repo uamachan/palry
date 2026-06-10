@@ -529,24 +529,24 @@
 }
 
 .dm-profile-cover {
-  flex: 0 0 58px !important;
+  flex: 0 0 36px !important;
   background: linear-gradient(135deg, rgba(255,92,138,0.28), rgba(113,216,190,0.24)) !important;
   border-bottom: 1px solid var(--line, #e7e0d8) !important;
 }
 
 .dm-profile-main {
-  padding: 0 16px 12px !important;
+  padding: 0 12px 8px !important;
   text-align: center !important;
   display: grid !important;
   justify-items: center !important;
-  gap: 7px !important;
+  gap: 3px !important;
 }
 
 .dm-profile-avatar {
-  width: 76px !important;
-  height: 76px !important;
-  margin-top: -38px !important;
-  border-radius: 22px !important;
+  width: 60px !important;
+  height: 60px !important;
+  margin-top: -30px !important;
+  border-radius: 16px !important;
   overflow: hidden !important;
   display: grid !important;
   place-items: center !important;
@@ -571,7 +571,7 @@
 
 .dm-profile-main h3 {
   margin: 0 !important;
-  font-size: 18px !important;
+  font-size: 15px !important;
   line-height: 1.2 !important;
 }
 
@@ -584,12 +584,11 @@
 
 .dm-profile-rank-row,
 .dm-profile-chips,
-.dm-profile-meta-chips,
-.dm-profile-actions-danger {
+.dm-profile-meta-chips {
   display: flex !important;
   flex-wrap: wrap !important;
-  gap: 7px !important;
-  justify-content: center !important;
+  gap: 4px !important;
+  justify-content: flex-start !important;
 }
 
 .dm-profile-rank-badge,
@@ -599,8 +598,8 @@
   border-radius: 999px !important;
   border: 1px solid var(--line, #e7e0d8) !important;
   background: #fff !important;
-  padding: 6px 10px !important;
-  font-size: 11px !important;
+  padding: 3px 8px !important;
+  font-size: 10px !important;
   font-weight: 900 !important;
   color: #5f5650 !important;
 }
@@ -640,17 +639,67 @@
 }
 
 .dm-profile-section {
-  margin: 0 14px 10px !important;
-  padding: 12px !important;
+  margin: 0 10px 6px !important;
+  padding: 8px 10px !important;
   border: 1px solid var(--line, #e7e0d8) !important;
-  border-radius: 18px !important;
+  border-radius: 14px !important;
   background: rgba(255,255,255,0.72) !important;
 }
 
 .dm-profile-section > b {
   display: block !important;
-  margin-bottom: 8px !important;
-  font-size: 12px !important;
+  margin-bottom: 5px !important;
+  font-size: 11px !important;
+}
+
+.dm-profile-info {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 4px 8px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.dm-profile-info > div {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 4px !important;
+  font-size: 11px !important;
+  min-width: 0 !important;
+}
+
+.dm-profile-info dt {
+  color: var(--muted, #77706a) !important;
+  flex: 0 0 auto !important;
+  font-size: 10px !important;
+}
+
+.dm-profile-info dd {
+  margin: 0 !important;
+  font-weight: 700 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  min-width: 0 !important;
+}
+
+.dm-rank-line {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+}
+
+.dm-profile-maps {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  margin-top: 4px !important;
+}
+
+.dm-profile-maps-label {
+  font-size: 10px !important;
+  color: var(--muted, #77706a) !important;
 }
 
 .dm-profile-bio {
@@ -662,20 +711,29 @@
 
 .dm-profile-actions {
   margin-top: auto !important;
-  padding: 12px 14px 14px !important;
+  padding: 8px 10px 10px !important;
   display: grid !important;
-  gap: 8px !important;
+  gap: 6px !important;
   border-top: 1px solid var(--line, #e7e0d8) !important;
   background: rgba(255,253,249,0.96) !important;
 }
 
 .dm-profile-actions button {
-  min-height: 36px !important;
+  min-height: 30px !important;
   border-radius: 999px !important;
   border: 1px solid var(--line, #e7e0d8) !important;
   background: #fff !important;
-  font-size: 12px !important;
+  font-size: 11px !important;
   font-weight: 900 !important;
+}
+
+.dm-profile-actions-danger {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.dm-profile-actions-danger button {
+  flex: 1 !important;
 }
 
 .dm-profile-actions button:hover,
