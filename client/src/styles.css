@@ -90,8 +90,6 @@
 .tinder-btn-undo svg{width:22px;height:22px}
 .tinder-btn-pass{width:64px;height:64px;border:2.5px solid #ff4560;color:#ff4560;box-shadow:0 6px 20px rgba(255,69,96,.24)}
 .tinder-btn-pass svg{width:28px;height:28px}
-.tinder-btn-super{width:52px;height:52px;border:2.5px solid #3478f6;color:#3478f6;box-shadow:0 4px 16px rgba(52,120,246,.22)}
-.tinder-btn-super svg{width:22px;height:22px}
 .tinder-btn-like{width:64px;height:64px;border:2.5px solid #1aaf6c;color:#1aaf6c;box-shadow:0 6px 20px rgba(26,175,108,.24)}
 .tinder-btn-like svg{width:28px;height:28px}
 .tinder-btn-dual{width:52px;height:52px;border:2.5px solid var(--pink);color:var(--pink);box-shadow:0 4px 16px rgba(255,79,131,.22)}
@@ -110,7 +108,7 @@
 
 /* Responsive */
 @media(min-width:761px){.tinder-match-panel{padding:8px 0 28px}.tinder-card-area{max-width:360px}}
-@media(max-width:760px){.tinder-card-area{max-width:100%}.tinder-btn-pass,.tinder-btn-like{width:58px;height:58px}.tinder-btn-undo,.tinder-btn-super,.tinder-btn-dual{width:46px;height:46px}.tinder-actions{gap:10px}}
+@media(max-width:760px){.tinder-card-area{max-width:100%}.tinder-btn-pass,.tinder-btn-like{width:58px;height:58px}.tinder-btn-undo,.tinder-btn-dual{width:46px;height:46px}.tinder-actions{gap:10px}}
 
 /* ══════════════════════════════════════════════════
    App v2 — full-screen app shell with shared top nav
@@ -235,7 +233,6 @@
 .mp-stamp{position:absolute;top:28px;font-family:Outfit;font-size:clamp(24px,6vw,36px);font-weight:900;letter-spacing:.08em;border-radius:12px;padding:6px 16px;animation:stampIn .15s ease-out both;pointer-events:none;z-index:10}
 .mp-stamp-like{right:18px;color:#1aaf6c;border:3px solid #1aaf6c;transform:rotate(-12deg)}
 .mp-stamp-nope{left:18px;color:#ff4560;border:3px solid #ff4560;transform:rotate(12deg)}
-.mp-stamp-super{left:50%;translate:-50%;color:#3478f6;border:3px solid #3478f6;transform:rotate(-6deg)}
 
 /* Top badges */
 .mp-badges-top{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:flex-end;gap:8px;pointer-events:none}

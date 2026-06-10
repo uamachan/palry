@@ -45,7 +45,7 @@ function getFirebaseMods() {
   return firebaseModsPromise;
 }
 
-const DEFAULT_ENTITLEMENTS = { genderFilter: false, boost: false, spotlight: false, superCredits: 0 };
+const DEFAULT_ENTITLEMENTS = { genderFilter: false, boost: false, spotlight: false };
 
 function initialForm() {
   return { email: '', emailConfirm: '', password: '', name: '', riotId: '', age: '', gender: '', region: '', profilePhoto: '', rank: 'Gold 1', role: defaultRole, tags: [], agents: [], xHandle: '', bio: '', voiceIntro: '', agreed: false, vc: '', maps: [], favoriteWeapon: '' };
@@ -495,7 +495,7 @@ function App() {
 
   async function swipe(type) {
     if (!current || !user) return;
-    const directionLabel = type === 'pass' ? '見送り' : type === 'super' ? 'SUPER LIKE' : type === 'dual' ? '両LIKE' : 'LIKE';
+    const directionLabel = type === 'pass' ? '見送り' : type === 'dual' ? '両LIKE' : 'LIKE';
     if (type === 'pass') {
       setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: '見送り', time: '今' }, ...f].slice(0, 50));
       api.recordFootprint({ profileId: current.id, action: '見送り' }).catch(() => null);

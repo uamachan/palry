@@ -8,17 +8,17 @@ const fallbackPlansData = {
     FREE: {
       name: 'FREE',
       price: 0,
-      features: ['通常LIKE 10回/day', 'SUPER LIKE 1回/day', '両LIKE 5回', 'マッチ後DM']
+      features: ['通常LIKE 10回/day', '両LIKE 5回', 'マッチ後DM']
     },
     PLUS: {
       name: 'PLUS',
       price: 980,
-      features: ['通常LIKE 40回/day', 'SUPER LIKE 5回/day', '性別指定フィルター', '足あと詳細']
+      features: ['通常LIKE 40回/day', '両LIKE 10回', '性別指定フィルター', '足あと詳細']
     },
     VIP: {
       name: 'VIP',
       price: 1980,
-      features: ['LIKE無制限', 'SUPER LIKE無制限', '性別指定フィルター', '全制限解除']
+      features: ['LIKE無制限', '両LIKE無制限', '性別指定フィルター', '全制限解除']
     }
   },
   singleItems: []
@@ -87,8 +87,7 @@ export default function PublicPricing({ plansData, pricingTab = 'monthly', setPr
             </thead>
             <tbody>
               <tr><td>いいね</td><td>10回/日</td><td>40回/日</td><td>無制限</td></tr>
-              <tr><td>スーパーいいね</td><td>1回/日</td><td>5回/日</td><td>無制限</td></tr>
-              <tr><td>両いいね</td><td>5回</td><td>10回</td><td>無制限</td></tr>
+<tr><td>両いいね</td><td>5回</td><td>10回</td><td>無制限</td></tr>
               <tr><td>性別指定</td><td>×</td><td>○</td><td>○</td></tr>
               <tr><td>制限解除</td><td>×</td><td>一部</td><td>全解除</td></tr>
             </tbody>

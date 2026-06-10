@@ -170,38 +170,34 @@ const plans = {
     name: 'FREE',
     price: 0,
     likeLimit: 10,
-    superLimit: 1,
     dualLimit: 5,
     genderFilter: false,
     unlimited: false,
-    features: ['通常LIKE 10回/day', 'SUPER LIKE 1回/day', '両LIKE 5回', 'マッチ後DM']
+    features: ['通常LIKE 10回/day', '両LIKE 5回', 'マッチ後DM']
   },
   PLUS: {
     name: 'PLUS',
     price: 980,
     likeLimit: 40,
-    superLimit: 5,
     dualLimit: 10,
     genderFilter: true,
     unlimited: false,
-    features: ['LIKE 40回/day', 'SUPER LIKE 5回/day', '両LIKE 10回', '性別指定フィルター', '足あと閲覧']
+    features: ['LIKE 40回/day', '両LIKE 10回', '性別指定フィルター', '足あと閲覧']
   },
   VIP: {
     name: 'VIP',
     price: 1980,
     likeLimit: 'unlimited',
-    superLimit: 'unlimited',
     dualLimit: 'unlimited',
     genderFilter: true,
     unlimited: true,
-    features: ['全制限解除', 'LIKE無制限', 'SUPER/両LIKE無制限', '性別指定フィルター', '上位表示']
+    features: ['全制限解除', 'LIKE無制限', '両LIKE無制限', '性別指定フィルター', '上位表示']
   }
 };
 
 const singleItems = [
   { name: '性別指定フィルター7日', price: 400, detail: 'FREEでも7日間だけ表示性別を指定できます。' },
   { name: 'ブースト24時間', price: 300, detail: 'プロフィールを表示候補に出やすくします。' },
-  { name: 'SUPER LIKE 3回', price: 500, detail: '相手に強めのLIKEを送れます。' },
   { name: 'プロフィール目立たせ7日', price: 700, detail: '検索・候補カードで視認性を上げます。' }
 ];
 
@@ -210,7 +206,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const singleItemConfig = {
   '性別指定フィルター7日': { perk: 'genderFilter', kind: 'timed', durationMs: 7 * DAY_MS },
   'ブースト24時間': { perk: 'boost', kind: 'timed', durationMs: DAY_MS },
-  'SUPER LIKE 3回': { perk: 'superCredits', kind: 'consumable', count: 3 },
   'プロフィール目立たせ7日': { perk: 'spotlight', kind: 'timed', durationMs: 7 * DAY_MS }
 };
 
@@ -317,7 +312,6 @@ function countTodayUsage(likes, userId, type) {
 function quotaFor(planName, type) {
   const plan = plans[planName] || plans.FREE;
   if (plan.unlimited) return Infinity;
-  if (type === 'super') return plan.superLimit;
   if (type === 'dual') return plan.dualLimit;
   return plan.likeLimit;
 }
@@ -472,15 +466,11 @@ async function readCandidateProfiles(excludeUserId = '') {
 
 // あるユーザーの有効な特典を集計する。timed は期限内、consumable は残数を合算。
 function activeEntitlements(singlePurchases, userId, now = Date.now()) {
-  const result = { genderFilter: false, boost: false, spotlight: false, superCredits: 0 };
+  const result = { genderFilter: false, boost: false, spotlight: false };
   for (const p of singlePurchases) {
     if (p.userId !== userId) continue;
-    if (p.kind === 'timed') {
-      if (p.expiresAt && new Date(p.expiresAt).getTime() > now && (p.perk in result)) {
-        result[p.perk] = true;
-      }
-    } else if (p.kind === 'consumable' && p.perk === 'superCredits') {
-      result.superCredits += toNonNegativeInt(p.remaining, 0);
+    if (p.kind === 'timed' && p.expiresAt && new Date(p.expiresAt).getTime() > now && (p.perk in result)) {
+      result[p.perk] = true;
     }
   }
   return result;
@@ -647,9 +637,6 @@ function messageBelongsToMatch(message, match) {
 const TOKEN_CACHE_TTL_MS = envInt('TOKEN_CACHE_TTL_MS', 5 * 60 * 1000, { min: 1000, max: 60 * 60 * 1000 });
 const TOKEN_CACHE_MAX = 5000;
 const tokenCache = new Map(); // token -> { value, expiresAt }
-// super-like のクレジット読み取り→いいね書き込み→クレジット消費を
-// ユーザーごとに直列化し、購入分の二重消費を防ぐ。
-const userSuperLikeQueues = new Map();
 let firebaseAdminAuthPromise = null;
 
 function getCachedIdentity(token) {
@@ -975,7 +962,7 @@ app.post('/api/like', requireAuth, async (req, res) => {
   const userId = req.authedUser.id;
   if (req.authedUser.autoHidden) return res.status(403).json({ message: '現在この操作は利用できません。' });
   const planName = String(req.authedUser.plan || 'FREE').toUpperCase();
-  const selectedType = ['like', 'super', 'dual'].includes(type) ? type : 'like';
+  const selectedType = ['like', 'dual'].includes(type) ? type : 'like';
   const limit = quotaFor(planName, selectedType);
 
   const [profiles, users, matches, blocks] = await Promise.all([
@@ -995,53 +982,15 @@ app.post('/api/like', requireAuth, async (req, res) => {
     return res.json({ ok: true, already_matched: true, matched: true, match });
   }
 
-  // super-like のみ: クレジット読み取り → いいね書き込み → クレジット消費を
-  // ユーザーごとに直列化し、購入分の二重消費を防ぐ。
-  // 通常 like はクレジット不要なので直列化不要。
+  // 利用枠チェックと like 追加を 1ファイルにつき直列・原子的に行い、
+  // 同時リクエストでの枠の二重消費を防ぐ。
   const like = { id: uid('like'), userId, profileId, type: selectedType, plan: planName, createdAt: new Date().toISOString() };
-  let likeResult;
-  if (selectedType === 'super') {
-    const prevQueue = userSuperLikeQueues.get(userId) || Promise.resolve();
-    const queueEntry = prevQueue.catch(() => {}).then(async () => {
-      // SUPER LIKE 3回 の購入分は、プランの本日上限を超えても消費して送れる。
-      // ここで読んだ credits は同じユーザーの直前の操作がすべて完了した後の値。
-      const sp = await readJson('single_purchases.json', []);
-      const superCredits = activeEntitlements(sp, userId).superCredits;
-      const effectiveLimit = limit === Infinity ? Infinity : limit + superCredits;
-      let usedSuperCredit = false;
-      const result = await updateJson('likes.json', [], (likes) => {
-        if (userHasLiked(likes, userId, profileId)) return { value: undefined, result: 'duplicate' };
-        const used = countTodayUsage(likes, userId, 'super');
-        if (used >= effectiveLimit) return { value: undefined, result: 'quota' };
-        usedSuperCredit = used >= limit; // プラン上限超過 = 購入分を消費
-        return { value: [...likes, like], result: 'created' };
-      });
-      if (result === 'created' && usedSuperCredit) {
-        await updateJson('single_purchases.json', [], (purchases) => {
-          const idx = purchases.findIndex((p) => p.userId === userId && p.perk === 'superCredits' && toNonNegativeInt(p.remaining, 0) > 0);
-          if (idx < 0) return { value: undefined, result: false };
-          const next = [...purchases];
-          next[idx] = { ...next[idx], remaining: toNonNegativeInt(next[idx].remaining, 0) - 1 };
-          return { value: next, result: true };
-        });
-      }
-      return result;
-    });
-    userSuperLikeQueues.set(userId, queueEntry);
-    queueEntry.finally(() => {
-      if (userSuperLikeQueues.get(userId) === queueEntry) userSuperLikeQueues.delete(userId);
-    });
-    likeResult = await queueEntry;
-  } else {
-    // 利用枠チェックと like 追加を 1ファイルにつき直列・原子的に行い、
-    // 同時リクエストでの枠の二重消費を防ぐ。
-    likeResult = await updateJson('likes.json', [], (likes) => {
-      if (userHasLiked(likes, userId, profileId)) return { value: undefined, result: 'duplicate' };
-      const used = countTodayUsage(likes, userId, selectedType);
-      if (used >= limit) return { value: undefined, result: 'quota' };
-      return { value: [...likes, like], result: 'created' };
-    });
-  }
+  const likeResult = await updateJson('likes.json', [], (likes) => {
+    if (userHasLiked(likes, userId, profileId)) return { value: undefined, result: 'duplicate' };
+    const used = countTodayUsage(likes, userId, selectedType);
+    if (used >= limit) return { value: undefined, result: 'quota' };
+    return { value: [...likes, like], result: 'created' };
+  });
   if (likeResult === 'quota') return res.status(402).json({ message: '本日の利用枠を使い切りました。PLUS/VIPで上限を増やせます。' });
 
   // 候補は実ユーザー限定。念のため非実ユーザーは安全に返す。
@@ -1505,7 +1454,7 @@ app.get('/api/entitlements/:userId', requireAuth, async (req, res) => {
   res.json({ entitlements: activeEntitlements(singlePurchases, req.authedUser.id) });
 });
 
-// 単発課金（性別フィルター7日 / ブースト / SUPER LIKE 3回 / 目立たせ）を購入する。
+// 単発課金（性別フィルター7日 / ブースト / 目立たせ）を購入する。
 app.post('/api/purchase-item', requireAuth, async (req, res) => {
   if (!isDemoPaymentAllowed()) {
     return res.status(503).json({ message: '決済機能は現在準備中です。しばらくお待ちください。' });
