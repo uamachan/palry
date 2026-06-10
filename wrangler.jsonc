@@ -1,12 +1,8 @@
 {
-  // Cloudflare のビルドが wrangler を実行する際、設定ファイルが無いと
-  // Vite プロジェクトを自動検出して vite.config.js を解析しようとし、失敗する。
-  // ここで「静的アセット配信のみ（Worker スクリプト無し）」を明示することで
-  // その自動検出を止め、ビルド(dist/)をそのまま配信してビルドを通す。
-  //
-  // 注意: これはフロントエンド(Vite製SPA)のみの配信。バックエンド(/api の
-  // Express サーバー)は Cloudflare では動かないため、API は別ホスト(Render 等)
-  // を参照する必要がある。まずはビルド通過が目的の最小構成。
+  // Cloudflare Pages/Workers の静的アセット配信用設定。
+  // Pairly は現在、フロントエンドを Cloudflare で配信し、
+  // Firebase Auth + Firestore をデータ保存/認可の中心として使う構成です。
+  // Express の /api サーバーはこの設定では起動しません。
   "name": "palry",
   "compatibility_date": "2025-06-01",
   "assets": {
