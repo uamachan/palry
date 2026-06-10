@@ -236,30 +236,16 @@
   display:none!important;
 }
 
-.mp-actions .mp-btn::after{
-  display:inline!important;
-  font-size:14px!important;
-  font-weight:1000!important;
-  line-height:1!important;
-  white-space:nowrap!important;
-}
 
 .mp-actions .mp-btn-pass{
   background:#fff!important;
   border:1px solid #ddd3ca!important;
   color:#5f5a54!important;
 }
-.mp-actions .mp-btn-pass::after{
-  content:'見送る'!important;
-}
-
 .mp-actions .mp-btn-like{
   background:#fff1f6!important;
   border:1px solid #ffc3d4!important;
   color:var(--pink,#ff4f83)!important;
-}
-.mp-actions .mp-btn-like::after{
-  content:'いいね'!important;
 }
 
 .mp-actions .mp-btn:disabled{
