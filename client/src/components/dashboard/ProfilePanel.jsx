@@ -48,7 +48,7 @@ export default function ProfilePanel({ user }) {
               ? <img src={displayPhoto} alt="" />
               : <span>{user.name?.slice(0, 1) || 'P'}</span>}
           </div>
-          {photos.length > 1 && (
+          {photos.length >= 1 && (
             <div className="pv-photo-tabs">
               {[0, 1, 2].map((idx) => (
                 <button
