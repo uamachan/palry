@@ -528,7 +528,7 @@ function App() {
     if (!user) return;
     try {
       const payload = await api.acceptLike({ userId: user.id, receivedLikeId });
-      if (payload.match) {
+      if (payload.matched && payload.match) {
         setMatches((m) => [payload.match, ...m]);
         track('match', { source: 'accept_like' });
         await refreshMatches();

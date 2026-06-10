@@ -784,7 +784,8 @@ async function requireAuth(req, res, next) {
   let user;
   try {
     user = await findAndLinkFirebaseProfile(firebaseUser);
-  } catch {
+  } catch (err) {
+    console.error('[requireAuth] findAndLinkFirebaseProfile error:', err);
     return res.status(503).json({ message: 'データの読み込みに失敗しました。しばらくしてから再試行してください。' });
   }
   if (!user) return res.status(404).json({ message: 'Pairlyプロフィールが見つかりません。' });
@@ -812,7 +813,8 @@ app.post('/api/register', authLimiter, async (req, res) => {
   let existingProfile;
   try {
     existingProfile = await findAndLinkFirebaseProfile(firebaseUser);
-  } catch {
+  } catch (err) {
+    console.error('[register] findAndLinkFirebaseProfile error:', err);
     return res.status(503).json({ message: 'データの読み込みに失敗しました。しばらくしてから再試行してください。' });
   }
   if (existingProfile) {
@@ -880,7 +882,8 @@ app.post('/api/login', authLimiter, async (req, res) => {
   let found;
   try {
     found = await findAndLinkFirebaseProfile(firebaseUser);
-  } catch {
+  } catch (err) {
+    console.error('[login] findAndLinkFirebaseProfile error:', err);
     return res.status(503).json({ message: 'データの読み込みに失敗しました。しばらくしてから再試行してください。' });
   }
   if (!found) return res.status(404).json({ message: 'Pairlyプロフィールが見つかりません。先にアカウント作成してください。' });
