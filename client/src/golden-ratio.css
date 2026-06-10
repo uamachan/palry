@@ -1,14 +1,8 @@
-/* ═══════════════════════════════════════════════════════════════════
-   Golden Ratio Layout System — φ = 1.618
-   ランディングページ・アプリシェルの主要レイアウトに黄金比を適用。
-   既存のコンテンツ・機能・構造はそのまま維持。
-   ═══════════════════════════════════════════════════════════════════ */
-
-/* ── CSS 変数 ────────────────────────────────────────────────────── */
-:root {
-  --phi:     1.618;
-  --phi-inv: 0.618;   /* 1 / φ = φ - 1 */
-
-  /* 黄金比スケーリングした spacing (base = 1rem = 16px) */
-  --gs-xs:  0.382rem;  /* φ⁻² ≈  6px */
-  --gs-sm:  0.618rem; 
+/* Golden ratio layout + compact DM sidebar overrides */
+:root{--phi:1.618;--phi-inv:.618;--gs-xs:.382rem;--gs-sm:.618rem;--gs-md:1rem;--gs-lg:1.618rem;--gs-xl:2.618rem;--gs-2xl:4.236rem;}
+.hero{grid-template-columns:1fr;min-height:auto;}
+.hero-copy{max-width:min(720px,100%);margin:0 auto;}
+.hero p{line-height:1.618;}
+.section{padding:clamp(44px,6.2vw,72px) clamp(22px,3.8vw,44px);}
+.section-head h2{font-size:clamp(26px,3.8vw,42px);}
+.price-card.featured{padding
