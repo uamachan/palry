@@ -749,7 +749,10 @@
   }
 
   .dm-thread-list {
-    max-height: 112px !important;
+    max-height: 30vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .dm-conversation {
