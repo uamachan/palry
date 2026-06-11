@@ -1037,6 +1037,11 @@
 
 @media(max-width:760px){
   html body .appv2-content.appv2-content--scroll{
+    /* 行1028の .appv2-content{overflow:hidden} より詳細度を高くして
+       スクロールを確実に有効化する(料金/プロフィール/足あと/通知タブ)。 */
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
     /* 固定ボトムナビ(~78px) + 余白 を確保してコンテンツが隠れないようにする */
     padding-bottom:100px!important;
   }

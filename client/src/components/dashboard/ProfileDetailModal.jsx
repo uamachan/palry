@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { rankIconFor } from '../../constants.jsx';
 import VoiceIntroPlayer from './VoiceIntroPlayer.jsx';
 
@@ -53,7 +54,7 @@ export default function ProfileDetailModal({ profile, onClose }) {
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div className="profile-detail-modal" role="dialog" aria-modal="true" aria-labelledby="profile-detail-title" aria-describedby="profile-detail-desc">
       <button className="profile-detail-scrim" type="button" aria-label="閉じる" onClick={onClose}></button>
       <section className="profile-detail-panel" ref={panelRef}>
@@ -104,6 +105,7 @@ export default function ProfileDetailModal({ profile, onClose }) {
           <VoiceIntroPlayer src={profile.voiceIntro} />
         </div>
       </section>
-    </div>
+    </div>,
+    document.body
   );
 }
