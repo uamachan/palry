@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { rankIconFor } from '../../constants.jsx';
 import VoiceIntroPlayer from './VoiceIntroPlayer.jsx';
-
-// プロジェクト内の自作ランクSVGのみを使う（外部素材・外部importは使わない）
-const RANK_TIER_SLUGS = ['iron', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'ascendant', 'immortal', 'radiant'];
-function rankIconSrc(rank) {
-  const tier = String(rank || '').trim().split(/\s+/)[0].toLowerCase();
-  return RANK_TIER_SLUGS.includes(tier) ? `/assets/ranks/${tier}.svg` : '/assets/ranks/unranked.svg';
-}
 
 function collectPhotos(user) {
   const sources = [user || {}, (user && user.profile) || {}];
@@ -81,7 +75,7 @@ export default function ProfilePanel({ user }) {
 
         <span className="rank-inline profile-rank-line" data-copyable>
           <span className="rank-inline-icon" aria-hidden="true">
-            <img src={rankIconSrc(rankLabel)} alt="" loading="lazy" />
+            <img src={rankIconFor(rankLabel)} alt="" loading="lazy" />
           </span>
           <span>{safeUser.riotId} / {rankLabel} / {safeUser.role}</span>
         </span>

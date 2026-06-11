@@ -1,8 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { cx, roles, roleIconMap, agents, intentTags, regions, resizePhoto, vcOptions, maps as mapList, favoriteWeapons } from './constants.jsx';
-
-// プロジェクト内の自作ランクSVGのみを使う（外部素材・外部importは使わない）
-const rankTierIcon = (tier) => `/assets/ranks/${String(tier || 'unranked').toLowerCase()}.svg`;
+import { cx, rankIconMap, rankImages, roles, roleIconMap, agents, intentTags, regions, resizePhoto, vcOptions, maps as mapList, favoriteWeapons } from './constants.jsx';
 
 function AuthModal({ children, onClose, size }) {
   const panelRef = useRef(null);
@@ -413,9 +410,10 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
               <div className="pv-rank-icon-grid">
                 {RANK_TIERS.map(({ tier, color, rankList }) => {
                   const selected = rankList.includes(form.rank);
+                  const iconSrc = (selected && rankImages[form.rank]) || rankIconMap[tier];
                   return (
                     <button type="button" key={tier} className={cx('pv-rank-icon-btn', selected && 'pv-rank-icon-btn--on')} style={{ '--rc': color }} aria-pressed={selected} onClick={() => setForm({ ...form, rank: selected ? form.rank : rankList[0] })}>
-                      <img src={rankTierIcon(tier)} alt={tier} loading="lazy" />
+                      <img src={iconSrc} alt={tier} loading="lazy" />
                       <span className="pv-rank-icon-label">{tier}</span>
                     </button>
                   );
