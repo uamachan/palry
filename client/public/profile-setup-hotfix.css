@@ -160,6 +160,16 @@ html body #root .auth-modal--profile .profile-setup-actions .plain {
   font-size: 11px !important;
 }
 
+html body #root .auth-modal--profile .profile-setup-actions .create-account-cta {
+  flex: 0 0 100% !important;
+  width: 100% !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  border-radius: 14px !important;
+}
+
 @media (max-width: 760px) {
   html body #root .auth-modal--profile .profile-setup-panel {
     max-height: 100dvh !important;
