@@ -327,7 +327,7 @@
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
-    padding: 14px !important;
+    padding: 14px 14px 10px !important;
   }
 }
 
@@ -345,7 +345,7 @@
   }
 
   html body .appv2-content--scroll {
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(81px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   html body .appv2-content:has(.mp-wrap) {
@@ -392,10 +392,6 @@
   html body #root .site-page > .section:not(.hero) {
     padding-top: 42px !important;
     padding-bottom: 42px !important;
-  }
-
-  html body #root .pricing-section.inside {
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   html body #root .auth-modal--profile .profile-setup-card .setup-tabs button {
