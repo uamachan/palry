@@ -67,24 +67,6 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
 
   return (
     <div className="mp-wrap">
-      {/* 届いたいいねセクション */}
-      <div className={cx('mp-received-section', !receivedLikes?.length && 'empty')}>
-        <div className="mp-received-header">届いたいいね <span>{receivedLikes.length}</span></div>
-        <div className="mp-received-list">
-          {receivedLikes?.length ? receivedLikes.map((rl) => (
-            <div key={rl.id} className="mp-received-card">
-              <div className="mp-received-avatar">
-                {rl.fromPhoto ? <img src={rl.fromPhoto} alt={rl.fromProfileName} /> : rl.fromProfileName?.slice(0, 1) || '?'}
-              </div>
-              <div className="mp-received-info"><b>{rl.fromProfileName}</b><span>{rl.fromRank} · {rl.fromRole}</span></div>
-              <button className="mp-accept-btn" onClick={() => handleAcceptLike(rl.id)} disabled={acceptingLikeId === rl.id}>
-                {acceptingLikeId === rl.id ? '送信中' : 'いいねを返す'}
-              </button>
-            </div>
-          )) : <p className="mp-received-empty">まだ届いたいいねはありません。</p>}
-        </div>
-      </div>
-
       {/* 候補指定ボタン */}
       <div className="mp-filter-btn-wrap" ref={filterWrapRef}>
         <button
@@ -136,6 +118,24 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
             )}
           </div>
         )}
+      </div>
+
+      {/* 届いたいいねセクション */}
+      <div className={cx('mp-received-section', !receivedLikes?.length && 'empty')}>
+        <div className="mp-received-header">届いたいいね <span>{receivedLikes.length}</span></div>
+        <div className="mp-received-list">
+          {receivedLikes?.length ? receivedLikes.map((rl) => (
+            <div key={rl.id} className="mp-received-card">
+              <div className="mp-received-avatar">
+                {rl.fromPhoto ? <img src={rl.fromPhoto} alt={rl.fromProfileName} /> : rl.fromProfileName?.slice(0, 1) || '?'}
+              </div>
+              <div className="mp-received-info"><b>{rl.fromProfileName}</b><span>{rl.fromRank} · {rl.fromRole}</span></div>
+              <button className="mp-accept-btn" onClick={() => handleAcceptLike(rl.id)} disabled={acceptingLikeId === rl.id}>
+                {acceptingLikeId === rl.id ? '送信中' : 'いいねを返す'}
+              </button>
+            </div>
+          )) : <p className="mp-received-empty">まだ届いたいいねはありません。</p>}
+        </div>
       </div>
 
       {/* プロフィールカード */}
