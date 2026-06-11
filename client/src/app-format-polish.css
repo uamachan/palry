@@ -440,3 +440,51 @@
     grid-row: auto;
   }
 }
+
+/* ── Profile setup: fixed-height layout so save button is always visible ── */
+/* auth-layout.css is not imported; these rules replace its critical layout logic */
+
+html body #root .auth-modal-panel--profile {
+  height: min(760px, calc(100dvh - 28px)) !important;
+  max-height: min(760px, calc(100dvh - 28px)) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+html body #root .auth-modal-panel--profile .profile-setup-panel {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+html body #root .auth-modal-panel--profile .email-signup-form.profile-setup-card {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+html body #root .auth-modal-panel--profile .profile-setup-card > .pv-basic-grid,
+html body #root .auth-modal-panel--profile .profile-setup-card > .pv-rank-section,
+html body #root .auth-modal-panel--profile .profile-setup-card > .setup-stack,
+html body #root .auth-modal-panel--profile .profile-setup-card > .terms-box {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+html body #root .auth-modal-panel--profile .profile-setup-actions {
+  flex: 0 0 auto !important;
+}
+
+@media (max-width: 760px) {
+  html body #root .auth-modal-panel--profile {
+    height: calc(100dvh - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+  }
+}
