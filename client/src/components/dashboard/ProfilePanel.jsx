@@ -43,8 +43,13 @@ export default function ProfilePanel({ user }) {
   const displayPhoto = photos[activePhotoIndex] || null;
 
   return (
-    <div className="list-panel">
-      <h3>プロフィール</h3>
+    <div className="list-panel profile-panel">
+      <div className="profile-panel-head">
+        <div>
+          <span>MY PROFILE</span>
+          <h3>プロフィール</h3>
+        </div>
+      </div>
       <div className="profile-preview expanded">
 
         <div className="pv-photo-area">
@@ -70,14 +75,18 @@ export default function ProfilePanel({ user }) {
           )}
         </div>
 
-        <b>{safeUser.name}</b>
-        <span>{safeUser.gender} / {safeUser.age || '年齢未設定'} / {safeUser.region || '地域未設定'}</span>
+        <div className="profile-preview-head">
+          <div>
+            <b>{safeUser.name || '名前未設定'}</b>
+            <span>{safeUser.gender || '性別未設定'} / {safeUser.age || '年齢未設定'} / {safeUser.region || '地域未設定'}</span>
+          </div>
+        </div>
 
         <span className="rank-inline profile-rank-line" data-copyable>
           <span className="rank-inline-icon" aria-hidden="true">
             <img src={rankIconFor(rankLabel)} alt="" loading="lazy" />
           </span>
-          <span>{safeUser.riotId} / {rankLabel} / {safeUser.role}</span>
+          <span>{safeUser.riotId || 'Riot ID 未設定'} / {rankLabel} / {safeUser.role || 'ロール未設定'}</span>
         </span>
 
         {Boolean(safeUser.tags?.length) && (

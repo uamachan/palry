@@ -50,6 +50,16 @@ function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
         </div>
         <h3>{profile.name}</h3>
         <p className="dm-profile-riot">{profile.riotId || 'Riot ID 未設定'}</p>
+        <div className="dm-profile-rank-row">
+          <span className="dm-profile-rank-badge">{profile.rank || '未設定'}</span>
+          <span className="dm-profile-role-badge">{profile.role || 'ロール未設定'}</span>
+        </div>
+      </div>
+
+      <div className="dm-profile-meta-chips">
+        <span className="dm-profile-meta-chip"><strong>地域</strong>{profile.region || '未設定'}</span>
+        <span className="dm-profile-meta-chip"><strong>年齢帯</strong>{profile.ageRange || '未設定'}</span>
+        <span className="dm-profile-meta-chip"><strong>VC</strong>{profile.vc || '未設定'}</span>
       </div>
 
       <div className="dm-profile-section">
@@ -63,8 +73,6 @@ function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
             </dd>
           </div>
           <div><dt>ロール</dt><dd>{profile.role || '未設定'}</dd></div>
-          <div><dt>地域</dt><dd>{profile.region || '未設定'}</dd></div>
-          <div><dt>年齢帯</dt><dd>{profile.ageRange || '未設定'}</dd></div>
           <div><dt>性別</dt><dd>{profile.gender || '未設定'}</dd></div>
           <div><dt>X</dt><dd>{xLabel}</dd></div>
         </dl>

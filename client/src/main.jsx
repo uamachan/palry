@@ -23,6 +23,7 @@ import './matching-icons.css';
 import './profile-visual.css';
 import './golden-ratio.css';
 import './mobile-fixes.css';
+import './app-format-polish.css';
 
 let firebaseModsPromise = null;
 function getFirebaseMods() {
