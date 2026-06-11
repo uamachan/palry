@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { cx, rankIconMap, roles, roleIconMap, agents, intentTags, regions, resizePhoto, vcOptions, maps as mapList, favoriteWeapons } from './constants.jsx';
+import { cx, rankIconMap, rankImages, roles, roleIconMap, agents, intentTags, regions, resizePhoto, vcOptions, maps as mapList, favoriteWeapons } from './constants.jsx';
 
 function AuthModal({ children, onClose, size }) {
   const panelRef = useRef(null);
@@ -408,21 +408,25 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
             <div className="pv-field-group">
               <span className="pv-label">現在のランク <span className="pv-req">必須</span></span>
               <div className="pv-rank-icon-grid">
-                {RANK_TIERS.map(({ tier, color, rankList }) => (
-                  <button type="button" key={tier} className={cx('pv-rank-icon-btn', rankList.includes(form.rank) && 'pv-rank-icon-btn--on')} style={{ '--rc': color }} aria-pressed={rankList.includes(form.rank)} onClick={() => setForm({ ...form, rank: rankList.includes(form.rank) ? form.rank : rankList[0] })}>
-                    <img src={rankIconMap[tier]} alt={tier} loading="lazy" />
-                    <span className="pv-rank-icon-label">{tier}</span>
-                  </button>
-                ))}
+                {RANK_TIERS.map(({ tier, color, rankList }) => {
+                  const selected = rankList.includes(form.rank);
+                  const iconSrc = (selected && rankImages[form.rank]) || rankIconMap[tier];
+                  return (
+                    <button type="button" key={tier} className={cx('pv-rank-icon-btn', selected && 'pv-rank-icon-btn--on')} style={{ '--rc': color }} aria-pressed={selected} onClick={() => setForm({ ...form, rank: selected ? form.rank : rankList[0] })}>
+                      <img src={iconSrc} alt={tier} loading="lazy" />
+                      <span className="pv-rank-icon-label">{tier}</span>
+                    </button>
+                  );
+                })}
               </div>
               {(() => {
                 const sel = RANK_TIERS.find(({ rankList }) => rankList.includes(form.rank));
-                if (!sel || sel.rankList.length <= 1) return null;
+                if (!sel) return null;
                 return (
                   <div className="pv-rank-sub-row">
                     {sel.rankList.map((rank) => (
                       <button type="button" key={rank} className={cx('pv-rank-sub-btn', form.rank === rank && 'pv-rank-sub-btn--on')} style={{ '--rc': sel.color }} aria-pressed={form.rank === rank} onClick={() => setForm({ ...form, rank })}>
-                        {rank.replace(`${sel.tier} `, '')}
+                        {sel.rankList.length > 1 ? rank.replace(`${sel.tier} `, '') : rank}
                       </button>
                     ))}
                   </div>
