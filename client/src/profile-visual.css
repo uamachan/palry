@@ -1342,7 +1342,7 @@
 
 .profile-detail-panel {
   width: min(360px, calc(100vw - 24px)) !important;
-  max-height: calc(100vh - 40px) !important;
+  max-height: calc(100dvh - 40px) !important;
   border-radius: 32px !important;
 }
 

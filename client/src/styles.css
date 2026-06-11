@@ -161,7 +161,7 @@ body:has(.appv2){overflow:hidden}
 
 .profile-detail-modal{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:14px}
 .profile-detail-scrim{position:absolute;inset:0;border:0;background:rgba(24,22,20,.58);backdrop-filter:blur(10px)}
-.profile-detail-panel{position:relative;z-index:1;width:min(430px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:auto;background:var(--paper);border:1px solid var(--line);border-radius:24px;box-shadow:0 28px 80px rgba(0,0,0,.28)}
+.profile-detail-panel{position:relative;z-index:1;width:min(430px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto;background:var(--paper);border:1px solid var(--line);border-radius:24px;box-shadow:0 28px 80px rgba(0,0,0,.28)}
 .profile-detail-close{position:absolute;right:10px;top:10px;z-index:2;width:34px;height:34px;border:1px solid rgba(255,255,255,.28);background:rgba(0,0,0,.26);color:#fff;border-radius:50%;font-size:20px;font-weight:900}
 .profile-detail-hero{height:240px;background:#181311;display:grid;place-items:center;overflow:hidden}
 .profile-detail-hero img{width:100%;height:100%;object-fit:cover}
