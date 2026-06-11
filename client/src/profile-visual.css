@@ -1041,6 +1041,13 @@
     padding-bottom:100px!important;
   }
 
+  /* スクロール対象タブ(プロフィール/足あと/料金など)のパネルは高さ固定だと
+     中身が画面より高いとき下に届かない。可変にしてスクロールできるようにする。
+     min-height は styles.css 側で確保されるので短い時も画面を満たす。 */
+  html body .appv2-content.appv2-content--scroll .list-panel{
+    height:auto!important;
+  }
+
   /* ボタンを円形に統一（profile-visual内の高優先度ブロックを上書き） */
   html body .mp-actions{
     display:flex!important;
