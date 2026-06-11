@@ -219,7 +219,7 @@ body:has(.appv2){overflow:hidden}
 .appv2-content .list-panel{min-height:calc(100dvh - 58px - 64px);padding:18px}
 
 /* 受け取ったいいね */
-.mp-received-section{width:100%;max-width:400px;background:linear-gradient(135deg,#fff1f6,#fff8fb);border:1.5px solid #ffc3d4;border-radius:18px;padding:12px 14px;animation:cardIn .25s ease-out both}
+.mp-received-section{width:100%;max-width:400px;background:linear-gradient(135deg,#fff1f6,#fff8fb);border:1.5px solid #ffc3d4;border-radius:18px;padding:18px 14px;animation:cardIn .25s ease-out both}
 .mp-received-section.empty{background:#fff;border-color:var(--line)}
 .mp-received-header{font-size:13px;font-weight:900;color:var(--pink2);margin-bottom:10px;display:flex;align-items:center;gap:7px}
 .mp-received-header span{background:var(--pink);color:#fff;border-radius:999px;padding:2px 8px;font-size:11px}
