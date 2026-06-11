@@ -57,6 +57,7 @@ function publicUserToForm(user) {
   return {
     ...initialForm(),
     ...user,
+    age: user?.age || user?.ageRange || '',
     tags: user?.tags || [],
     agents: user?.agents || [],
     maps: user?.maps || [],
