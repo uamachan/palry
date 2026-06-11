@@ -209,16 +209,31 @@ html body #root .auth-modal--profile .profile-setup-actions .plain {
   }
 
   html body #root .auth-modal--profile .profile-setup-actions {
-    justify-content: center !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-end !important;
     gap: 6px !important;
     padding: 7px !important;
   }
 
   html body #root .auth-modal--profile .profile-setup-actions button {
     min-width: 62px !important;
-    height: 32px !important;
-    min-height: 32px !important;
+    height: 36px !important;
+    min-height: 36px !important;
     padding: 0 9px !important;
+    font-size: 11px !important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-actions .primary {
+    flex: 1 1 auto !important;
+    width: auto !important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-actions .reset-password-link {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    text-align: center !important;
+    height: auto !important;
+    min-height: 24px !important;
     font-size: 11px !important;
   }
 }
