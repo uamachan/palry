@@ -33,7 +33,7 @@ export const rankAliases = new Map([
 ]);
 
 // クライアントの AGE_RANGES と一致させる。数値年齢（旧形式）も後方互換で受け付ける。
-export const AGE_RANGE_OPTIONS = ['10代', '20代前半', '20代後半', '30代', '40代以上'];
+export const AGE_RANGE_OPTIONS = ['10代', '20代', '20代前半', '20代後半', '30代', '40代', '40代以上', '50代以上'];
 
 export function sanitizeMapsField(raw) {
   if (!Array.isArray(raw)) return [];

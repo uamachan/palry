@@ -32,6 +32,7 @@ export default function ProfilePanel({ user }) {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
 
   const rankLabel = safeUser.rank || safeUser.currentRank || safeUser.valorantRank || 'Unranked';
+  const ageLabel = safeUser.age || safeUser.ageRange || '年齢未設定';
   const photos = collectPhotos(safeUser);
 
   useEffect(() => {
@@ -78,7 +79,7 @@ export default function ProfilePanel({ user }) {
         <div className="profile-preview-head">
           <div>
             <b>{safeUser.name || '名前未設定'}</b>
-            <span>{safeUser.gender || '性別未設定'} / {safeUser.age || '年齢未設定'} / {safeUser.region || '地域未設定'}</span>
+            <span>{safeUser.gender || '性別未設定'} / {ageLabel} / {safeUser.region || '地域未設定'}</span>
           </div>
         </div>
 

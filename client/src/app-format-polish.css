@@ -1,6 +1,9 @@
 /* Final app formatting pass: loaded last so it can tame earlier hotfixes. */
 :root {
-  --app-nav-clearance: calc(104px + env(safe-area-inset-bottom, 0px));
+  --app-bottom-nav-h: 64px;
+  --app-bottom-nav-bottom: 14px;
+  --app-bottom-nav-gap: 10px;
+  --app-nav-clearance: calc(var(--app-bottom-nav-h) + var(--app-bottom-nav-bottom) + var(--app-bottom-nav-gap) + env(safe-area-inset-bottom, 0px));
 }
 
 .appv2 {
@@ -12,7 +15,8 @@
 }
 
 .appv2-bottom-nav {
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--app-bottom-nav-bottom) + env(safe-area-inset-bottom, 0px)) !important;
+  height: var(--app-bottom-nav-h) !important;
 }
 
 .appv2-content:has(.mp-wrap) {
@@ -68,24 +72,44 @@
 }
 
 @media (min-width: 900px) {
+  html body #root .appv2 {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding-bottom: var(--app-nav-clearance) !important;
+  }
+
+  html body #root .appv2-content {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: hidden !important;
+  }
+
   html body #root .appv2-content:has(.mp-wrap) {
-    min-height: calc(100dvh - 142px) !important;
-    padding-block: clamp(22px, 2.4vw, 34px) var(--app-nav-clearance) !important;
+    display: grid !important;
+    place-items: stretch center !important;
+    min-height: 0 !important;
+    padding-block: clamp(20px, 2.2vw, 30px) 10px !important;
   }
 
   html body #root .mp-wrap {
+    width: min(100%, 1040px) !important;
+    height: 100% !important;
     min-height: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
     gap: 18px !important;
-    justify-content: center !important;
+    justify-content: stretch !important;
     align-items: center !important;
-    padding-bottom: 8px !important;
+    align-content: stretch !important;
+    padding-bottom: 0 !important;
   }
 
   html body #root .mp-card-wrap {
-    height: auto !important;
-    overflow: visible !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
   }
 
   html body #root .mp-card,
@@ -93,13 +117,24 @@
   html body #root .mp-card .mp-photo-placeholder,
   html body #root .mp-empty,
   html body #root .mp-card-wrap > .mp-empty {
-    height: min(49dvh, 520px) !important;
-    min-height: min(49dvh, 520px) !important;
-    max-height: min(49dvh, 520px) !important;
+    height: min(100%, 520px) !important;
+    min-height: 0 !important;
+    max-height: min(100%, 520px) !important;
   }
 
   html body #root .mp-actions {
-    margin-bottom: 12px !important;
+    margin-bottom: 0 !important;
+  }
+
+  html body #root .appv2-content--scroll {
+    padding-bottom: 10px !important;
+  }
+
+  html body #root .appv2-content--scroll > *,
+  html body #root .appv2-content--dm > .dm-panel,
+  html body #root .appv2-content > .dm-panel {
+    height: 100% !important;
+    min-height: 0 !important;
   }
 }
 
@@ -289,24 +324,32 @@
 @media (min-width: 761px) {
   html body #root .appv2-content--dm,
   html body #root .appv2-content:has(.dm-panel) {
-    height: calc(100dvh - 220px) !important;
-    min-height: 500px !important;
-    max-height: 680px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     padding: 14px !important;
   }
 }
 
 @media (max-width: 760px) {
   :root {
-    --app-nav-clearance: calc(112px + env(safe-area-inset-bottom, 0px));
+    --app-nav-clearance: calc(108px + env(safe-area-inset-bottom, 0px));
   }
 
   html body .appv2 {
     padding-bottom: var(--app-nav-clearance) !important;
   }
 
+  html body .appv2-content {
+    margin-bottom: 0 !important;
+  }
+
+  html body .appv2-content--scroll {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
   html body .appv2-content:has(.mp-wrap) {
-    padding-bottom: 18px !important;
+    padding-bottom: 10px !important;
   }
 
   html body .mp-wrap {
@@ -322,7 +365,71 @@
   }
 
   html body .mp-actions {
-    padding-bottom: 10px !important;
+    padding-bottom: 0 !important;
+  }
+
+  html body .appv2-bottom-nav {
+    bottom: calc(7px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .appv2 .site-nav,
+  html body #root .site-header .site-nav,
+  html body #root .price-tabs,
+  html body #root .setup-tabs {
+    gap: 8px !important;
+  }
+
+  html body #root .appv2 .nav-button,
+  html body #root .site-header .nav-button,
+  html body #root .site-header .site-nav a,
+  html body #root .price-tabs button {
+    min-height: 38px !important;
+    border-radius: 999px !important;
+    padding: 8px 13px !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root .site-page > .section:not(.hero) {
+    padding-top: 42px !important;
+    padding-bottom: 42px !important;
+  }
+
+  html body #root .pricing-section.inside {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-card .setup-tabs button {
+    font-size: 0 !important;
+    min-height: 38px !important;
+    padding: 7px 8px !important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-card .setup-tabs button::after {
+    font-size: 11px !important;
+    line-height: 1 !important;
+  }
+
+  html body #root .auth-modal--profile .pv-chip-grid:has(.pv-chip--tag),
+  html body #root .auth-modal--profile .pv-chip-grid:has(.pv-chip--map) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .auth-modal--profile .pv-chip-grid--compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .auth-modal--profile .pv-chip {
+    min-height: 34px !important;
+    padding: 6px 8px !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root .auth-modal--profile .pv-rank-icon-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .auth-modal--profile .pv-role-grid {
+    grid-template-columns: 1fr !important;
   }
 
   .profile-preview.expanded {
