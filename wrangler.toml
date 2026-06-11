@@ -1,0 +1,16 @@
+# Cloudflare Workers の Static Assets 配信用設定。
+# worker.js は dist/ の静的ファイルを env.ASSETS から返すだけの入口。
+# 注意: JSONC(wrangler.jsonc)は wrangler 3.91 未満では読めず deploy が
+# 「Missing entry-point」で失敗するため、互換性の高い TOML を使う。
+name = "palry"
+compatibility_date = "2026-06-10"
+main = "worker.js"
+
+# build.command はここに書かない。
+# CI(deploy.yml)では「Build」段が VITE_* 環境変数付きで dist/ を生成済み。
+# wrangler 側で再ビルドすると環境変数が無く Firebase 設定が欠けたビルドになるため。
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+binding = "ASSETS"
