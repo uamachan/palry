@@ -163,7 +163,7 @@ export const api = {
 
   updateProfile: async (body) => {
     const uid = await currentUserOrThrow();
-    const { password, emailConfirm, idToken, age, ...rest } = body || {};
+    const { password, emailConfirm, idToken, age, agreed, ...rest } = body || {};
     const user = await writeUserProfile(uid, {
       ...rest,
       ageRange: age || rest.ageRange || '',
