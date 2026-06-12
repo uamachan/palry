@@ -121,7 +121,13 @@ function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
 export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, reportProfile, blockProfile }) {
   const activeThread = dmThreads.find((t) => t.match.id === activeThreadId) || dmThreads[0];
   const [detailProfile, setDetailProfile] = useState(null);
+  const [mobileView, setMobileView] = useState(activeThreadId ? 'chat' : 'list');
   const activeProfile = activeThread ? profileFromMatch(activeThread.match) : null;
+
+  const handleSelectThread = (threadId) => {
+    selectDmThread(threadId);
+    setMobileView('chat');
+  };
 
   // 同一スレッドへの多重既読APIコールを防ぐ
   const lastMarkedRef = useRef(null);
@@ -135,7 +141,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
   const hasUserMessage = Boolean(activeThread?.messages?.some((m) => m.sender === 'user' && !m.system));
 
   return (
-    <div className="dm-panel dm-panel-with-profile">
+    <div className="dm-panel dm-panel-with-profile" data-mobile-view={mobileView}>
       <aside className="dm-thread-list">
         <div className="dm-head"><h3>ダイレクトメッセージ</h3><span>{dmThreads.length}件</span></div>
         {dmThreads.length ? dmThreads.map((thread) => {
@@ -145,7 +151,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
             <button
               className={cx('dm-thread', activeThread?.match.id === thread.match.id && 'active', thread.unreadCount > 0 && 'unread')}
               key={thread.match.id}
-              onClick={() => selectDmThread(thread.match.id)}
+              onClick={() => handleSelectThread(thread.match.id)}
             >
               <b>{thread.match.profileName}{thread.unreadCount > 0 && <em>{thread.unreadCount}</em>}</b>
               <small>{threadProfile.riotId || threadProfile.rank || 'プロフィール未設定'}</small>
@@ -159,6 +165,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
         {activeThread ? (
           <>
             <div className="dm-conversation-head">
+              <button type="button" className="dm-back-btn" onClick={() => setMobileView('list')} aria-label="一覧に戻る">←</button>
               <div className="avatar small">
                 {activeThread.match.profilePhoto
                   ? <img src={activeThread.match.profilePhoto} alt="" loading="lazy" decoding="async" />

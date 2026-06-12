@@ -170,18 +170,52 @@
     color: #7a716a !important;
   }
 
-  /* DM: 上のスレッド概要 + 会話カードを1画面に収める */
+  /* DM: スレッド一覧 ↔ 会話 を切り替え表示 */
   html body #root .dm-panel {
     display: grid !important;
     grid-template-columns: 1fr !important;
-    grid-template-rows: auto minmax(0, 1fr) !important;
-    gap: 9px !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    gap: 0 !important;
     background: transparent !important;
     border: 0 !important;
     box-shadow: none !important;
   }
 
-  html body #root .dm-thread-list {
+  /* 一覧モード: スレッドのみ表示 */
+  html body #root .dm-panel[data-mobile-view="list"] .dm-thread-list {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    padding: 12px !important;
+    border-radius: 20px !important;
+    box-sizing: border-box !important;
+  }
+
+  html body #root .dm-panel[data-mobile-view="list"] .dm-conversation {
+    display: none !important;
+  }
+
+  /* 会話モード: 会話のみ表示 */
+  html body #root .dm-panel[data-mobile-view="chat"] .dm-thread-list {
+    display: none !important;
+  }
+
+  html body #root .dm-panel[data-mobile-view="chat"] .dm-conversation {
+    display: grid !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+    border-radius: 20px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* フォールバック（data属性なし） */
+  html body #root .dm-panel:not([data-mobile-view]) .dm-thread-list {
     display: block !important;
     width: 100% !important;
     max-height: 112px !important;
@@ -217,18 +251,41 @@
     color: #7a716a !important;
   }
 
-  html body #root .dm-conversation {
-    min-height: 0 !important;
-    height: 100% !important;
-    max-height: 100% !important;
-    overflow: hidden !important;
-    border-radius: 20px !important;
-    box-sizing: border-box !important;
-  }
-
   html body #root .dm-conversation-head {
     min-height: 56px !important;
     padding: 9px 11px !important;
+    display: grid !important;
+    grid-template-columns: auto 42px minmax(0,1fr) auto !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  html body #root .dm-back-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 34px !important;
+    height: 34px !important;
+    border: 1px solid #e7e0d8 !important;
+    border-radius: 50% !important;
+    background: #fff !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+  }
+
+  html body #root .dm-head-actions {
+    grid-column: auto !important;
+    width: auto !important;
+    margin-left: 0 !important;
+    flex-wrap: nowrap !important;
+  }
+
+  html body #root .dm-head-actions button {
+    flex: none !important;
+    white-space: nowrap !important;
   }
 
   html body #root .dm-messages {

@@ -738,9 +738,9 @@
   .dm-panel.dm-panel-with-profile {
     display: grid !important;
     grid-template-columns: 1fr !important;
-    grid-template-rows: auto minmax(0,1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
     height: 100% !important;
-    gap: 9px !important;
+    gap: 0 !important;
     overflow: hidden !important;
   }
 
@@ -748,15 +748,66 @@
     display: none !important;
   }
 
-  .dm-thread-list {
-    max-height: 30vh !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
+  /* 一覧表示: スレッド一覧のみ */
+  .dm-panel[data-mobile-view="list"] .dm-thread-list {
+    display: flex !important;
+    max-height: none !important;
+    height: 100% !important;
   }
 
-  .dm-conversation {
+  .dm-panel[data-mobile-view="list"] .dm-conversation {
+    display: none !important;
+  }
+
+  /* 会話表示: 会話のみ */
+  .dm-panel[data-mobile-view="chat"] .dm-thread-list {
+    display: none !important;
+  }
+
+  .dm-panel[data-mobile-view="chat"] .dm-conversation {
+    display: grid !important;
     height: 100% !important;
+  }
+
+  /* 戻るボタン（モバイル専用） */
+  .dm-back-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 34px !important;
+    height: 34px !important;
+    border: 1px solid var(--line, #e7e0d8) !important;
+    border-radius: 50% !important;
+    background: #fff !important;
+    color: var(--ink, #181614) !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+  }
+
+  .dm-conversation-head {
+    grid-template-columns: auto 42px minmax(0,1fr) auto !important;
+    align-items: center !important;
+  }
+
+  .dm-head-actions {
+    grid-column: auto !important;
+    width: auto !important;
+    margin-left: 0 !important;
+  }
+
+  .dm-head-actions button {
+    flex: none !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* PCでは戻るボタンを非表示 */
+@media (min-width: 761px) {
+  .dm-back-btn {
+    display: none !important;
   }
 }
 
