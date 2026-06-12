@@ -34,14 +34,14 @@ const port = envInt('PORT', 3001, { min: 1, max: 65535 });
 const isProduction = process.env.NODE_ENV === 'production';
 
 // 開発者モード: Firebase認証(メール確認)を経ずにプロフィール作成・動作確認を行うための抜け道。
-// マスタースイッチは環境変数 ALLOW_DEV_LOGIN のみ。本番(NODE_ENV=production)でも明示有効化でき、
-// 値を false にするか削除して再起動すれば「いつでも」無効化できる。既定はOFF。
+// セキュリティ上、本番(NODE_ENV=production)では ALLOW_DEV_LOGIN=true でも「絶対に」有効化しない。
+// 開発時のみ ALLOW_DEV_LOGIN=true で有効化できる。既定はOFF。
 // クライアントの dev-auth.js と一致する固定トークン/識別子を使う。
-const allowDevLogin = process.env.ALLOW_DEV_LOGIN === 'true';
+const allowDevLogin = !isProduction && process.env.ALLOW_DEV_LOGIN === 'true';
 const DEV_AUTH_TOKEN = 'dev-skip-login';
 const DEV_IDENTITY = { uid: 'dev-user', email: 'dev@palry.local', emailVerified: true };
 if (allowDevLogin) {
-  console.warn(`[dev] ALLOW_DEV_LOGIN 有効${isProduction ? '（本番環境！）' : ''}: Firebase認証をスキップする開発者トークンを受け付けます。停止するには ALLOW_DEV_LOGIN を外して再起動してください。`);
+  console.warn('[dev] ALLOW_DEV_LOGIN 有効（開発環境）: Firebase認証をスキップする開発者トークンを受け付けます。本番(NODE_ENV=production)では自動的に無効です。');
 }
 const defaultAllowedOrigins = isProduction ? [] : ['http://localhost:5173'];
 const configuredAllowedOrigins = (process.env.CLIENT_ORIGIN || '')

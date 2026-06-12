@@ -240,14 +240,11 @@ export const api = {
     const rlId = `${profileId}_from_${uid}`;
     const existingRl = await getDoc(doc(db, 'receivedLikes', rlId));
     if (!existingRl.exists()) {
-      const myProfile = await fetchUserProfile(uid);
+      // 偽装防止: 送信者プロフィール（名前/写真など）はここに保存しない。
+      // 受信側の表示時に fromUid から本人プロフィールを取得する（receivedLikes() 参照）。
       await setDoc(doc(db, 'receivedLikes', rlId), {
         forUid: profileId,
         fromUid: uid,
-        fromProfileName: myProfile?.name || '',
-        fromProfilePhoto: myProfile?.profilePhoto || '',
-        fromProfileRank: myProfile?.rank || '',
-        fromProfileRole: myProfile?.role || '',
         type,
         status: 'pending',
         createdAt: now(),
@@ -356,20 +353,25 @@ export const api = {
     if (!uid) return { receivedLikes: [] };
     const { collection, query, where, getDocs, db } = await getMods();
     const snap = await getDocs(query(collection(db, 'receivedLikes'), where('forUid', '==', uid)));
-    const receivedLikes = snap.docs
+    const pending = snap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((rl) => rl.status === 'pending')
-      .map((rl) => ({
+      .filter((rl) => rl.status === 'pending');
+    // 表示名/写真は保存値ではなく fromUid の本人プロフィールから取得する（なりすまし防止）。
+    // 互換性: 旧データが fromProfile* を持っていればフォールバックで利用する。
+    const receivedLikes = await Promise.all(pending.map(async (rl) => {
+      const fromProfile = await fetchUserProfile(rl.fromUid);
+      return {
         id: rl.id,
         fromProfileId: rl.fromUid,
-        fromProfileName: rl.fromProfileName || '',
-        fromPhoto: rl.fromProfilePhoto || '',
-        fromRank: rl.fromProfileRank || '',
-        fromRole: rl.fromProfileRole || '',
+        fromProfileName: fromProfile?.name || rl.fromProfileName || '',
+        fromPhoto: fromProfile?.profilePhoto || rl.fromProfilePhoto || '',
+        fromRank: fromProfile?.rank || rl.fromProfileRank || '',
+        fromRole: fromProfile?.role || rl.fromProfileRole || '',
         type: rl.type || 'like',
         status: 'pending',
         createdAt: rl.createdAt,
-      }));
+      };
+    }));
     return { receivedLikes };
   },
 
