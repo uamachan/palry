@@ -10,6 +10,176 @@
     overflow: hidden !important;
   }
 
+  /* Landing pages must scroll normally. App screens stay viewport-locked below. */
+  html:has(body #root .site-page),
+  body:has(#root .site-page),
+  #root:has(.site-page) {
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  /* Logged-out landing header: logo left, action right, nav on the second row aligned right. */
+  html body #root > .site-header {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 14px 16px 12px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr) !important;
+    grid-template-areas:
+      "brand actions"
+      "nav nav" !important;
+    align-items: center !important;
+    gap: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  html body #root > .site-header .brand {
+    grid-area: brand !important;
+    justify-self: start !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+  }
+
+  html body #root > .site-header .brand img {
+    width: clamp(132px, 38vw, 168px) !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  html body #root > .site-header .header-actions {
+    grid-area: actions !important;
+    justify-self: end !important;
+    margin-left: auto !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    min-width: 0 !important;
+  }
+
+  html body #root > .site-header .primary.small {
+    min-height: 46px !important;
+    padding: 0 22px !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root > .site-header .site-nav {
+    grid-area: nav !important;
+    width: 100% !important;
+    margin: 2px 0 0 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: clamp(14px, 5vw, 34px) !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 2px !important;
+  }
+
+  html body #root > .site-header .site-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  html body #root > .site-header .site-nav a,
+  html body #root > .site-header .site-nav .nav-button {
+    flex: 0 0 auto !important;
+    min-height: 38px !important;
+    padding: 8px 10px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Landing hero: keep the lower content centered and easy to read. */
+  html body #root .site-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+    text-align: center !important;
+  }
+
+  html body #root .site-page > .hero.section,
+  html body #root main.site-page > .hero.section#top {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    margin: 0 auto !important;
+    padding: 74px 22px 54px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    justify-items: center !important;
+    align-items: start !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+  }
+
+  html body #root .site-page .hero-copy {
+    width: min(100%, 430px) !important;
+    max-width: 430px !important;
+    min-width: 0 !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    justify-items: center !important;
+    text-align: center !important;
+  }
+
+  html body #root .site-page .hero-copy .eyebrow {
+    display: none !important;
+  }
+
+  html body #root .site-page .hero-copy h1 {
+    width: 100% !important;
+    max-width: 430px !important;
+    margin: 0 auto 20px !important;
+    text-align: center !important;
+    font-size: clamp(40px, 10.5vw, 58px) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.055em !important;
+  }
+
+  html body #root .site-page .hero-copy h1 span {
+    display: block !important;
+    width: 100% !important;
+    text-align: center !important;
+    white-space: normal !important;
+  }
+
+  html body #root .site-page .hero-copy p,
+  html body #root .site-page .notice-line {
+    width: 100% !important;
+    max-width: 390px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+    font-size: clamp(15px, 4.3vw, 18px) !important;
+    line-height: 1.85 !important;
+  }
+
+  html body #root .site-page .hero-actions {
+    width: 100% !important;
+    max-width: 390px !important;
+    margin: 28px auto 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    justify-items: center !important;
+    justify-content: center !important;
+    gap: 12px !important;
+  }
+
+  html body #root .site-page .hero-actions button {
+    width: min(100%, 360px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    justify-content: center !important;
+  }
+
   html body #root .appv2 {
     width: 100% !important;
     max-width: 100% !important;
