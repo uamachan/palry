@@ -39,7 +39,6 @@ export default function Safety() {
   return (
     <section id="safety" className="section narrow">
       <div className="section-head">
-        <span>安全</span>
         <h2>安全・規約</h2>
       </div>
       <TermsList />
