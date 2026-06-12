@@ -10,8 +10,8 @@ export default function NotificationsPanel({ receivedLikes, dmThreads, setActive
   return (
     <div className="notifications-panel list-panel" aria-label="通知パネル">
       <div className="notifications-head">
-        <div><span>通知</span><h3>通知</h3></div>
-        <b aria-label={`${totalUnread}件の通知`}>{totalUnread}件</b>
+        <div><h3>通知</h3></div>
+        {totalUnread > 0 && <b aria-label={`${totalUnread}件の通知`}>{totalUnread}件</b>}
       </div>
       <div className="notification-list" role="list">
         {loadingFirstLoad && <SkeletonList rows={3} />}
