@@ -263,10 +263,11 @@ export const api = {
           createdAt: now(),
         });
       }
-      await Promise.all([
-        setDoc(doc(db, 'receivedLikes', rlId), { status: 'accepted' }, { merge: true }),
-        setDoc(doc(db, 'receivedLikes', `${uid}_from_${profileId}`), { status: 'accepted' }, { merge: true }),
-      ]);
+      // 自分宛ての receivedLike（相手が自分に送ったいいね = forUid が自分）だけ accepted にできる。
+      // 相手宛ての receivedLike（rlId = `${profileId}_from_${uid}`、forUid は相手）は
+      // Firestore ルール上ここからは更新できず、以前は Promise.all 全体が permission-denied で
+      // 失敗してマッチ成立がエラー扱いになっていた。相手側は本人が開いた時点で解決される。
+      await setDoc(doc(db, 'receivedLikes', `${uid}_from_${profileId}`), { status: 'accepted' }, { merge: true });
       return { match: buildMatchObject(matchId, theirProfile), entitlements: buildEntitlements('FREE') };
     }
 
