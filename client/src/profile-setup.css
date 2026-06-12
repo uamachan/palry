@@ -1,53 +1,8 @@
 /* Profile setup fixes loaded after styles.css */
+/* auth-modal / auth-scrim / auth-modal-panel / auth-close は
+   auth-layout.css (matching-icons.css 経由で後から読み込まれる) が
+   同じ !important で上書きするため、ここには記載しない */
 .eyebrow{display:none!important}
-
-.auth-modal{
-  position:fixed!important;
-  inset:0!important;
-  z-index:100!important;
-  display:grid!important;
-  place-items:center!important;
-  padding:18px!important;
-}
-.auth-scrim{
-  position:absolute!important;
-  inset:0!important;
-  border:0!important;
-  background:rgba(24,22,20,.56)!important;
-  backdrop-filter:blur(10px)!important;
-}
-.auth-modal-panel,
-.auth-modal-panel--profile,
-.auth-modal-panel--narrow{
-  position:relative!important;
-  z-index:1!important;
-  width:min(760px,calc(100vw - 28px))!important;
-  max-height:calc(100dvh - 28px)!important;
-  overflow:auto!important;
-  background:var(--paper,#fffdf9)!important;
-  border:1px solid var(--line,#e7e0d8)!important;
-  border-radius:26px!important;
-  box-shadow:0 28px 90px rgba(24,22,20,.26)!important;
-}
-.auth-close{
-  position:absolute!important;
-  top:14px!important;
-  right:14px!important;
-  z-index:10!important;
-  width:38px!important;
-  height:38px!important;
-  margin:0!important;
-  border:1px solid var(--line,#e7e0d8)!important;
-  background:#fff!important;
-  color:var(--ink,#181614)!important;
-  border-radius:50%!important;
-  display:grid!important;
-  place-items:center!important;
-  font-size:22px!important;
-  font-weight:900!important;
-  line-height:1!important;
-  box-shadow:0 8px 22px rgba(24,22,20,.12)!important;
-}
 
 .profile-setup-panel{padding:28px!important}
 .profile-setup-heading{
