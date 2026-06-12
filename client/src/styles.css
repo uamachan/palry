@@ -293,6 +293,11 @@ body:has(.appv2){overflow:hidden}
 select option{background:#fffdf9;color:#181614;font-weight:700}
 
 /* DM improvements */
+.appv2-content .dm-thread{padding:10px 12px;gap:3px;margin-bottom:7px;border-radius:14px}
+.appv2-content .dm-thread b{font-size:14px;line-height:1.25}
+.appv2-content .dm-thread small{font-size:11px;line-height:1.25}
+.appv2-content .dm-thread span{font-size:11px;line-height:1.35}
+.appv2-content .dm-thread.active{box-shadow:0 0 0 2px rgba(255,79,131,.12)}
 .dm-conversation-head{grid-template-columns:42px minmax(0,1fr) auto}
 .dm-conversation-head>div:nth-child(2){min-width:0}
 .dm-conversation-head h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
