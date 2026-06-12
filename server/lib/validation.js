@@ -12,9 +12,9 @@ export function cleanText(value, max = 160) {
  * - Tagline: 1〜5文字（同上）
  * クライアントの AuthForms.jsx / dm-submit-guard.js と同じルールを適用する。
  */
-export const RIOT_ID_PATTERN = /^[^#\s]{1,16}#[^#\s]{1,5}$/u;
+const RIOT_ID_PATTERN = /^[^#\s]{1,16}#[^#\s]{1,5}$/u;
 
-export function normalizeRiotIdInput(value) {
+function normalizeRiotIdInput(value) {
   const raw = String(value || '').trim().replace(/＃/g, '#').replace(/\s+/g, '');
   let normalized = '';
   let hasHash = false;
@@ -41,7 +41,7 @@ export function cleanRiotId(value) {
  * フロントの AGE_RANGES と同じ値（10代〜90代）を正とする。
  * それ以外・空は空文字を返す。
  */
-export const VALID_AGE_RANGES = ['10代', '20代', '30代', '40代', '50代', '60代', '70代', '80代', '90代'];
+const VALID_AGE_RANGES = ['10代', '20代', '30代', '40代', '50代', '60代', '70代', '80代', '90代'];
 
 export function cleanAge(value) {
   const v = String(value || '').trim();
