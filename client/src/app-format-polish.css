@@ -487,4 +487,37 @@ html body #root .auth-modal-panel--profile .profile-setup-actions {
     height: calc(100dvh - 20px) !important;
     max-height: calc(100dvh - 20px) !important;
   }
+
+  html body #root .notification-list {
+    gap: 10px !important;
+  }
+
+  html body #root .notification-card {
+    min-height: 108px !important;
+    grid-template-columns: 48px minmax(0, 1fr) !important;
+    gap: 10px 12px !important;
+    padding: 14px !important;
+    border-radius: 20px !important;
+  }
+
+  html body #root .notification-card .notification-icon {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 16px !important;
+  }
+
+  html body #root .notification-card > div:not(.notification-icon) b {
+    font-size: 16px !important;
+    line-height: 1.32 !important;
+    margin-bottom: 3px !important;
+  }
+
+  html body #root .notification-card > div:not(.notification-icon) p {
+    font-size: 12.5px !important;
+    line-height: 1.45 !important;
+  }
+
+  html body #root .notification-card button {
+    min-height: 42px !important;
+  }
 }
