@@ -181,3 +181,122 @@
   .profile-setup-actions .primary,.profile-setup-actions .secondary,.profile-setup-actions .plain{width:100%!important}
   .voice-record-box{display:grid!important}
 }
+
+@media(max-width:760px){
+  html body #root .auth-modal--profile .auth-modal-panel--profile{
+    width:calc(100vw - 18px)!important;
+    height:calc(100dvh - 22px)!important;
+    max-height:calc(100dvh - 22px)!important;
+    overflow:hidden!important;
+    padding:10px!important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-panel{
+    height:100%!important;
+    min-height:0!important;
+    padding:36px 12px 12px!important;
+    overflow:hidden!important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-heading{
+    margin-bottom:10px!important;
+    padding-right:54px!important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-heading h2{
+    font-size:clamp(28px,8.2vw,36px)!important;
+    line-height:1.08!important;
+    max-width:11em!important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-heading p{
+    font-size:14px!important;
+    line-height:1.45!important;
+  }
+
+  html body #root .auth-modal--profile .email-signup-form.profile-setup-card{
+    height:calc(100% - 92px)!important;
+    min-height:0!important;
+    display:grid!important;
+    grid-template-rows:auto auto minmax(0,1fr) auto!important;
+    gap:10px!important;
+    padding:0!important;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    overflow:hidden!important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-card .setup-tabs{
+    display:flex!important;
+    grid-template-columns:none!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    gap:8px!important;
+    padding:0 0 8px!important;
+    scrollbar-width:none!important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-card .setup-tabs::-webkit-scrollbar{display:none!important}
+
+  html body #root .auth-modal--profile .profile-setup-card .setup-tabs button{
+    flex:0 0 auto!important;
+    min-width:108px!important;
+    min-height:38px!important;
+    padding:8px 12px!important;
+    border-radius:999px!important;
+    font-size:13px!important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-card>.pv-basic-grid,
+  html body #root .auth-modal--profile .profile-setup-card>.pv-rank-section,
+  html body #root .auth-modal--profile .profile-setup-card>.setup-stack,
+  html body #root .auth-modal--profile .profile-setup-card>.terms-box{
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding:12px!important;
+  }
+
+  html body #root .auth-modal--profile .pv-basic-grid{
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+    align-items:start!important;
+  }
+
+  html body #root .auth-modal--profile .pv-photo-card{
+    min-height:132px!important;
+    height:auto!important;
+    padding:14px!important;
+  }
+
+  html body #root .auth-modal--profile .pv-photo-preview{
+    width:86px!important;
+    height:86px!important;
+    border-radius:22px!important;
+  }
+
+  html body #root .auth-modal--profile .pv-text-fields{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-actions{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    padding-top:10px!important;
+    background:#f8f3ee!important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-actions button{
+    min-height:46px!important;
+    border-radius:999px!important;
+  }
+
+  html body #root .auth-modal--profile .profile-setup-actions .plain{
+    min-height:38px!important;
+  }
+}
