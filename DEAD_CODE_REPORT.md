@@ -8,18 +8,24 @@
 - 削除済み: `server/lib/payments.js`
 - 削除済み: `client/public/landing-mobile-final.js`
 - 削除済み: `client/public/match-fullscreen.css`
-- 後入れCSS注入停止済み: `client/index.html` から `landing-mobile-final.js` の読み込みを削除
-- publicのPCマッチ画面上書きCSSを削除済み。PCマッチ画面の調整は `client/src/app-format-polish.css` 側で管理する。
-- 削除せず要確認: Express API / Prisma / JSON migration / public hotfix CSS
-- 今後は後入れJSでCSSを注入せず、元のCSSまたは既存の責務に合うCSSを直接整理する。
+- 削除済み: `client/public/mobile-fixes.css`
+- 削除済み: `client/public/hero-section-align.css`
+- 削除済み: `client/public/profile-setup-hotfix.css`
+- `client/index.html` から public の後付けCSS/JS読み込みを削除済み。
+- スマホアプリ画面の調整は `client/src/mobile-fixes.css` に移動済み。
+- プロフィール作成select表示の調整は `client/src/profile-setup.css` に移動済み。
+- 今後は後入れJSでCSSを注入せず、public hotfix CSSも増やさず、元のCSSまたは既存の責務に合う `client/src` 側CSSを直接整理する。
 
 ## A. 削除済み / 停止済み
 
 | path | 理由 | 対応 | 削除リスク |
 |---|---|---|---|
 | `server/lib/payments.js` | 決済プロバイダ統合の将来用 shim だが、現行コードから import されていなかった。 | 削除済み | 低。ただし将来 Stripe 統合をする場合は再作成が必要。 |
-| `client/public/landing-mobile-final.js` | JSでCSSを後入れ注入する方式は、既存CSSを後から上書きしてスマホUIの原因追跡を難しくする。 | 読み込み停止後、ファイル本体も削除済み。必要なスマホUI調整は `client/public/hero-section-align.css` 側へ移動済み。 | 低。戻す場合もJS注入ではなく元CSSを編集すること。 |
-| `client/public/match-fullscreen.css` | PCマッチ画面をpublic CSSから強く上書きしていた。現在は `client/src/app-format-polish.css` に同系統のPC調整があるためpublic側は重複。 | `client/index.html` の読み込みを削除し、ファイル本体も削除済み。 | 低〜中。PCのマッチング画面の表示確認は必要。 |
+| `client/public/landing-mobile-final.js` | JSでCSSを後入れ注入する方式は、既存CSSを後から上書きしてスマホUIの原因追跡を難しくする。 | 読み込み停止後、ファイル本体も削除済み。 | 低。戻す場合もJS注入ではなく元CSSを編集すること。 |
+| `client/public/match-fullscreen.css` | PCマッチ画面をpublic CSSから強く上書きしていた。`client/src/app-format-polish.css` に同系統のPC調整があるためpublic側は重複。 | `client/index.html` の読み込みを削除し、ファイル本体も削除済み。 | 低〜中。PCのマッチング画面の表示確認は必要。 |
+| `client/public/mobile-fixes.css` | publicから読み込むスマホ上書きCSSだった。`client/src/main.jsx` が `client/src/mobile-fixes.css` をimportしているため、src側へ統合可能。 | アプリ画面のスマホ調整を `client/src/mobile-fixes.css` へ移し、public側は削除済み。 | 中。スマホのログイン後画面、DM、通知、足あと確認が必要。 |
+| `client/public/hero-section-align.css` | ランディングhero/headerのpublic上書きCSSだった。 | public側は削除済み。ランディングは `client/src/styles.css` の基本スタイルへ戻す。 | 中。スマホ/PCのトップ、料金、安全規約確認が必要。 |
+| `client/public/profile-setup-hotfix.css` | プロフィール作成画面のpublic hotfix CSSだった。 | select表示を `client/src/profile-setup.css` へ移し、public側は削除済み。 | 中。プロフィール作成モーダル確認が必要。 |
 
 ## B. 要確認 / 削除禁止寄り
 
@@ -37,13 +43,14 @@
 | `scripts/backup-data.mjs` | `backup-data` script で使われる。 | JSON Storeバックアップ | JSON Storeを使わないなら削除候補 |
 | `server/reset-data.js` | `reset-data` script で使われる。 | ローカル/デモデータ初期化 | デモ運用不要なら削除候補 |
 
-## C. 重複・統合候補
+## C. 現在のCSS方針
 
-| path | 重複内容 | 統合案 | 注意点 |
-|---|---|---|---|
-| `client/public/mobile-fixes.css` | `client/index.html` から直接読み込み。さらに `client/src/main.jsx` でも `./mobile-fixes.css` を import している。 | public直読み込みとsrc importの役割を分ける。最終的にはsrc CSSへ統合。 | 画面崩れ対策のhotfixの可能性が高いので即削除禁止 |
-| `client/public/hero-section-align.css` | ランディングhero/headerの上書きCSS。 | `client/src/styles.css` または専用landing CSSへ統合。 | 強い上書きがあり、順序依存の可能性あり。統合は1画面ずつ確認しながら行う。 |
-| `client/public/profile-setup-hotfix.css` | hotfix名のCSS。 | 原因CSSへ吸収。 | プロフィール作成画面の崩れ修正の可能性あり |
+| 種類 | 現在の管理場所 | 方針 |
+|---|---|---|
+| ランディング基本CSS | `client/src/styles.css` | public hotfixで上書きしない。必要ならこのファイルへ最小変更する。 |
+| スマホアプリ画面 | `client/src/mobile-fixes.css` | `main.jsx` のimportで読み込む。public CSSは使わない。 |
+| アプリ全体/PCマッチ画面 | `client/src/app-format-polish.css` | public PC上書きCSSは使わない。 |
+| プロフィール作成 | `client/src/profile-setup.css` / `client/src/profile-visual.css` / `client/src/app-format-polish.css` | public hotfix CSSは使わない。 |
 
 ## D. 未使用依存候補
 
@@ -57,8 +64,8 @@
 ## E. UI/CSS運用ルール
 
 - 後入れ JavaScript でCSSを注入しない。
-- 新規の上書き専用CSSファイルを安易に追加しない。
-- UI修正は元のCSSまたは既存の責務に合うCSSを直接編集する。
+- public の上書き専用CSSファイルを追加しない。
+- UI修正は元のCSSまたは既存の責務に合う `client/src` 側CSSを直接編集する。
 - スマホだけの修正は `@media (max-width: 760px)` に限定する。
 - `html` / `body` / `#root` の `overflow` / `height` を変更する時は、ランディングとログイン後アプリ画面の副作用を必ず確認する。
 
@@ -85,5 +92,5 @@ npx depcheck
 1. スマホでトップからフッターまでスクロール確認
 2. PC/スマホ両方でマッチング画面を確認
 3. 料金表・安全規約・ログイン後アプリ画面を確認
-4. public hotfix CSS を元CSSへ1ファイルずつ統合
+4. プロフィール作成モーダルのselect、ランク、ロール、規約チェックを確認
 5. Express API / Prisma を残すか、Firestore/Cloud Functionsへ一本化するかを決めてから大きい削除を行う
