@@ -47,7 +47,6 @@ export default function ProfilePanel({ user }) {
     <div className="list-panel profile-panel">
       <div className="profile-panel-head">
         <div>
-          <span>MY PROFILE</span>
           <h3>プロフィール</h3>
         </div>
       </div>
