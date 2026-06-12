@@ -186,6 +186,10 @@
   text-align: right;
   margin-top: 2px;
 }
+.pv-char-count--warn {
+  color: #e83f70;
+  font-weight: 900;
+}
 
 /* ── フィールドグループ ── */
 .pv-field-group {

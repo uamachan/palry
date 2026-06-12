@@ -249,7 +249,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
       if (!form.role) return 'メインロール';
     }
     if (tab === 'プレイスタイル' && (!form.tags?.length && !form.agents?.length)) return '目的タグ または よく使うエージェント';
-    if (tab === '自己紹介' && showAgreement && (!form.bio || form.bio.trim().length < 10)) return '自己紹介は10文字以上入力してください';
+    if (tab === '自己紹介' && (!form.bio || form.bio.trim().length < 10)) return '自己紹介は10文字以上入力してください';
     if (tab === '規約' && showAgreement && !form.agreed) return '利用規約への同意';
     return '';
   }
@@ -475,7 +475,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
         {activeSetupTab === '自己紹介' && (
           <div className="setup-stack">
             <label className="pv-field"><span className="pv-label">Xアカウント（任意）</span><input value={form.xHandle} maxLength="40" onChange={(e) => setForm({ ...form, xHandle: e.target.value })} placeholder="@pairly" /></label>
-            <div className="pv-field"><span className="pv-label">自己紹介 <small>(最大240文字)</small></span><textarea className="pv-bio-area" value={form.bio} maxLength="240" onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="遊ぶ時間、VC、募集したい相手、得意なことなど" rows={4} /><span className="pv-char-count">{(form.bio || '').length} / 240</span></div>
+            <div className="pv-field"><span className="pv-label">自己紹介 <small>(10文字以上・最大240文字)</small></span><textarea className="pv-bio-area" value={form.bio} maxLength="240" onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="遊ぶ時間、VC、募集したい相手、得意なことなど（10文字以上）" rows={4} /><span className={cx('pv-char-count', (form.bio || '').length > 0 && (form.bio || '').length < 10 && 'pv-char-count--warn')}>{(form.bio || '').length} / 240{(form.bio || '').length < 10 && (form.bio || '').length > 0 ? ` (あと${10 - (form.bio || '').length}文字)` : ''}</span></div>
             <div className="voice-record-box"><div><b>声の自己紹介</b><p>任意で20秒まで録音できます。声を載せると雰囲気が伝わりやすくなります。</p></div><button type="button" className={isRecordingVoice ? 'danger' : 'secondary'} onClick={isRecordingVoice ? stopVoiceRecording : startVoiceRecording}>{isRecordingVoice ? '録音停止' : '録音する'}</button>{form.voiceIntro && <span className="pv-voice-done">録音済み</span>}</div>
           </div>
         )}

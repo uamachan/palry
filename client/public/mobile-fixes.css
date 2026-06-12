@@ -71,7 +71,7 @@
     width: 100% !important;
     max-width: 100% !important;
     min-height: 0 !important;
-    height: auto !important;
+    height: 0 !important;
     max-height: none !important;
     margin: 0 !important;
     padding: 8px !important;
@@ -80,7 +80,15 @@
     box-sizing: border-box !important;
   }
 
-  html body #root .appv2-content--scroll,
+  /* スクロールタブ（料金・安全規約・通知など）は縦スクロール可 */
+  html body #root .appv2-content--scroll {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 24px !important;
+  }
+
+  /* DM は自前でスクロール管理するためクリップ維持 */
   html body #root .appv2-content--dm {
     overflow: hidden !important;
   }
