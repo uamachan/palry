@@ -1,5 +1,5 @@
 /* Mobile-only app overrides imported from main.jsx.
-   App screens use viewport-locked layout; landing layout lives in hero-section-align.css. */
+   App screens use viewport-locked layout; landing layout lives in styles.css. */
 @media (max-width: 760px) {
   html,
   body,
@@ -36,6 +36,31 @@
     border-radius: 18px !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr) !important;
+    grid-template-areas:
+      "brand actions"
+      "nav nav" !important;
+    align-items: center !important;
+    gap: 10px 12px !important;
+  }
+
+  html body #root .appv2 > .site-header .brand,
+  html body #root .appv2 > .site-header .app-brand-button {
+    grid-area: brand !important;
+    justify-self: start !important;
+    min-width: 0 !important;
+  }
+
+  html body #root .appv2 > .site-header .header-actions {
+    grid-area: actions !important;
+    justify-self: end !important;
+    margin-left: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    min-width: 0 !important;
   }
 
   html body #root .appv2 .brand img,
@@ -45,7 +70,24 @@
     height: auto !important;
   }
 
+  html body #root .appv2 .plan-pill {
+    min-height: 42px !important;
+    padding: 9px 16px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root .appv2 .appv2-notification-btn,
+  html body #root .appv2 .appv2-avatar {
+    width: 42px !important;
+    height: 42px !important;
+    flex: 0 0 42px !important;
+  }
+
   html body #root .appv2 .site-nav {
+    grid-area: nav !important;
     order: 3 !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -80,7 +122,7 @@
     box-sizing: border-box !important;
   }
 
-  /* マッチング画面: カードを中央寄せしすぎず、上から自然に表示する */
+  /* マッチング画面: カードを上寄せしつつ、縦長の見た目にする */
   html body #root .appv2-content:has(.mp-wrap) {
     display: block !important;
     padding-top: 6px !important;
@@ -113,7 +155,7 @@
 
   html body #root .appv2-content:has(.mp-wrap) .mp-card-wrap {
     width: 100% !important;
-    max-width: 390px !important;
+    max-width: 392px !important;
     height: auto !important;
     min-height: 0 !important;
     flex: 0 0 auto !important;
@@ -127,10 +169,16 @@
   html body #root .appv2-content:has(.mp-wrap) .mp-card,
   html body #root .appv2-content:has(.mp-wrap) .mp-empty {
     width: 100% !important;
-    height: min(42svh, 390px) !important;
-    max-height: min(42svh, 390px) !important;
-    min-height: 0 !important;
+    height: min(52svh, 470px) !important;
+    max-height: min(52svh, 470px) !important;
+    min-height: min(390px, 50svh) !important;
     margin-top: 0 !important;
+  }
+
+  html body #root .appv2-content:has(.mp-wrap) .mp-card .mp-photo,
+  html body #root .appv2-content:has(.mp-wrap) .mp-card .mp-photo-placeholder {
+    height: 100% !important;
+    min-height: 100% !important;
   }
 
   /* スクロールタブ（料金・安全規約・通知など）は縦スクロール可 */
@@ -191,6 +239,68 @@
     overflow: auto !important;
     -webkit-overflow-scrolling: touch !important;
     padding-bottom: 2px !important;
+  }
+
+  html body #root .notification-list {
+    display: grid !important;
+    align-content: start !important;
+    gap: 12px !important;
+    padding: 2px 2px 12px !important;
+  }
+
+  html body #root .notification-card {
+    width: 100% !important;
+    min-height: 128px !important;
+    height: auto !important;
+    display: grid !important;
+    grid-template-columns: 54px minmax(0, 1fr) !important;
+    grid-template-areas:
+      "icon text"
+      "button button" !important;
+    align-items: start !important;
+    gap: 12px 14px !important;
+    padding: 18px !important;
+    border-radius: 22px !important;
+    box-sizing: border-box !important;
+  }
+
+  html body #root .notification-card .notification-icon {
+    grid-area: icon !important;
+    width: 54px !important;
+    height: 54px !important;
+    border-radius: 18px !important;
+    display: grid !important;
+    place-items: center !important;
+    margin: 0 !important;
+    font-weight: 900 !important;
+  }
+
+  html body #root .notification-card > div:not(.notification-icon) {
+    grid-area: text !important;
+    min-width: 0 !important;
+    text-align: left !important;
+    align-self: center !important;
+  }
+
+  html body #root .notification-card > div:not(.notification-icon) b {
+    display: block !important;
+    font-size: 17px !important;
+    line-height: 1.35 !important;
+    margin: 0 0 4px !important;
+  }
+
+  html body #root .notification-card > div:not(.notification-icon) p {
+    margin: 0 !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+  }
+
+  html body #root .notification-card button {
+    grid-area: button !important;
+    width: 100% !important;
+    min-height: 46px !important;
+    border-radius: 999px !important;
+    justify-content: center !important;
   }
 
   html body #root .notification-empty,
