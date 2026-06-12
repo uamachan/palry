@@ -5,18 +5,16 @@ import { SkeletonList } from '../../ui/primitives.jsx';
 export default function NotificationsPanel({ receivedLikes, dmThreads, setActiveTab, selectDmThread, acceptLike, likesLoading, dmLoading }) {
   const unreadThreads = dmThreads.filter((t) => Number(t.unreadCount || 0) > 0);
   const recentThreads = dmThreads.slice(0, 3);
-  const totalUnread = receivedLikes.length + unreadThreads.reduce((sum, t) => sum + Number(t.unreadCount || 0), 0);
   const loadingFirstLoad = (likesLoading || dmLoading) && !receivedLikes.length && !dmThreads.length;
   return (
     <div className="notifications-panel list-panel" aria-label="通知パネル">
       <div className="notifications-head">
         <div><h3>通知</h3></div>
-        {totalUnread > 0 && <b aria-label={`${totalUnread}件の通知`}>{totalUnread}件</b>}
       </div>
       <div className="notification-list" role="list">
         {loadingFirstLoad && <SkeletonList rows={3} />}
         {receivedLikes.map((like) => (
-          <article className="notification-card important" key={like.id} role="listitem">
+          <article className="notification-card" key={like.id} role="listitem">
             <div className="notification-icon" aria-hidden="true">♡</div>
             <div><b>{like.fromProfileName}さんからいいね</b><p>{like.fromRank || 'ランク未設定'} · {like.fromRole || 'ロール未設定'}</p></div>
             <button type="button" aria-label={`${like.fromProfileName}さんにいいねを返す`} onClick={() => acceptLike(like.id)}>いいねを返す</button>
