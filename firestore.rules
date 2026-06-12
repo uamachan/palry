@@ -18,10 +18,12 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly(keys);
     }
 
+    // 公開 users 文書（全ログインユーザーが読める）には email などの個人情報を置かない。
+    // メールアドレスは Firebase Auth が保持しており、候補表示にも不要なため保存しない。
     function validProfileCreate(uid) {
       return isSelf(uid)
         && hasOnlyKeys([
-          'id', 'email', 'name', 'riotId', 'ageRange', 'age', 'gender', 'region',
+          'id', 'name', 'riotId', 'ageRange', 'age', 'gender', 'region',
           'profilePhoto', 'rank', 'role', 'tags', 'agents', 'xHandle', 'bio',
           'voiceIntro', 'vc', 'maps', 'favoriteWeapon', 'plan', 'verified',
           'agreedAt', 'createdAt', 'updatedAt'
@@ -35,7 +37,7 @@ service cloud.firestore {
     function validProfileUpdate(uid) {
       return isSelf(uid)
         && hasOnlyKeys([
-          'id', 'email', 'name', 'riotId', 'ageRange', 'age', 'gender', 'region',
+          'id', 'name', 'riotId', 'ageRange', 'age', 'gender', 'region',
           'profilePhoto', 'rank', 'role', 'tags', 'agents', 'xHandle', 'bio',
           'voiceIntro', 'vc', 'maps', 'favoriteWeapon', 'plan', 'verified',
           'agreedAt', 'createdAt', 'updatedAt'
@@ -53,6 +55,14 @@ service cloud.firestore {
           matchId == participants[0] + '_match_' + participants[1] ||
           matchId == participants[1] + '_match_' + participants[0]
         );
+    }
+
+    // 双方向の like 文書が揃っている（=相互いいね）ことを必須にする。
+    // これが無いと、任意のログインユーザーが被害者とのマッチ文書を偽造して
+    // 同意なしに DM を送りつけられる。like 文書IDは `${fromUid}_${toUid}` 形式。
+    function mutualLikeExists(participants) {
+      return exists(/databases/$(database)/documents/likes/$(participants[0] + '_' + participants[1]))
+        && exists(/databases/$(database)/documents/likes/$(participants[1] + '_' + participants[0]));
     }
 
     match /users/{uid} {
@@ -104,6 +114,7 @@ service cloud.firestore {
       allow read: if isParticipant(resource.data.participants);
       allow create, update: if isParticipant(request.resource.data.participants)
         && validMatchId(matchId, request.resource.data.participants)
+        && mutualLikeExists(request.resource.data.participants)
         && hasOnlyKeys(['id', 'participants', 'createdAt'])
         && request.resource.data.id == matchId;
       allow delete: if false;

@@ -184,6 +184,14 @@ function App() {
 
   function completeAuth(nextUser, message) {
     setUser(nextUser);
+    // email は公開プロフィールに保存しない（漏洩防止）ため、ヘッダーのマスク表示用に
+    // Firebase Auth が保持するメールをメモリ上の user にだけ補完する。
+    if (!nextUser.email) {
+      getFirebaseMods().then(({ firebaseAuth }) => {
+        const authEmail = firebaseAuth?.currentUser?.email;
+        if (authEmail) setUser((u) => (u && u.id === nextUser.id && !u.email ? { ...u, email: authEmail } : u));
+      }).catch(() => {});
+    }
     const nextPlan = nextUser.plan || 'FREE';
     setPlan(nextPlan);
     setActivePlan(nextPlan);
@@ -366,7 +374,8 @@ function App() {
     e.preventDefault();
     try {
       const payload = await api.updateProfile(editForm);
-      setUser(payload.user);
+      // 公開プロフィールに email は無いので、表示用に保持していたメールを引き継ぐ。
+      setUser((u) => ({ ...payload.user, email: payload.user.email || u?.email }));
       setPlan(payload.user.plan || plan);
       setProfileEditorOpen(false);
       showToast('プロフィールを保存しました');

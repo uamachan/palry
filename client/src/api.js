@@ -17,6 +17,7 @@ async function getMods() {
       setDoc: fs.setDoc,
       updateDoc: fs.updateDoc,
       addDoc: fs.addDoc,
+      deleteField: fs.deleteField,
       query: fs.query,
       where: fs.where,
       onSnapshot: fs.onSnapshot,
@@ -146,11 +147,15 @@ export const api = {
 
   register: async (body) => {
     const uid = await currentUserOrThrow();
-    const { password, emailConfirm, idToken, agreed, age, ...rest } = body || {};
+    // email は公開 users 文書（全ログインユーザーが読める）へ保存しない（個人情報漏洩の防止）。
+    // 認証用メールは Firebase Auth が保持しており、候補表示にも不要。
+    const { password, emailConfirm, idToken, agreed, age, email, ...rest } = body || {};
+    const { deleteField } = await getMods();
     const userData = {
       ...rest,
       id: uid,
       ageRange: age || rest.ageRange || '',
+      email: deleteField(), // 旧データに残った email を確実に削除する
       plan: 'FREE',
       verified: true,
       agreedAt: now(),
@@ -163,10 +168,13 @@ export const api = {
 
   updateProfile: async (body) => {
     const uid = await currentUserOrThrow();
-    const { password, emailConfirm, idToken, age, agreed, ...rest } = body || {};
+    // email は公開 users 文書へ保存しない（register と同じ理由）。
+    const { password, emailConfirm, idToken, age, agreed, email, ...rest } = body || {};
+    const { deleteField } = await getMods();
     const user = await writeUserProfile(uid, {
       ...rest,
       ageRange: age || rest.ageRange || '',
+      email: deleteField(), // 旧データに残った email を確実に削除する
       updatedAt: now(),
     });
     return { user };
