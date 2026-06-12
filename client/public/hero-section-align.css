@@ -169,15 +169,23 @@ html body #root .site-page .terms-list {
 }
 
 @media (max-width: 760px) {
-  /* mobile-fixes.css locks scrolling for the app screen; undo it for the landing page. */
-  html,
-  body,
-  #root {
+  /* mobile-fixes.css locks app screens; only landing pages should use document scrolling. */
+  html:has(body #root .site-page),
+  body:has(#root .site-page),
+  #root:has(.site-page) {
     height: auto !important;
     min-height: 100% !important;
     max-height: none !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
+  }
+
+  html:has(body #root .appv2),
+  body:has(#root .appv2),
+  #root:has(.appv2) {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
   }
 
   html body #root > .site-header {
@@ -186,54 +194,68 @@ html body #root .site-page .terms-list {
     margin-left: 0 !important;
     margin-right: 0 !important;
     padding: 14px 16px 12px !important;
-    display: flex !important;
-    flex-wrap: wrap !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr) !important;
+    grid-template-areas:
+      "brand actions"
+      "nav nav" !important;
     align-items: center !important;
     gap: 10px 12px !important;
     box-sizing: border-box !important;
   }
 
   html body #root > .site-header .brand {
-    order: 1 !important;
-    flex: 0 1 auto !important;
+    grid-area: brand !important;
+    justify-self: start !important;
+    min-width: 0 !important;
     margin-right: 0 !important;
   }
 
   html body #root > .site-header .brand img {
-    width: 132px !important;
-    max-width: 42vw !important;
+    width: clamp(108px, 32vw, 132px) !important;
+    max-width: 100% !important;
     height: auto !important;
   }
 
   html body #root > .site-header .header-actions {
-    order: 2 !important;
-    margin-left: auto !important;
-    flex: 0 0 auto !important;
-    justify-content: flex-end !important;
+    grid-area: actions !important;
+    justify-self: end !important;
+    margin-left: 0 !important;
+    min-width: 0 !important;
   }
 
   html body #root > .site-header .primary.small {
+    min-height: 44px !important;
     white-space: nowrap !important;
-    padding: 10px 18px !important;
+    padding: 0 18px !important;
   }
 
   html body #root > .site-header .site-nav {
-    order: 3 !important;
+    grid-area: nav !important;
     width: 100% !important;
-    margin-left: auto !important;
-    margin-right: 0 !important;
+    margin: 0 !important;
     display: flex !important;
     justify-content: flex-end !important;
-    gap: 10px !important;
+    gap: 8px !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
+    scrollbar-width: none !important;
     -webkit-overflow-scrolling: touch !important;
     padding-bottom: 2px !important;
+  }
+
+  html body #root > .site-header .site-nav::-webkit-scrollbar {
+    display: none !important;
   }
 
   html body #root > .site-header .site-nav a,
   html body #root > .site-header .site-nav .nav-button {
     flex: 0 0 auto !important;
+    min-height: 38px !important;
+    padding: 8px 12px !important;
+    border-radius: 999px !important;
+    font-size: 14px !important;
+    line-height: 1.2 !important;
     white-space: nowrap !important;
   }
 
