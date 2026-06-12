@@ -4,6 +4,18 @@ html body #root .site-page {
   overflow-x: hidden !important;
 }
 
+/* Landing header: align the upper navigation tabs to the right. */
+html body #root > .site-header .site-nav {
+  justify-content: flex-end !important;
+  text-align: right !important;
+}
+
+/* Hide the pink hero eyebrow requested for the landing top. */
+.site-page > .hero.section .hero-copy .eyebrow,
+html body #root .site-page > .hero.section#top .hero-copy .eyebrow {
+  display: none !important;
+}
+
 /* Hero: centered headline block, same comfortable width rhythm as pricing. */
 .site-page > .hero.section,
 html body #root .site-page > .hero.section#top {
@@ -144,6 +156,14 @@ html body #root .site-page .terms-list {
 }
 
 @media (max-width: 760px) {
+  html body #root > .site-header .site-nav {
+    width: 100% !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    justify-content: flex-end !important;
+    overflow: visible !important;
+  }
+
   html body #root .site-page {
     width: 100% !important;
     max-width: 100% !important;
