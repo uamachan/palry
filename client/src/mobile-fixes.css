@@ -80,6 +80,59 @@
     box-sizing: border-box !important;
   }
 
+  /* マッチング画面: カードを中央寄せしすぎず、上から自然に表示する */
+  html body #root .appv2-content:has(.mp-wrap) {
+    display: block !important;
+    padding-top: 6px !important;
+    padding-bottom: 8px !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .appv2-content:has(.mp-wrap) .mp-wrap {
+    width: 100% !important;
+    max-width: 430px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 4px 8px 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    align-content: flex-start !important;
+    gap: 8px !important;
+  }
+
+  html body #root .appv2-content:has(.mp-wrap) .mp-filter-btn-wrap,
+  html body #root .appv2-content:has(.mp-wrap) .mp-filter-row,
+  html body #root .appv2-content:has(.mp-wrap) .mp-actions {
+    flex: 0 0 auto !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  html body #root .appv2-content:has(.mp-wrap) .mp-card-wrap {
+    width: 100% !important;
+    max-width: 390px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: 0 0 auto !important;
+    display: grid !important;
+    place-items: start center !important;
+    align-content: start !important;
+    margin-top: 0 !important;
+    overflow: visible !important;
+  }
+
+  html body #root .appv2-content:has(.mp-wrap) .mp-card,
+  html body #root .appv2-content:has(.mp-wrap) .mp-empty {
+    width: 100% !important;
+    height: min(42svh, 390px) !important;
+    max-height: min(42svh, 390px) !important;
+    min-height: 0 !important;
+    margin-top: 0 !important;
+  }
+
   /* スクロールタブ（料金・安全規約・通知など）は縦スクロール可 */
   html body #root .appv2-content--scroll {
     overflow-y: auto !important;
