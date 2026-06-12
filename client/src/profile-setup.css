@@ -1,183 +1,82 @@
-/* Profile setup fixes loaded after styles.css */
-/* auth-modal / auth-scrim / auth-modal-panel / auth-close は
-   auth-layout.css (matching-icons.css 経由で後から読み込まれる) が
-   同じ !important で上書きするため、ここには記載しない */
+/* Profile setup base styles. Keep this in source CSS, not public hotfix CSS. */
 .eyebrow{display:none!important}
 
-.auth-modal--profile .pv-basic-grid select,
-.auth-modal--profile .region-visible-field select,
 .auth-modal--profile select{
   appearance:none!important;
   -webkit-appearance:none!important;
   background-color:#fffdf9!important;
-  background-image:url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 5l4 4 4-4' fill='none' stroke='%237A716A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")!important;
-  background-repeat:no-repeat!important;
-  background-size:14px 14px!important;
-  background-position:right 14px center!important;
   padding-right:42px!important;
 }
 
 .profile-setup-panel{padding:28px!important}
-.profile-setup-heading{
-  margin:0 0 18px!important;
-  padding-right:48px!important;
-  display:grid!important;
-  gap:8px!important;
-}
-.profile-setup-heading h2{
-  margin:0!important;
-  font-size:clamp(28px,3.4vw,40px)!important;
-  line-height:1.12!important;
-  letter-spacing:-.04em!important;
-}
-.profile-setup-heading p{
-  margin:0!important;
-  color:var(--muted,#77706a)!important;
-  line-height:1.75!important;
-  font-weight:700!important;
-}
-.email-signup-form.profile-setup-card{
-  display:grid!important;
-  gap:18px!important;
-  width:100%!important;
-  margin:0!important;
-  padding:22px!important;
-  background:#fff!important;
-  border:1px solid var(--line,#e7e0d8)!important;
-  border-radius:24px!important;
-  box-shadow:0 10px 30px rgba(31,25,20,.06)!important;
-}
+.profile-setup-heading{margin:0 0 18px!important;padding-right:48px!important;display:grid!important;gap:8px!important}
+.profile-setup-heading h2{margin:0!important;font-size:clamp(28px,3.4vw,40px)!important;line-height:1.12!important;letter-spacing:-.04em!important}
+.profile-setup-heading p{margin:0!important;color:var(--muted,#77706a)!important;line-height:1.75!important;font-weight:700!important}
+
+.email-signup-form.profile-setup-card{display:grid!important;gap:18px!important;width:100%!important;margin:0!important;padding:22px!important;background:#fff!important;border:1px solid var(--line,#e7e0d8)!important;border-radius:24px!important;box-shadow:0 10px 30px rgba(31,25,20,.06)!important}
 .profile-setup-card *{box-sizing:border-box!important}
-.setup-progress{
-  width:100%!important;
-  height:8px!important;
-  border-radius:999px!important;
-  background:#f0ebe5!important;
-  overflow:hidden!important;
-}
-.setup-progress span{
-  display:block!important;
-  height:100%!important;
-  border-radius:999px!important;
-  background:linear-gradient(90deg,var(--pink,#ff4f83),#22201e)!important;
-}
-.setup-tabs{
-  display:flex!important;
-  gap:8px!important;
-  overflow-x:auto!important;
-  padding:2px 2px 8px!important;
-  scrollbar-width:thin!important;
-}
-.setup-tabs button{
-  flex:0 0 auto!important;
-  border:1px solid var(--line,#e7e0d8)!important;
-  background:#fff!important;
-  color:var(--muted,#77706a)!important;
-  border-radius:999px!important;
-  padding:10px 14px!important;
-  font-weight:900!important;
-  white-space:nowrap!important;
-}
-.setup-tabs button.active{
-  background:var(--ink,#181614)!important;
-  color:#fff!important;
-  border-color:var(--ink,#181614)!important;
-}
-.setup-tabs button.locked{
-  opacity:.45!important;
-  background:#f7f5f2!important;
-}
-.setup-stack{
-  display:grid!important;
-  gap:16px!important;
-  width:100%!important;
-}
-.profile-setup-card .email-field-label{
-  display:grid!important;
-  gap:8px!important;
-  min-width:0!important;
-  font-size:13px!important;
-  font-weight:900!important;
-}
-.profile-setup-card .email-field-label span{
-  color:var(--ink,#181614)!important;
-  font-size:13px!important;
-  font-weight:900!important;
-}
-.profile-setup-card .email-field-label input,
-.profile-setup-card .email-field-label select,
-.profile-setup-card .email-field-label textarea{
-  width:100%!important;
-  min-width:0!important;
-  min-height:48px!important;
-  border:1px solid var(--line2,#d7cec4)!important;
-  background:#fff!important;
-  color:var(--ink,#181614)!important;
-  border-radius:16px!important;
-  padding:13px 14px!important;
-  outline:none!important;
-  box-shadow:none!important;
-}
+.setup-progress{width:100%!important;height:8px!important;border-radius:999px!important;background:#f0ebe5!important;overflow:hidden!important}
+.setup-progress span{display:block!important;height:100%!important;border-radius:999px!important;background:linear-gradient(90deg,var(--pink,#ff4f83),#22201e)!important}
+
+.setup-tabs{display:flex!important;gap:8px!important;overflow-x:auto!important;padding:2px 2px 8px!important;scrollbar-width:thin!important}
+.setup-tabs button{flex:0 0 auto!important;border:1px solid var(--line,#e7e0d8)!important;background:#fff!important;color:var(--muted,#77706a)!important;border-radius:999px!important;padding:10px 14px!important;font-weight:900!important;white-space:nowrap!important}
+.setup-tabs button.active{background:var(--ink,#181614)!important;color:#fff!important;border-color:var(--ink,#181614)!important}
+.setup-tabs button.locked{opacity:.45!important;background:#f7f5f2!important}
+
+.setup-stack{display:grid!important;gap:16px!important;width:100%!important}
+.profile-setup-card .email-field-label{display:grid!important;gap:8px!important;min-width:0!important;font-size:13px!important;font-weight:900!important}
+.profile-setup-card .email-field-label span{color:var(--ink,#181614)!important;font-size:13px!important;font-weight:900!important}
+.profile-setup-card .email-field-label input,.profile-setup-card .email-field-label select,.profile-setup-card .email-field-label textarea{width:100%!important;min-width:0!important;min-height:48px!important;border:1px solid var(--line2,#d7cec4)!important;background:#fff!important;color:var(--ink,#181614)!important;border-radius:16px!important;padding:13px 14px!important;outline:none!important;box-shadow:none!important}
 .profile-setup-card .email-field-label input[type="file"]{padding:11px 14px!important;cursor:pointer!important}
 .profile-setup-card .email-field-label textarea{min-height:120px!important;resize:vertical!important}
-.profile-setup-card .email-field-label input:focus,
-.profile-setup-card .email-field-label select:focus,
-.profile-setup-card .email-field-label textarea:focus{
-  border-color:var(--pink,#ff4f83)!important;
-  box-shadow:0 0 0 4px rgba(255,79,131,.12)!important;
-}
-.voice-record-box,.terms-box{
-  border:1px solid var(--line,#e7e0d8)!important;
-  background:#f9f5f0!important;
-  border-radius:18px!important;
-  padding:16px!important;
-}
-.voice-record-box{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:space-between!important;
-  gap:14px!important;
-  flex-wrap:wrap!important;
-}
+.profile-setup-card .email-field-label input:focus,.profile-setup-card .email-field-label select:focus,.profile-setup-card .email-field-label textarea:focus{border-color:var(--pink,#ff4f83)!important;box-shadow:0 0 0 4px rgba(255,79,131,.12)!important}
+
+.voice-record-box,.terms-box{border:1px solid var(--line,#e7e0d8)!important;background:#f9f5f0!important;border-radius:18px!important;padding:16px!important}
+.voice-record-box{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:14px!important;flex-wrap:wrap!important}
 .voice-record-box b,.terms-box h3{margin:0 0 5px!important}
-.voice-record-box p,.terms-box p{
-  margin:0!important;
-  color:var(--muted,#77706a)!important;
-  line-height:1.7!important;
-  font-size:13px!important;
-}
-.terms-check{
-  display:flex!important;
-  gap:10px!important;
-  align-items:flex-start!important;
-  margin-top:14px!important;
-  font-weight:900!important;
-  line-height:1.7!important;
-}
+.voice-record-box p,.terms-box p{margin:0!important;color:var(--muted,#77706a)!important;line-height:1.7!important;font-size:13px!important}
+.terms-check{display:flex!important;gap:10px!important;align-items:flex-start!important;margin-top:14px!important;font-weight:900!important;line-height:1.7!important}
 .terms-check input{width:20px!important;height:20px!important;flex:0 0 20px!important;margin-top:2px!important}
-.profile-setup-actions{
-  display:flex!important;
-  flex-wrap:wrap!important;
-  gap:10px!important;
-  align-items:center!important;
-  justify-content:flex-end!important;
-  border-top:1px solid var(--line,#e7e0d8)!important;
-  padding-top:16px!important;
-  margin-top:0!important;
-}
+.profile-setup-actions{display:flex!important;flex-wrap:wrap!important;gap:10px!important;align-items:center!important;justify-content:flex-end!important;border-top:1px solid var(--line,#e7e0d8)!important;padding-top:16px!important;margin-top:0!important}
 
 @media(max-width:760px){
-  .auth-modal{padding:10px!important;place-items:end center!important}
-  .auth-modal-panel,.auth-modal-panel--profile,.auth-modal-panel--narrow{
-    width:100%!important;
-    max-height:calc(100dvh - 20px)!important;
-    border-radius:24px 24px 0 0!important;
-  }
-  .auth-close{top:10px!important;right:10px!important}
-  .profile-setup-panel{padding:24px 16px 18px!important}
-  .profile-setup-heading{padding-right:46px!important}
-  .email-signup-form.profile-setup-card{padding:16px!important;border-radius:20px!important}
-  .profile-setup-actions{justify-content:stretch!important}
-  .profile-setup-actions .primary,.profile-setup-actions .secondary,.profile-setup-actions .plain{width:100%!important}
-  .voice-record-box{display:grid!important}
+  html body #root .auth-modal--profile{padding:8px!important;place-items:end center!important}
+  html body #root .auth-modal--profile .auth-modal-panel,
+  html body #root .auth-modal--profile .auth-modal-panel--profile{width:calc(100vw - 16px)!important;height:calc(100dvh - 18px)!important;max-height:calc(100dvh - 18px)!important;margin:0 auto!important;padding:10px!important;border-radius:26px 26px 0 0!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
+  html body #root .auth-modal--profile .auth-close{top:12px!important;right:14px!important;width:46px!important;height:46px!important;border-radius:50%!important;font-size:28px!important;z-index:5!important}
+
+  html body #root .auth-modal--profile .profile-setup-panel{flex:1 1 auto!important;min-height:0!important;width:100%!important;padding:48px 12px 12px!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  html body #root .auth-modal--profile .profile-setup-heading{flex:0 0 auto!important;margin:0 0 12px!important;padding-right:52px!important;text-align:left!important;gap:4px!important}
+  html body #root .auth-modal--profile .profile-setup-heading h2{font-size:clamp(30px,9vw,40px)!important;line-height:1.1!important;letter-spacing:-.04em!important}
+  html body #root .auth-modal--profile .profile-setup-heading p{font-size:14px!important;line-height:1.45!important}
+
+  html body #root .auth-modal--profile .email-signup-form.profile-setup-card{flex:1 1 auto!important;min-height:0!important;height:100%!important;display:flex!important;flex-direction:column!important;gap:10px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:hidden!important}
+  html body #root .auth-modal--profile .setup-progress{flex:0 0 auto!important;height:7px!important;margin:0!important}
+
+  html body #root .auth-modal--profile .profile-setup-card .setup-tabs{flex:0 0 auto!important;display:flex!important;grid-template-columns:none!important;gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:0 2px 8px!important;margin:0!important;scrollbar-width:none!important;-webkit-overflow-scrolling:touch!important}
+  html body #root .auth-modal--profile .profile-setup-card .setup-tabs::-webkit-scrollbar{display:none!important}
+  html body #root .auth-modal--profile .profile-setup-card .setup-tabs button{flex:0 0 auto!important;min-width:112px!important;min-height:42px!important;font-size:13px!important;padding:9px 12px!important;border-radius:999px!important;white-space:nowrap!important}
+
+  html body #root .auth-modal--profile .profile-setup-card>.pv-basic-grid,
+  html body #root .auth-modal--profile .profile-setup-card>.pv-rank-section,
+  html body #root .auth-modal--profile .profile-setup-card>.setup-stack,
+  html body #root .auth-modal--profile .profile-setup-card>.terms-box{flex:1 1 auto!important;min-height:0!important;height:auto!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;padding:12px!important;border-radius:20px!important;background:#fff!important}
+
+  html body #root .auth-modal--profile .pv-basic-grid{display:grid!important;grid-template-columns:1fr!important;gap:12px!important;align-items:start!important}
+  html body #root .auth-modal--profile .pv-photo-card{min-height:142px!important;height:auto!important;padding:14px!important;border-radius:18px!important;display:grid!important;grid-template-columns:88px minmax(0,1fr)!important;grid-template-areas:"preview info"!important;align-items:center!important;justify-items:start!important;gap:14px!important;text-align:left!important}
+  html body #root .auth-modal--profile .pv-photo-preview{grid-area:preview!important;width:88px!important;height:88px!important;border-radius:22px!important}
+  html body #root .auth-modal--profile .pv-photo-placeholder{gap:4px!important}
+  html body #root .auth-modal--profile .pv-photo-plus{font-size:34px!important}
+  html body #root .auth-modal--profile .pv-photo-footer{grid-area:info!important;align-items:flex-start!important;text-align:left!important;gap:6px!important}
+  html body #root .auth-modal--profile .pv-photo-btn{padding:8px 14px!important;border-radius:999px!important;font-size:13px!important}
+  html body #root .auth-modal--profile .pv-photo-footer small{font-size:11px!important;line-height:1.35!important}
+
+  html body #root .auth-modal--profile .pv-text-fields{display:grid!important;grid-template-columns:1fr!important;gap:12px!important;width:100%!important}
+  html body #root .auth-modal--profile .pv-field input,
+  html body #root .auth-modal--profile .pv-field select,
+  html body #root .auth-modal--profile .pv-field textarea{min-height:48px!important;font-size:16px!important;border-radius:16px!important}
+
+  html body #root .auth-modal--profile .profile-setup-actions{flex:0 0 auto!important;display:grid!important;grid-template-columns:1fr!important;gap:9px!important;padding:10px 0 0!important;margin:0!important;background:linear-gradient(180deg,rgba(248,243,238,0),#f8f3ee 18px)!important;border-top:1px solid rgba(232,222,213,.78)!important}
+  html body #root .auth-modal--profile .profile-setup-actions button{width:100%!important;min-height:48px!important;border-radius:999px!important;font-size:15px!important}
+  html body #root .auth-modal--profile .profile-setup-actions .plain{min-height:40px!important}
 }
