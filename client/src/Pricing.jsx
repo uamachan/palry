@@ -86,11 +86,11 @@ export default function PublicPricing({ plansData, pricingTab = 'monthly', setPr
               <tr><th>機能</th><th>無料</th><th>プラス</th><th>VIP</th></tr>
             </thead>
             <tbody>
-              <tr><td>いいね</td><td>10回/日</td><td>40回/日</td><td>無制限</td></tr>
-              <tr><td>スーパーいいね</td><td>1回/日</td><td>5回/日</td><td>無制限</td></tr>
-              <tr><td>両いいね</td><td>5回</td><td>10回</td><td>無制限</td></tr>
-              <tr><td>性別指定</td><td>×</td><td>○</td><td>○</td></tr>
-              <tr><td>制限解除</td><td>×</td><td>一部</td><td>全解除</td></tr>
+              <tr><td data-label="機能">いいね</td><td data-label="無料">10回/日</td><td data-label="プラス">40回/日</td><td data-label="VIP">無制限</td></tr>
+              <tr><td data-label="機能">スーパーいいね</td><td data-label="無料">1回/日</td><td data-label="プラス">5回/日</td><td data-label="VIP">無制限</td></tr>
+              <tr><td data-label="機能">両いいね</td><td data-label="無料">5回</td><td data-label="プラス">10回</td><td data-label="VIP">無制限</td></tr>
+              <tr><td data-label="機能">性別指定</td><td data-label="無料">×</td><td data-label="プラス">○</td><td data-label="VIP">○</td></tr>
+              <tr><td data-label="機能">制限解除</td><td data-label="無料">×</td><td data-label="プラス">一部</td><td data-label="VIP">全解除</td></tr>
             </tbody>
           </table>
         </div>
