@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cx, planLabel, TAB_ICONS } from './constants.jsx';
 
 function maskEmail(email) {
@@ -22,7 +23,21 @@ export default function SiteHeader({
   activeTab, setActiveTab,
 }) {
   const [accountOpen, setAccountOpen] = useState(false);
+  const avatarBtnRef = useRef(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const logo = <img src="/assets/pairly-logo-wide-transparent.svg" alt="Pairly" width="132" height="44" decoding="async" fetchPriority="high" />;
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    const btn = avatarBtnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    setDropdownPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    const close = (e) => { if (!e.target.closest('.account-dropdown')) setAccountOpen(false); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('touchstart', close);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('touchstart', close); };
+  }, [accountOpen]);
   const accountSubtext = user?.email ? maskEmail(user.email) : user?.riotId;
 
   const brandEl = onBrandClick
@@ -72,6 +87,7 @@ export default function SiteHeader({
             </button>
             <div className="account-menu">
               <button
+                ref={avatarBtnRef}
                 className={cx('appv2-avatar', accountOpen && 'active')}
                 type="button"
                 onClick={() => setAccountOpen(o => !o)}
@@ -80,8 +96,8 @@ export default function SiteHeader({
               >
                 {user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0, 1) || 'P')}
               </button>
-              {accountOpen && (
-                <div className="account-dropdown" role="menu">
+              {accountOpen && createPortal(
+                <div className="account-dropdown" role="menu" style={{ position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 200 }}>
                   <div className="account-dropdown-head">
                     <div className="account-dropdown-avatar">
                       {user.profilePhoto ? <img src={user.profilePhoto} alt="" /> : (user.name?.slice(0, 1) || 'P')}
@@ -94,7 +110,8 @@ export default function SiteHeader({
                   <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); openProfileEditor?.(); }}>プロフィール編集</button>
                   <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); (onGoApp || onOpenApp)?.(); }}>マッチングへ</button>
                   <button type="button" role="menuitem" onClick={() => { setAccountOpen(false); logout?.(); }}>ログアウト</button>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           </>
