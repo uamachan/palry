@@ -1,19 +1,21 @@
 # Dead Code / Unused File Audit
 
 調査日: 2026-06-12
-対象ブランチ: `chore/dead-code-cleanup`
+対象ブランチ: `main`
 
 ## 結論
 
 - 削除済み: `server/lib/payments.js`
-- 削除せず要確認: Express API / Prisma / JSON migration / public hotfix CSS・JS
-- 今回は大量削除を避け、自己参照しか見つからない未使用ファイルだけ削除した。
+- 後入れCSS注入停止済み: `client/index.html` から `landing-mobile-final.js` の読み込みを削除
+- 削除せず要確認: Express API / Prisma / JSON migration / public hotfix CSS
+- 今後は後入れJSでCSSを注入せず、元のCSSまたは既存の責務に合うCSSを直接整理する。
 
-## A. 削除済み
+## A. 削除済み / 停止済み
 
-| path | 理由 | 参照検索結果 | 削除リスク |
+| path | 理由 | 対応 | 削除リスク |
 |---|---|---|---|
-| `server/lib/payments.js` | 決済プロバイダ統合の将来用 shim だが、現行コードから import されていない。`isPaymentsConfigured`, `paymentsProvider`, `createCheckoutSession` の検索結果がこのファイル自身のみだった。 | 自己参照のみ | 低。ただし将来 Stripe 統合をする場合は再作成が必要。 |
+| `server/lib/payments.js` | 決済プロバイダ統合の将来用 shim だが、現行コードから import されていなかった。 | 削除済み | 低。ただし将来 Stripe 統合をする場合は再作成が必要。 |
+| `client/public/landing-mobile-final.js` | JSでCSSを後入れ注入する方式は、既存CSSを後から上書きしてスマホUIの原因追跡を難しくする。 | `client/index.html` から読み込み停止済み。ファイル本体はまだ残存。 | 低〜中。削除する場合はスマホのトップ/料金/安全規約/ログイン後画面を確認してから行う。 |
 
 ## B. 要確認 / 削除禁止寄り
 
@@ -36,10 +38,10 @@
 | path | 重複内容 | 統合案 | 注意点 |
 |---|---|---|---|
 | `client/public/mobile-fixes.css` | `client/index.html` から直接読み込み。さらに `client/src/main.jsx` でも `./mobile-fixes.css` を import している。 | public直読み込みとsrc importの役割を分ける。最終的にはsrc CSSへ統合。 | 画面崩れ対策のhotfixの可能性が高いので即削除禁止 |
-| `client/public/hero-section-align.css` | ランディングheroの上書きCSS。 | `client/src/styles.css` または専用landing CSSへ統合。 | 強い上書きがあり、順序依存の可能性あり |
+| `client/public/hero-section-align.css` | ランディングhero/headerの上書きCSS。 | `client/src/styles.css` または専用landing CSSへ統合。 | 強い上書きがあり、順序依存の可能性あり。統合は1画面ずつ確認しながら行う。 |
 | `client/public/profile-setup-hotfix.css` | hotfix名のCSS。 | 原因CSSへ吸収。 | プロフィール作成画面の崩れ修正の可能性あり |
 | `client/public/match-fullscreen.css` | match画面の上書きCSS。 | app/match系CSSへ統合。 | モバイル全画面表示に影響する可能性あり |
-| `client/public/landing-mobile-final.js` | CSSをJSで注入する最終hotfix。 | CSSファイルへ移動し、JS注入をなくす。 | かなり強い上書きなので、消す前にiPhone/Androidで確認必須 |
+| `client/public/landing-mobile-final.js` | CSSをJSで注入していた最終hotfix。 | 使用停止済み。完全削除する場合は別PRで行う。 | 今後はこの方式を再利用しない |
 
 ## D. 未使用依存候補
 
@@ -50,10 +52,13 @@
 | `cors`, `compression`, `express` | Express API用。 | 削除しない | Render/Express運用を残す限り必要 |
 | `concurrently` | `npm run dev/local` 用。 | 削除しない | ローカル開発で必要 |
 
-## E. 今回触った変更
+## E. UI/CSS運用ルール
 
-- `server/lib/payments.js` を削除
-- `DEAD_CODE_REPORT.md` を追加
+- 後入れ JavaScript でCSSを注入しない。
+- 新規の上書き専用CSSファイルを安易に追加しない。
+- UI修正は元のCSSまたは既存の責務に合うCSSを直接編集する。
+- スマホだけの修正は `@media (max-width: 760px)` に限定する。
+- `html` / `body` / `#root` の `overflow` / `height` を変更する時は、ランディングとログイン後アプリ画面の副作用を必ず確認する。
 
 ## 実行したコマンド
 
@@ -75,7 +80,8 @@ npx depcheck
 
 ## 安全な次ステップ
 
-1. このPRで `server/lib/payments.js` 削除によるbuild影響を確認
-2. 問題なければマージ
-3. 次PRで public CSS / JS hotfix の統合を1ファイルずつ実施
-4. Express API / Prisma を残すか、Firestore/Cloud Functionsへ一本化するかを決めてから大きい削除を行う
+1. スマホでトップからフッターまでスクロール確認
+2. 料金表・安全規約・ログイン後アプリ画面を確認
+3. public hotfix CSS を元CSSへ1ファイルずつ統合
+4. `landing-mobile-final.js` 本体を別PRで削除
+5. Express API / Prisma を残すか、Firestore/Cloud Functionsへ一本化するかを決めてから大きい削除を行う
