@@ -39,7 +39,6 @@ export default function PublicPricing({ plansData, pricingTab = 'monthly', setPr
   return (
     <section id="pricing" className={cx('section pricing-section', appMode && 'inside')}>
       <div className="section-head">
-        <span>料金</span>
         <h2>料金</h2>
         <p>男女で特典差はありません。VIPは全制限解除です。</p>
       </div>
