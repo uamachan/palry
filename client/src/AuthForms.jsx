@@ -192,7 +192,7 @@ const RANK_TIERS = [
   { tier: 'Radiant',   color: '#D4A841', rankList: ['Radiant'] },
 ];
 
-function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLabel = 'プロフィールを完成する', cancelLabel = 'ログインに戻る', showAgreement = true }) {
+function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLabel = 'プロフィールを完成する', cancelLabel = 'ログインに戻る', showAgreement = true, showBackButton = true, showCancelButton = true }) {
   const tabs = ['基本情報', 'ランク/ロール', 'プレイスタイル', '追加情報', '自己紹介', ...(showAgreement ? ['規約'] : [])];
   const [activeSetupTab, setActiveSetupTab] = useState(tabs[0]);
   const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(0);
@@ -488,10 +488,10 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
           {activeSetupTab === '自己紹介' && showAgreement && (
             <button type="button" className="primary create-account-cta" onClick={goNext}>アカウントを作る</button>
           )}
-          <button type="button" className="secondary" onClick={goPrev} disabled={activeIndex === 0}>戻る</button>
+          {showBackButton && <button type="button" className="secondary" onClick={goPrev} disabled={activeIndex === 0}>戻る</button>}
           {!isLastStep && activeSetupTab !== '自己紹介' && <button type="button" className="secondary" onClick={goNext}>次へ</button>}
           {isLastStep && <button type="submit" className="primary">{submitLabel}</button>}
-          <button type="button" className="plain reset-password-link" onClick={onShowLogin}>{cancelLabel}</button>
+          {showCancelButton && <button type="button" className="plain reset-password-link" onClick={onShowLogin}>{cancelLabel}</button>}
         </div>
       </form>
     </section>
@@ -509,7 +509,7 @@ export default function AuthFormsContainer(props) {
   return <>
     {profileEditorOpen && isAuthed && (
       <AuthModal size="profile" onClose={() => setProfileEditorOpen(false)}>
-        <SignupForm form={editForm} setForm={setEditForm} onSubmit={saveProfileEdit} onShowLogin={() => setProfileEditorOpen(false)} showToast={showToast} submitLabel="プロフィールを保存" cancelLabel="閉じる" showAgreement={false} />
+        <SignupForm form={editForm} setForm={setEditForm} onSubmit={saveProfileEdit} onShowLogin={() => setProfileEditorOpen(false)} showToast={showToast} submitLabel="プロフィールを保存" cancelLabel="閉じる" showAgreement={false} showCancelButton={false} />
       </AuthModal>
     )}
 
@@ -518,7 +518,7 @@ export default function AuthFormsContainer(props) {
         {authMode === 'entry' && <AuthEntrySection onShowRegister={() => showAuth('register')} onShowLogin={() => showAuth('login')} onGoogle={continueWithGoogle} onStartDev={devEnabled ? startDevMode : undefined} />}
         {authMode === 'register' && <AccountSignupSection form={form} setForm={setForm} onSubmit={createAccount} onGoogle={continueWithGoogle} onShowLogin={() => showAuth('login')} />}
         {authMode === 'emailVerification' && <EmailVerificationSection pendingEmail={pendingFirebaseUser?.email} onCheck={confirmEmailVerified} onResend={resendVerificationEmail} onShowLogin={() => showAuth('login')} />}
-        {authMode === 'profileSetup' && <SignupForm form={form} setForm={setForm} onSubmit={register} onShowLogin={() => showAuth('login')} showToast={showToast} />}
+        {authMode === 'profileSetup' && <SignupForm form={form} setForm={setForm} onSubmit={register} onShowLogin={() => showAuth('login')} showToast={showToast} showBackButton={false} showCancelButton={false} />}
         {authMode === 'login' && <LoginSection form={form} setForm={setForm} onLogin={loginWithFirebase} onGoogle={continueWithGoogle} onResetPassword={resetPassword} onShowRegister={() => showAuth('register')} />}
       </AuthModal>
     )}
