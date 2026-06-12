@@ -6,6 +6,13 @@ name = "palry"
 compatibility_date = "2026-06-10"
 main = "worker.js"
 
+# アカウントIDを明示する（秘密情報ではない公開識別子）。
+# スコープ付きAPIトークンは /memberships を取得できず、未指定だと
+# CI の wrangler deploy が「Authentication error [code: 10000]」で失敗する。
+# deploy.yml の env: CLOUDFLARE_ACCOUNT_ID は wrangler-action に上書きされ
+# 効かないため、ここに書くのが確実。
+account_id = "fbd1e4ffbd25e9e55243147a97784315"
+
 # build.command はここに書かない。
 # CI(deploy.yml)では「Build」段が VITE_* 環境変数付きで dist/ を生成済み。
 # wrangler 側で再ビルドすると環境変数が無く Firebase 設定が欠けたビルドになるため。
