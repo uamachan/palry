@@ -48,3 +48,7 @@ jobs:
           workingDirectory: "."
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.SEVERE }}
+          # アカウントIDを直接指定。スコープ付きトークンが /memberships を
+          # 取得できず認証エラー(code 10000)になるのを回避する。
+          # アカウントIDは秘密情報ではない公開識別子。
+          CLOUDFLARE_ACCOUNT_ID: fbd1e4ffbd25e9e55243147a97784315
