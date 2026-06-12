@@ -4,10 +4,23 @@ html body #root .site-page {
   overflow-x: hidden !important;
 }
 
-/* Landing header: align the upper navigation tabs to the right. */
+/* Landing header: keep logo left, actions right, and align the upper navigation tabs to the right. */
+html body #root > .site-header {
+  display: flex !important;
+  align-items: center !important;
+}
+
+html body #root > .site-header .brand {
+  margin-right: 0 !important;
+}
+
 html body #root > .site-header .site-nav {
   justify-content: flex-end !important;
   text-align: right !important;
+}
+
+html body #root > .site-header .header-actions {
+  margin-left: 0 !important;
 }
 
 /* Hide the pink hero eyebrow requested for the landing top. */
@@ -156,12 +169,72 @@ html body #root .site-page .terms-list {
 }
 
 @media (max-width: 760px) {
+  /* mobile-fixes.css locks scrolling for the app screen; undo it for the landing page. */
+  html,
+  body,
+  #root {
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  html body #root > .site-header {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 14px 16px 12px !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 10px 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  html body #root > .site-header .brand {
+    order: 1 !important;
+    flex: 0 1 auto !important;
+    margin-right: 0 !important;
+  }
+
+  html body #root > .site-header .brand img {
+    width: 132px !important;
+    max-width: 42vw !important;
+    height: auto !important;
+  }
+
+  html body #root > .site-header .header-actions {
+    order: 2 !important;
+    margin-left: auto !important;
+    flex: 0 0 auto !important;
+    justify-content: flex-end !important;
+  }
+
+  html body #root > .site-header .primary.small {
+    white-space: nowrap !important;
+    padding: 10px 18px !important;
+  }
+
   html body #root > .site-header .site-nav {
+    order: 3 !important;
     width: 100% !important;
     margin-left: auto !important;
     margin-right: 0 !important;
+    display: flex !important;
     justify-content: flex-end !important;
-    overflow: visible !important;
+    gap: 10px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 2px !important;
+  }
+
+  html body #root > .site-header .site-nav a,
+  html body #root > .site-header .site-nav .nav-button {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
   }
 
   html body #root .site-page {
@@ -172,6 +245,7 @@ html body #root .site-page .terms-list {
     padding-right: 0 !important;
     text-align: center !important;
     overflow-x: hidden !important;
+    overflow-y: visible !important;
   }
 
   .site-page > .hero.section,
@@ -266,5 +340,6 @@ html body #root .site-page .terms-list {
     max-width: 100% !important;
     padding-left: 18px !important;
     padding-right: 18px !important;
+    overflow: visible !important;
   }
 }
