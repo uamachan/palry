@@ -345,7 +345,25 @@
   }
 
   html body .appv2-content--scroll {
-    padding-bottom: calc(81px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body .appv2-content--scroll > .pricing-section,
+  html body .appv2-content--scroll > .safety-section,
+  html body .appv2-content--scroll > section,
+  html body .appv2-content--scroll > div {
+    min-height: auto !important;
+    height: auto !important;
+    padding-bottom: calc(42px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body .appv2-content--scroll .terms-list,
+  html body .appv2-content--scroll .price-grid,
+  html body .appv2-content--scroll .single-grid {
+    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   html body .appv2-content:has(.mp-wrap) {
