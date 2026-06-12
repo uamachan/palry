@@ -273,14 +273,17 @@
   html body #root .auth-modal--profile .profile-setup-card .setup-tabs::-webkit-scrollbar{display:none!important}
 
   html body #root .auth-modal--profile .profile-setup-card .setup-tabs button{
-    flex:0 0 auto!important;
-    min-width:auto!important;
+    flex:0 0 max-content!important;
+    width:max-content!important;
+    min-width:max-content!important;
     min-height:36px!important;
-    padding:7px 13px!important;
+    padding:7px 15px!important;
     border-radius:999px!important;
-    font-size:12px!important;
+    font-size:11.5px!important;
     line-height:1!important;
+    letter-spacing:-.02em!important;
     white-space:nowrap!important;
+    word-break:keep-all!important;
   }
 
   html body #root .auth-modal--profile .profile-setup-card>.pv-basic-grid,
