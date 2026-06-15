@@ -540,19 +540,18 @@ html body #root .auth-modal-panel--profile .profile-setup-actions {
   }
 }
 
-/* ── Profile setup: use one continuous panel instead of nested scroll areas ── */
+/* ── Profile setup: no-scroll single-screen sheet ── */
 html body #root .auth-modal-panel--profile {
-  height: auto !important;
+  height: calc(100dvh - 28px) !important;
   max-height: calc(100dvh - 28px) !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+  overflow: hidden !important;
 }
 
 html body #root .auth-modal-panel--profile .profile-setup-panel,
 html body #root .auth-modal-panel--profile .email-signup-form.profile-setup-card {
   min-height: 0 !important;
-  height: auto !important;
-  overflow: visible !important;
+  height: 100% !important;
+  overflow: hidden !important;
 }
 
 html body #root .auth-modal-panel--profile .email-signup-form.profile-setup-card {
@@ -1067,51 +1066,63 @@ html body #root .auth-modal--profile {
 
 html body #root .auth-modal--profile .auth-modal-panel--profile {
   width: min(1080px, calc(100vw - 64px)) !important;
+  height: calc(100dvh - 48px) !important;
   max-height: calc(100dvh - 48px) !important;
-  padding: clamp(28px, 3.2vw, 42px) clamp(32px, 4vw, 56px) !important;
+  padding: clamp(16px, 2.2vw, 26px) clamp(22px, 3vw, 40px) !important;
   border-radius: 34px !important;
   background:
     linear-gradient(180deg, rgba(255, 253, 249, .98), rgba(250, 246, 240, .98)),
     radial-gradient(circle at 50% 0%, rgba(255, 92, 138, .1), transparent 36%) !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+  overflow: hidden !important;
 }
 
 html body #root .auth-modal-panel--profile .profile-setup-panel {
   padding: 0 !important;
-  gap: 26px !important;
+  gap: 12px !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
 }
 
 html body #root .auth-modal-panel--profile .profile-setup-heading {
   margin: 0 !important;
   padding: 0 54px 0 0 !important;
   text-align: center !important;
-  gap: 8px !important;
+  gap: 4px !important;
+  flex: 0 0 auto !important;
 }
 
 html body #root .auth-modal-panel--profile .profile-setup-heading h2 {
   margin: 0 !important;
-  font-size: clamp(32px, 4.2vw, 46px) !important;
+  font-size: clamp(26px, 3vw, 36px) !important;
   line-height: 1.08 !important;
   letter-spacing: 0 !important;
 }
 
 html body #root .auth-modal-panel--profile .profile-setup-heading p {
-  font-size: 15px !important;
-  line-height: 1.6 !important;
+  font-size: 13px !important;
+  line-height: 1.35 !important;
 }
 
 html body #root .auth-modal-panel--profile .email-signup-form.profile-setup-card {
-  gap: 22px !important;
+  gap: 10px !important;
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
+  min-height: 0 !important;
+  height: auto !important;
+  flex: 1 1 auto !important;
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+  overflow: hidden !important;
 }
 
 html body #root .auth-modal-panel--profile .setup-progress {
-  height: 9px !important;
+  height: 6px !important;
   border-radius: 999px !important;
   background: #eee8e1 !important;
 }
@@ -1123,9 +1134,9 @@ html body #root .auth-modal-panel--profile .setup-progress span {
 html body #root .auth-modal-panel--profile .profile-setup-card .setup-tabs {
   display: grid !important;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important;
-  gap: 12px !important;
+  gap: 8px !important;
   margin: 0 !important;
-  padding: 0 0 16px !important;
+  padding: 0 0 8px !important;
   border-bottom: 1px solid rgba(231, 224, 216, .9) !important;
   overflow: visible !important;
 }
@@ -1133,10 +1144,10 @@ html body #root .auth-modal-panel--profile .profile-setup-card .setup-tabs {
 html body #root .auth-modal-panel--profile .profile-setup-card .setup-tabs button {
   width: 100% !important;
   min-width: 0 !important;
-  min-height: 48px !important;
-  padding: 12px 16px !important;
-  border-radius: 18px !important;
-  font-size: 13px !important;
+  min-height: 38px !important;
+  padding: 8px 12px !important;
+  border-radius: 14px !important;
+  font-size: 12px !important;
   letter-spacing: 0 !important;
   box-shadow: 0 8px 18px rgba(31, 25, 20, .035) !important;
 }
@@ -1152,23 +1163,25 @@ html body #root .auth-modal-panel--profile .profile-setup-card > .pv-basic-grid,
 html body #root .auth-modal-panel--profile .profile-setup-card > .pv-rank-section,
 html body #root .auth-modal-panel--profile .profile-setup-card > .setup-stack,
 html body #root .auth-modal-panel--profile .profile-setup-card > .terms-box {
-  padding: clamp(28px, 3vw, 38px) !important;
+  padding: clamp(14px, 1.8vw, 22px) !important;
   border: 1px solid rgba(231, 224, 216, .96) !important;
-  border-radius: 30px !important;
+  border-radius: 22px !important;
   background: rgba(255, 255, 255, .86) !important;
   box-shadow: 0 18px 54px rgba(31, 25, 20, .07) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
 }
 
 html body #root .auth-modal-panel--profile .pv-basic-grid {
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) !important;
-  gap: 24px 30px !important;
+  gap: 14px 18px !important;
   align-items: start !important;
 }
 
 html body #root .auth-modal-panel--profile .pv-photo-card {
-  min-height: 252px !important;
-  padding: 24px !important;
-  border-radius: 28px !important;
+  min-height: 170px !important;
+  padding: 16px !important;
+  border-radius: 20px !important;
   background:
     linear-gradient(180deg, rgba(255, 248, 251, .95), rgba(255, 253, 249, .95)) !important;
   border: 1.5px dashed #ff9aba !important;
@@ -1176,9 +1189,9 @@ html body #root .auth-modal-panel--profile .pv-photo-card {
 }
 
 html body #root .auth-modal-panel--profile .pv-photo-preview {
-  width: 112px !important;
-  height: 112px !important;
-  border-radius: 28px !important;
+  width: 84px !important;
+  height: 84px !important;
+  border-radius: 22px !important;
 }
 
 html body #root .auth-modal-panel--profile .pv-photo-plus {
@@ -1191,7 +1204,7 @@ html body #root .auth-modal-panel--profile .pv-photo-btn {
 }
 
 html body #root .auth-modal-panel--profile .pv-text-fields {
-  gap: 22px !important;
+  gap: 12px !important;
 }
 
 html body #root .auth-modal-panel--profile .pv-field,
@@ -1212,9 +1225,9 @@ html body #root .auth-modal-panel--profile .pv-hint {
 html body #root .auth-modal-panel--profile .pv-field input,
 html body #root .auth-modal-panel--profile .pv-field select,
 html body #root .auth-modal-panel--profile .pv-field textarea {
-  min-height: 58px !important;
-  padding: 16px 18px !important;
-  border-radius: 19px !important;
+  min-height: 44px !important;
+  padding: 10px 14px !important;
+  border-radius: 15px !important;
   font-size: 15px !important;
   background-color: #fffdf9 !important;
 }
@@ -1240,7 +1253,7 @@ html body #root .auth-modal-panel--profile .pv-gender-btn {
 
 html body #root .auth-modal-panel--profile .setup-stack,
 html body #root .auth-modal-panel--profile .pv-rank-section {
-  gap: 26px !important;
+  gap: 12px !important;
 }
 
 html body #root .auth-modal-panel--profile .pv-rank-icon-grid {
@@ -1248,13 +1261,13 @@ html body #root .auth-modal-panel--profile .pv-rank-icon-grid {
 }
 
 html body #root .auth-modal-panel--profile .pv-rank-icon-btn {
-  min-height: 92px !important;
-  padding: 14px 10px !important;
-  border-radius: 22px !important;
+  min-height: 62px !important;
+  padding: 8px 8px !important;
+  border-radius: 16px !important;
 }
 
 html body #root .auth-modal-panel--profile .pv-rank-icon-btn img {
-  max-width: 50px !important;
+  max-width: 34px !important;
 }
 
 html body #root .auth-modal-panel--profile .pv-role-grid {
@@ -1262,14 +1275,14 @@ html body #root .auth-modal-panel--profile .pv-role-grid {
 }
 
 html body #root .auth-modal-panel--profile .pv-rank-section .pv-role-card {
-  min-height: 118px !important;
-  padding: 18px 14px !important;
-  border-radius: 24px !important;
+  min-height: 82px !important;
+  padding: 12px 10px !important;
+  border-radius: 18px !important;
 }
 
 html body #root .auth-modal-panel--profile .pv-bio-area {
-  min-height: 160px !important;
-  height: 160px !important;
+  min-height: 104px !important;
+  height: 104px !important;
 }
 
 html body #root .auth-modal-panel--profile .voice-record-box,
@@ -1286,8 +1299,8 @@ html body #root .auth-modal-panel--profile .profile-setup-actions {
 
 html body #root .auth-modal-panel--profile .profile-setup-actions .primary,
 html body #root .auth-modal-panel--profile .profile-setup-actions .secondary {
-  min-height: 56px !important;
-  border-radius: 20px !important;
+  min-height: 44px !important;
+  border-radius: 16px !important;
   font-size: 15px !important;
 }
 
@@ -1298,9 +1311,11 @@ html body #root .auth-modal-panel--profile .profile-setup-actions .secondary {
 
   html body #root .auth-modal--profile .auth-modal-panel--profile {
     width: calc(100vw - 20px) !important;
+    height: calc(100dvh - 20px) !important;
     max-height: calc(100dvh - 20px) !important;
-    padding: 22px 14px 16px !important;
+    padding: 14px 10px 12px !important;
     border-radius: 28px 28px 0 0 !important;
+    overflow: hidden !important;
   }
 
   html body #root .auth-modal-panel--profile .profile-setup-heading {
@@ -1309,48 +1324,51 @@ html body #root .auth-modal-panel--profile .profile-setup-actions .secondary {
   }
 
   html body #root .auth-modal-panel--profile .profile-setup-heading h2 {
-    font-size: 28px !important;
+    font-size: 24px !important;
+  }
+
+  html body #root .auth-modal-panel--profile .profile-setup-heading p {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
   }
 
   html body #root .auth-modal-panel--profile .profile-setup-card .setup-tabs {
-    display: flex !important;
-    overflow-x: auto !important;
-    padding-bottom: 10px !important;
-    scrollbar-width: none !important;
-  }
-
-  html body #root .auth-modal-panel--profile .profile-setup-card .setup-tabs::-webkit-scrollbar {
-    display: none !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    overflow: hidden !important;
+    padding-bottom: 6px !important;
   }
 
   html body #root .auth-modal-panel--profile .profile-setup-card .setup-tabs button {
-    flex: 0 0 auto !important;
-    width: auto !important;
-    min-height: 42px !important;
+    width: 100% !important;
+    min-height: 32px !important;
+    padding: 6px 7px !important;
+    font-size: 11px !important;
   }
 
   html body #root .auth-modal-panel--profile .profile-setup-card > .pv-basic-grid,
   html body #root .auth-modal-panel--profile .profile-setup-card > .pv-rank-section,
   html body #root .auth-modal-panel--profile .profile-setup-card > .setup-stack,
   html body #root .auth-modal-panel--profile .profile-setup-card > .terms-box {
-    padding: 20px !important;
-    border-radius: 24px !important;
+    padding: 12px !important;
+    border-radius: 18px !important;
   }
 
   html body #root .auth-modal-panel--profile .pv-basic-grid {
     grid-template-columns: 1fr !important;
-    gap: 18px !important;
+    gap: 10px !important;
   }
 
   html body #root .auth-modal-panel--profile .pv-photo-card {
-    min-height: 150px !important;
-    grid-template-columns: 92px minmax(0, 1fr) !important;
-    padding: 18px !important;
+    min-height: 104px !important;
+    grid-template-columns: 68px minmax(0, 1fr) !important;
+    padding: 10px !important;
   }
 
   html body #root .auth-modal-panel--profile .pv-photo-preview {
-    width: 92px !important;
-    height: 92px !important;
+    width: 68px !important;
+    height: 68px !important;
   }
 
   html body #root .auth-modal-panel--profile .pv-gender-row {
@@ -1358,9 +1376,32 @@ html body #root .auth-modal-panel--profile .profile-setup-actions .secondary {
     grid-template-columns: 1fr !important;
   }
 
-  html body #root .auth-modal-panel--profile .pv-rank-icon-grid,
+  html body #root .auth-modal-panel--profile .pv-rank-icon-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
   html body #root .auth-modal-panel--profile .pv-chip-grid:has(.pv-chip--tag),
   html body #root .auth-modal-panel--profile .pv-chip-grid:has(.pv-chip--map) {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .auth-modal-panel--profile .pv-rank-icon-btn {
+    min-height: 46px !important;
+    padding: 5px !important;
+  }
+
+  html body #root .auth-modal-panel--profile .pv-rank-icon-btn img {
+    max-width: 24px !important;
+  }
+
+  html body #root .auth-modal-panel--profile .pv-role-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  html body #root .auth-modal-panel--profile .pv-rank-section .pv-role-card {
+    min-height: 62px !important;
+    padding: 8px !important;
   }
 }
