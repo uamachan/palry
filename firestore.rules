@@ -217,8 +217,7 @@ service cloud.firestore {
         && request.resource.data.actorUid == request.auth.uid
         && request.resource.data.profileId is string
         && request.resource.data.profileId != request.auth.uid
-        && request.resource.data.action is string
-        && request.resource.data.action.size() <= 40
+        && request.resource.data.action in ['見送り', 'LIKE', 'SUPER LIKE', '両LIKE']
         && hasOnlyKeys(['actorUid', 'profileId', 'action', 'createdAt']);
       allow update, delete: if false;
     }

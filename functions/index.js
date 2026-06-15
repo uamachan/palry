@@ -1,6 +1,7 @@
 'use strict';
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
@@ -178,3 +179,26 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
 
   return { match: null, matched: false, pending_sent: true };
 });
+
+// 通報が 3 件以上になったプロフィールを自動非表示にする。
+// Admin SDK で書き込むため Firestore Rules のクライアント制限を回避できる。
+exports.autoHideOnReport = onDocumentCreated(
+  { document: 'reports/{reportId}', region: 'asia-northeast1' },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data?.profileId) return;
+    const { profileId } = data;
+
+    const snap = await db.collection('reports')
+      .where('profileId', '==', profileId)
+      .where('status', '==', 'open')
+      .get();
+
+    if (snap.size < 3) return;
+
+    const batch = db.batch();
+    batch.update(db.collection('users').doc(profileId), { autoHidden: true });
+    batch.set(db.collection('publicProfiles').doc(profileId), { visible: false }, { merge: true });
+    await batch.commit();
+  }
+);

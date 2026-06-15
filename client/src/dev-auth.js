@@ -1,9 +1,10 @@
-// 開発者モード: ログイン(Firebase)とメール認証をスキップして
-// プロフィール作成・アプリ動作確認を行うための仕組み。
+// 開発者モード: ログインボタンを出すかどうかの UI 判定にのみ使う。
 //
-// 有効/無効のマスタースイッチはサーバの環境変数 ALLOW_DEV_LOGIN（/api/config で公開）。
-// クライアント側のこのフラグは「ボタンを出すか」のUI判定にのみ使い、実際の認可は
-// 必ずサーバが判定する（ALLOW_DEV_LOGIN=false ならトークンは拒否される）。
+// Firestore-direct 構成のため、このフラグだけでは Firestore 操作が通らない。
+// （Firestore Rules は request.auth != null を必須とするため、dev-auth セッションのまま
+//   書き込むと permission-denied になる。）
+// 実際に API 操作をテストする場合は VITE_USE_EMULATOR=true で Firebase Emulator を起動し、
+// Emulator Auth で実ユーザーとしてサインインして使用する。
 export const DEV_TOKEN = 'dev-skip-login';
 export const DEV_EMAIL = 'dev@palry.local';
 export const DEV_UID = 'dev-user';
