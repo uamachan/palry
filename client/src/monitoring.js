@@ -7,10 +7,6 @@
 
 const SENTRY_DSN = String(import.meta.env.VITE_SENTRY_DSN || '').trim();
 
-export function isMonitoringConfigured() {
-  return Boolean(SENTRY_DSN);
-}
-
 export function captureError(error, context = {}) {
   // 常にコンソールには出す。
   console.error('[captureError]', error, context);

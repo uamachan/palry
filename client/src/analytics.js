@@ -8,7 +8,7 @@ const CONSENT_KEY = 'pairly:analytics-consent';
 
 let loaded = false;
 
-export function isAnalyticsConfigured() {
+function isAnalyticsConfigured() {
   return Boolean(GA_ID);
 }
 

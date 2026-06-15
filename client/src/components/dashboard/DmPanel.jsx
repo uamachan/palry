@@ -2,13 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { cx, rankIconFor } from '../../constants.jsx';
 import ProfileDetailModal from './ProfileDetailModal.jsx';
 
-export const dmStarters = ['よろしくお願いします！', '何時ごろ遊べますか？', 'ランク一緒に行きませんか？'];
+const dmStarters =['よろしくお願いします！', '何時ごろ遊べますか？', 'ランク一緒に行きませんか？'];
 
 function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
 }
 
-export function profileFromMatch(match) {
+function profileFromMatch(match) {
   return {
     id: match.profileId,
     name: match.profileName,

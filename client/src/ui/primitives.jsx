@@ -46,18 +46,6 @@ export function SkeletonList({ rows = 3 }) {
   );
 }
 
-/** 空表示（4ステートの Empty） */
-export function EmptyState({ icon = '🫧', title, message, action }) {
-  return (
-    <div className="ui-state" role="status">
-      {icon && <div className="ui-state-icon" aria-hidden="true">{icon}</div>}
-      {title && <h4>{title}</h4>}
-      {message && <p>{message}</p>}
-      {action}
-    </div>
-  );
-}
-
 /** 404 ページ（不正な URL） */
 export function NotFound() {
   return (
@@ -71,13 +59,3 @@ export function NotFound() {
   );
 }
 
-/** エラー表示（4ステートの Error、再試行付き） */
-export function ErrorState({ message = '読み込みに失敗しました', onRetry }) {
-  return (
-    <div className="ui-state" role="alert">
-      <div className="ui-state-icon" aria-hidden="true">⚠️</div>
-      <p>{message}</p>
-      {onRetry && <button type="button" className="secondary" onClick={onRetry}>再試行</button>}
-    </div>
-  );
-}
