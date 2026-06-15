@@ -59,6 +59,20 @@ async function fetchUserProfile(uid) {
   }
 }
 
+let _funcsPromise = null;
+async function getFunctionsMods() {
+  if (!_funcsPromise) {
+    _funcsPromise = Promise.all([
+      import('firebase/functions'),
+      import('./firebase.js'),
+    ]).then(([fnModule, fb]) => ({
+      httpsCallable: fnModule.httpsCallable,
+      functions: fnModule.getFunctions(fb.firebaseApp, 'asia-northeast1'),
+    }));
+  }
+  return _funcsPromise;
+}
+
 async function writeUserProfile(uid, data) {
   const { doc, setDoc, db } = await getMods();
   try {
@@ -228,50 +242,18 @@ export const api = {
   like: async ({ profileId, type = 'like' }) => {
     const uid = await currentUserOrThrow();
     if (!profileId) throw apiError('対象プロフィールが必要です', 400);
-    const { doc, getDoc, setDoc, db } = await getMods();
-
-    await setDoc(doc(db, 'likes', `${uid}_${profileId}`), {
-      fromUid: uid,
-      toUid: profileId,
-      type,
-      createdAt: now(),
-    });
-
-    const rlId = `${profileId}_from_${uid}`;
-    const existingRl = await getDoc(doc(db, 'receivedLikes', rlId));
-    if (!existingRl.exists()) {
-      // 偽装防止: 送信者プロフィール（名前/写真など）はここに保存しない。
-      // 受信側の表示時に fromUid から本人プロフィールを取得する（receivedLikes() 参照）。
-      await setDoc(doc(db, 'receivedLikes', rlId), {
-        forUid: profileId,
-        fromUid: uid,
-        type,
-        status: 'pending',
-        createdAt: now(),
-      });
+    const { httpsCallable, functions } = await getFunctionsMods();
+    const sendLike = httpsCallable(functions, 'sendLike');
+    try {
+      const result = await sendLike({ profileId, type });
+      return result.data;
+    } catch (e) {
+      if (e.code === 'functions/resource-exhausted') throw apiError('本日のLIKE上限に達しました', 429);
+      if (e.code === 'functions/not-found') throw apiError('相手が見つかりません', 404);
+      if (e.code === 'functions/permission-denied') throw apiError('このユーザーにLIKEできません', 403);
+      if (e.code === 'functions/already-exists') throw apiError('すでにLIKE済みです', 409);
+      throw e;
     }
-
-    const mutualSnap = await getDoc(doc(db, 'likes', `${profileId}_${uid}`));
-    if (mutualSnap.exists()) {
-      const matchId = [uid, profileId].sort().join('_match_');
-      const theirProfile = await fetchUserProfile(profileId);
-      const existingMatch = await getDoc(doc(db, 'matches', matchId));
-      if (!existingMatch.exists()) {
-        await setDoc(doc(db, 'matches', matchId), {
-          id: matchId,
-          participants: [uid, profileId],
-          createdAt: now(),
-        });
-      }
-      // 自分宛ての receivedLike（相手が自分に送ったいいね = forUid が自分）だけ accepted にできる。
-      // 相手宛ての receivedLike（rlId = `${profileId}_from_${uid}`、forUid は相手）は
-      // Firestore ルール上ここからは更新できず、以前は Promise.all 全体が permission-denied で
-      // 失敗してマッチ成立がエラー扱いになっていた。相手側は本人が開いた時点で解決される。
-      await setDoc(doc(db, 'receivedLikes', `${uid}_from_${profileId}`), { status: 'accepted' }, { merge: true });
-      return { match: buildMatchObject(matchId, theirProfile), entitlements: buildEntitlements('FREE') };
-    }
-
-    return { pending_sent: true, entitlements: buildEntitlements('FREE') };
   },
 
   matches: async () => {
@@ -379,45 +361,56 @@ export const api = {
   acceptLike: async ({ receivedLikeId }) => {
     const uid = await currentUserOrThrow();
     if (!receivedLikeId) throw apiError('いいねが見つかりません', 404);
-    const { doc, getDoc, setDoc, updateDoc, db } = await getMods();
+    const { doc, getDoc, db } = await getMods();
     const rlSnap = await getDoc(doc(db, 'receivedLikes', receivedLikeId));
     if (!rlSnap.exists()) throw apiError('いいねが見つかりません', 404);
     const fromUid = rlSnap.data().fromUid;
-
-    await setDoc(doc(db, 'likes', `${uid}_${fromUid}`), { fromUid: uid, toUid: fromUid, type: 'like', createdAt: now() });
-    const matchId = [uid, fromUid].sort().join('_match_');
-    const theirProfile = await fetchUserProfile(fromUid);
-    const existingMatch = await getDoc(doc(db, 'matches', matchId));
-    if (!existingMatch.exists()) {
-      await setDoc(doc(db, 'matches', matchId), { id: matchId, participants: [uid, fromUid], createdAt: now() });
+    const { httpsCallable, functions } = await getFunctionsMods();
+    const sendLike = httpsCallable(functions, 'sendLike');
+    try {
+      const result = await sendLike({ profileId: fromUid, type: 'like', acceptingLikeId: receivedLikeId });
+      return { match: result.data.match, matched: true };
+    } catch (e) {
+      if (e.code === 'functions/not-found') throw apiError('相手が見つかりません', 404);
+      if (e.code === 'functions/permission-denied') throw apiError('このユーザーにLIKEできません', 403);
+      throw e;
     }
-    await updateDoc(doc(db, 'receivedLikes', receivedLikeId), { status: 'accepted' });
-    return { match: buildMatchObject(matchId, theirProfile), matched: true };
   },
 
   footprints: async () => {
     const uid = await getUid();
     if (!uid) return { footprints: [] };
     const { collection, query, where, getDocs, db } = await getMods();
-    const snap = await getDocs(query(collection(db, 'footprints'), where('actorUid', '==', uid)));
-    const footprints = snap.docs
-      .map((d) => ({ id: d.id, ...d.data(), time: d.data().createdAt }))
+    // profileId == uid: 自分のプロフィールを訪問した人の記録を取得する。
+    const snap = await getDocs(query(collection(db, 'footprints'), where('profileId', '==', uid)));
+    const raw = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
       .slice(0, 50);
+    const footprints = await Promise.all(raw.map(async (f) => {
+      const actor = await fetchUserProfile(f.actorUid);
+      return {
+        id: f.id,
+        actorUid: f.actorUid,
+        name: typeof actor?.name === 'string' ? actor.name : '',
+        rank: typeof actor?.rank === 'string' ? actor.rank : '',
+        gender: typeof actor?.gender === 'string' ? actor.gender : '',
+        action: f.action,
+        createdAt: f.createdAt,
+        time: f.createdAt,
+      };
+    }));
     return { footprints };
   },
 
   recordFootprint: async ({ profileId, action }) => {
     const uid = await getUid();
-    if (!uid || !profileId) return {};
+    // 自分自身への足あとは記録しない。
+    if (!uid || !profileId || uid === profileId) return {};
     const { collection, addDoc, db } = await getMods();
-    const target = await fetchUserProfile(profileId);
     await addDoc(collection(db, 'footprints'), {
       actorUid: uid,
       profileId,
-      name: target?.name || '',
-      rank: target?.rank || '',
-      gender: target?.gender || '',
       action,
       createdAt: now(),
     });
@@ -427,8 +420,11 @@ export const api = {
   report: async ({ profileId, reason = '' }) => {
     const uid = await currentUserOrThrow();
     if (!profileId) throw apiError('不正なリクエストです', 400);
-    const { collection, addDoc, db } = await getMods();
-    await addDoc(collection(db, 'reports'), { reporterUid: uid, profileId, reason, status: 'open', createdAt: now() });
+    const { doc, setDoc, db } = await getMods();
+    // 重複通報防止: {reporterUid}_{profileId} の deterministic ID を使う。
+    await setDoc(doc(db, 'reports', `${uid}_${profileId}`), {
+      reporterUid: uid, profileId, reason, status: 'open', createdAt: now(),
+    });
     return {};
   },
 

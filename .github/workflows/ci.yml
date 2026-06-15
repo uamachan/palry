@@ -24,6 +24,12 @@ jobs:
       - name: Build, syntax check, unit tests
         run: npm run release:check
 
+      - name: Install Functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Check Functions syntax
+        run: node --check functions/index.js
+
       - name: Security audit (high+)
         run: npm audit --audit-level=high
         continue-on-error: true

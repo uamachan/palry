@@ -5,10 +5,10 @@ import VoiceIntroPlayer from './VoiceIntroPlayer.jsx';
 
 export default function ProfileDetailModal({ profile, onClose }) {
   const panelRef = useRef(null);
-  const tags = Array.isArray(profile.tags) ? profile.tags : [];
-  const modes = Array.isArray(profile.modes) ? profile.modes : [];
-  const agentsList = Array.isArray(profile.agents) ? profile.agents : [];
-  const reasons = Array.isArray(profile.reasons) ? profile.reasons : [];
+  const tags = (Array.isArray(profile.tags) ? profile.tags : []).filter((t) => typeof t === 'string');
+  const modes = (Array.isArray(profile.modes) ? profile.modes : []).filter((t) => typeof t === 'string');
+  const agentsList = (Array.isArray(profile.agents) ? profile.agents : []).filter((t) => typeof t === 'string');
+  const reasons = (Array.isArray(profile.reasons) ? profile.reasons : []).filter((t) => typeof t === 'string');
   const voiceLabel = profile.voice || (profile.voiceIntro ? '声の自己紹介あり' : '未設定');
   const currentRank = profile.rank || 'Unranked';
   const detailItems = [

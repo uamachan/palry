@@ -52,3 +52,11 @@ jobs:
           # 取得できず認証エラー(code 10000)になるのを回避する。
           # アカウントIDは秘密情報ではない公開識別子。
           CLOUDFLARE_ACCOUNT_ID: fbd1e4ffbd25e9e55243147a97784315
+
+      - name: Install Functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Deploy Firebase (Firestore Rules + Functions)
+        run: npx --yes firebase-tools@14 deploy --only firestore:rules,functions --project ren12-9388b --non-interactive
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

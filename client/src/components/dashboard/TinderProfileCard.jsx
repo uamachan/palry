@@ -3,7 +3,7 @@ import { cx, rankIconFor } from '../../constants.jsx';
 import VoiceIntroPlayer from './VoiceIntroPlayer.jsx';
 
 export default function TinderProfileCard({ profile, onReport, onBlock, swipeDir, onOpenProfile }) {
-  const tags = profile.tags?.length ? profile.tags : profile.modes || [];
+  const tags = (Array.isArray(profile.tags) ? profile.tags : []).filter((t) => typeof t === 'string');
   const roleTone = profile.role === 'デュエリスト' ? 'duelist'
     : profile.role === 'イニシエーター' ? 'initiator'
     : profile.role === 'コントローラー' ? 'controller'
