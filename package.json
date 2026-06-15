@@ -1,48 +1,27 @@
 {
-  "name": "pairly-pro-fullstack",
+  "name": "palry",
   "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "Pairly - VALORANT teammate matching service",
+  "description": "Palry - VALORANT teammate matching service",
   "scripts": {
-    "dev": "concurrently \"node server/index.js\" \"vite --host 0.0.0.0\"",
-    "local": "concurrently \"node server/index.js\" \"vite --host localhost --open /\"",
+    "dev": "vite --host 0.0.0.0",
+    "local": "vite --host localhost --open /",
     "prebuild": "node scripts/generate-sitemap.mjs",
     "build": "vite build",
     "deploy": "npm run build && wrangler deploy",
     "sitemap": "node scripts/generate-sitemap.mjs",
-    "db:validate": "prisma validate --schema prisma/schema.prisma",
-    "db:generate": "prisma generate --schema prisma/schema.prisma",
-    "db:migrate": "prisma migrate deploy",
-    "db:migrate:dev": "prisma migrate dev",
-    "db:import-json": "node scripts/import-json-to-db.mjs",
-    "db:import-json:dry-run": "node scripts/import-json-to-db.mjs --dry-run",
     "test": "node --test",
-    "release:check": "npm run build && npm run db:validate && node --check server/index.js && node --check server/start-production.js && node --check scripts/import-json-to-db.mjs && node --test",
-    "start": "node server/start-production.js",
-    "reset-data": "node server/reset-data.js",
-    "backup-data": "node scripts/backup-data.mjs"
+    "release:check": "npm run build && node --test"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
     "@vitejs/plugin-react": "^6.0.2",
-    "compression": "^1.8.1",
-    "concurrently": "^10.0.3",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
     "firebase": "^12.14.0",
-    "firebase-admin": "^13.10.0",
-    "pg": "^8.21.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "vite": "^8.0.16"
   },
   "engines": {
     "node": ">=22.12.0 <25"
-  },
-  "devDependencies": {
-    "prisma": "^7.8.0"
   }
 }
