@@ -87,7 +87,21 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
   const matchId = [uid, profileId].sort().join('_match_');
 
   const result = await db.runTransaction(async (tx) => {
-    const quotaSnap = await tx.get(quotaRef);
+    // トランザクション内は先にすべてのドキュメントを read してから write する。
+    const likeRef    = db.collection('likes').doc(`${uid}_${profileId}`);
+    const rlRef      = db.collection('receivedLikes').doc(`${profileId}_from_${uid}`);
+    const mutualRef  = db.collection('likes').doc(`${profileId}_${uid}`);
+    const matchRef   = db.collection('matches').doc(matchId);
+    const theirRlRef = db.collection('receivedLikes').doc(`${uid}_from_${profileId}`);
+
+    const [quotaSnap, existingLike, existingRl, mutualSnap, existingMatch] = await Promise.all([
+      tx.get(quotaRef),
+      tx.get(likeRef),
+      tx.get(rlRef),
+      tx.get(mutualRef),
+      tx.get(matchRef),
+    ]);
+
     const quota = quotaSnap.exists ? quotaSnap.data() : { likes: 0, superLikes: 0 };
 
     if (!skipQuota) {
@@ -102,19 +116,18 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
       }
     }
 
-    const likeRef = db.collection('likes').doc(`${uid}_${profileId}`);
-    const existingLike = await tx.get(likeRef);
     if (existingLike.exists) throw new HttpsError('already-exists', 'すでにLIKE済みです');
+
+    const isMatching = mutualSnap.exists;
 
     // likes 書き込み
     tx.set(likeRef, { fromUid: uid, toUid: profileId, type, createdAt: nowStr });
 
-    // receivedLikes 書き込み
-    const rlId = `${profileId}_from_${uid}`;
-    const rlRef = db.collection('receivedLikes').doc(rlId);
-    const existingRl = await tx.get(rlRef);
+    // receivedLikes 書き込み: 相互LIKE成立なら最初から accepted にする。
     if (!existingRl.exists) {
-      tx.set(rlRef, { forUid: profileId, fromUid: uid, type, status: 'pending', createdAt: nowStr });
+      tx.set(rlRef, { forUid: profileId, fromUid: uid, type, status: isMatching ? 'accepted' : 'pending', createdAt: nowStr });
+    } else if (isMatching && existingRl.data().status === 'pending') {
+      tx.update(rlRef, { status: 'accepted' });
     }
 
     // クォータ更新
@@ -130,21 +143,14 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
 
     // acceptingLikeId があれば自分宛ての receivedLike を accepted に更新
     if (skipQuota && acceptingLikeId) {
-      const myRlRef = db.collection('receivedLikes').doc(acceptingLikeId);
-      tx.update(myRlRef, { status: 'accepted' });
+      tx.update(db.collection('receivedLikes').doc(acceptingLikeId), { status: 'accepted' });
     }
 
-    // 相互いいねチェック
-    const mutualRef = db.collection('likes').doc(`${profileId}_${uid}`);
-    const mutualSnap = await tx.get(mutualRef);
-    if (mutualSnap.exists) {
-      const matchRef = db.collection('matches').doc(matchId);
-      const existingMatch = await tx.get(matchRef);
+    if (isMatching) {
       if (!existingMatch.exists) {
         tx.set(matchRef, { id: matchId, participants: [uid, profileId], createdAt: nowStr });
       }
-      // 相手の receivedLike (自分が送ったいいね) を accepted に更新
-      const theirRlRef = db.collection('receivedLikes').doc(`${uid}_from_${profileId}`);
+      // 相手が以前送った receivedLike（自分が受け取ったいいね）も accepted に更新
       tx.set(theirRlRef, { status: 'accepted' }, { merge: true });
       return { matched: true };
     }

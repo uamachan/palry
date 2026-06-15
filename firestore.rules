@@ -152,12 +152,21 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // マッチ内の2人の間にブロックが存在するか（双方向チェック）。
+    // ブロックがある場合は新規メッセージ送信・既読更新を禁止する。
+    function isBlockedInMatch(matchId) {
+      let p = get(/databases/$(database)/documents/matches/$(matchId)).data.participants;
+      return exists(/databases/$(database)/documents/blocks/$(p[0] + '_block_' + p[1]))
+          || exists(/databases/$(database)/documents/blocks/$(p[1] + '_block_' + p[0]));
+    }
+
     match /messages/{messageId} {
       allow read: if signedIn() && exists(/databases/$(database)/documents/matches/$(resource.data.matchId))
         && request.auth.uid in get(/databases/$(database)/documents/matches/$(resource.data.matchId)).data.participants;
       allow create: if signedIn()
         && exists(/databases/$(database)/documents/matches/$(request.resource.data.matchId))
         && request.auth.uid in get(/databases/$(database)/documents/matches/$(request.resource.data.matchId)).data.participants
+        && !isBlockedInMatch(request.resource.data.matchId)
         && request.resource.data.senderUid == request.auth.uid
         && request.resource.data.body is string
         && request.resource.data.body.size() > 0
@@ -166,6 +175,7 @@ service cloud.firestore {
       allow update: if signedIn()
         && exists(/databases/$(database)/documents/matches/$(resource.data.matchId))
         && request.auth.uid in get(/databases/$(database)/documents/matches/$(resource.data.matchId)).data.participants
+        && !isBlockedInMatch(resource.data.matchId)
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['readAt']);
       allow delete: if false;
     }
