@@ -57,15 +57,6 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
     throw new HttpsError('permission-denied', 'このユーザーにLIKEできません');
   }
 
-  // 年齢安全チェック: 10代ユーザーは成人ユーザーにLIKE不可（双方向）
-  const myAge = String(myData.ageRange || '');
-  const theirAge = String(theirData.ageRange || '');
-  const myTeen = myAge.includes('10代') || myAge.includes('18') || myAge.includes('19');
-  const theirTeen = theirAge.includes('10代') || theirAge.includes('18') || theirAge.includes('19');
-  if (myTeen !== theirTeen) {
-    throw new HttpsError('permission-denied', '年齢層が異なるため LIKE できません');
-  }
-
   const plan = myData.plan || 'FREE';
   const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.FREE;
   const isSuperLike = type === 'super';
