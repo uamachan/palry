@@ -106,9 +106,24 @@ service cloud.firestore {
 
     match /users/{uid} {
       // 候補一覧表示のためログイン済みユーザーはプロフィールを読める。
+      // publicProfiles へのマイグレーション完了後に canReadPrivateUser(uid) に制限する。
       allow read: if signedIn();
       allow create: if validProfileCreate(uid);
-      allow update: if validProfileUpdate(uid);
+      allow update: if validProfileUpdate(uid)
+        // 管理者のみ autoHidden フラグを操作できる。
+        || (isAdmin() && request.resource.data.diff(resource.data).changedKeys().hasOnly(['autoHidden']));
+      allow delete: if false;
+    }
+
+    // 公開プロフィール（riotId・xHandle・plan など非公開フィールドを除外）。
+    // 候補一覧はここを読む。ユーザーがプロフィール保存時に自動同期される。
+    match /publicProfiles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isSelf(uid)
+        && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
+                        'rank', 'role', 'tags', 'agents', 'bio', 'voiceIntro', 'vc', 'maps',
+                        'favoriteWeapon', 'verified', 'createdAt', 'updatedAt'])
+        && profileFieldsValid(request.resource.data);
       allow delete: if false;
     }
 
@@ -209,7 +224,7 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow read: if signedIn() && resource.data.reporterUid == request.auth.uid;
+      allow read: if signedIn() && (resource.data.reporterUid == request.auth.uid || isAdmin());
       // reportId = {reporterUid}_{profileId} の形式を強制して重複報告を防ぐ。
       allow create: if signedIn()
         && reportId == request.auth.uid + '_' + request.resource.data.profileId

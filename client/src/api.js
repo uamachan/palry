@@ -59,6 +59,25 @@ async function fetchUserProfile(uid) {
   }
 }
 
+const PUBLIC_PROFILE_KEYS = [
+  'id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
+  'rank', 'role', 'tags', 'agents', 'bio', 'voiceIntro', 'vc', 'maps',
+  'favoriteWeapon', 'verified', 'createdAt', 'updatedAt',
+];
+
+async function fetchPublicProfile(uid) {
+  if (!uid) return null;
+  try {
+    const { doc, getDoc, db } = await getMods();
+    const snap = await getDoc(doc(db, 'publicProfiles', uid));
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...snap.data() };
+  } catch (e) {
+    console.warn('[palry] publicProfiles read failed:', e.message);
+    return null;
+  }
+}
+
 let _funcsPromise = null;
 async function getFunctionsMods() {
   if (!_funcsPromise) {
@@ -77,8 +96,16 @@ async function writeUserProfile(uid, data) {
   const { doc, setDoc, db } = await getMods();
   try {
     await setDoc(doc(db, 'users', uid), data, { merge: true });
+    // riotId/xHandle/plan など非公開フィールドを除いた公開プロフィールを同期する。
+    const publicData = {};
+    for (const key of PUBLIC_PROFILE_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) publicData[key] = data[key];
+    }
+    if (Object.keys(publicData).length > 0) {
+      await setDoc(doc(db, 'publicProfiles', uid), publicData, { merge: true });
+    }
   } catch (e) {
-    console.error('[pairly] Firestore write failed:', e.message);
+    console.error('[palry] Firestore write failed:', e.message);
     if (e.message?.includes('Database') || e.message?.includes('not-found') || e.code === 'not-found') {
       throw new Error('Firestoreデータベースが見つかりません。Firebase ConsoleでFirestoreを有効化してください。');
     }
@@ -264,7 +291,7 @@ export const api = {
     const matches = (await Promise.all(snap.docs.map(async (d) => {
       const m = { id: d.id, ...d.data() };
       const otherUid = m.participants?.find((p) => p !== uid);
-      const otherProfile = await fetchUserProfile(otherUid);
+      const otherProfile = await fetchPublicProfile(otherUid);
       return buildMatchObject(m.id, otherProfile, m.createdAt);
     }))).filter(Boolean);
     return { matches };
@@ -279,7 +306,7 @@ export const api = {
       const match = { id: matchDoc.id, ...matchDoc.data() };
       const otherUid = match.participants?.find((p) => p !== uid);
       const [otherProfile, msgsSnap] = await Promise.all([
-        fetchUserProfile(otherUid),
+        fetchPublicProfile(otherUid),
         getDocs(query(collection(db, 'messages'), where('matchId', '==', match.id))),
       ]);
       const messages = msgsSnap.docs.map((d) => {
@@ -342,7 +369,7 @@ export const api = {
     // 表示名/写真は保存値ではなく fromUid の本人プロフィールから取得する（なりすまし防止）。
     // 互換性: 旧データが fromProfile* を持っていればフォールバックで利用する。
     const receivedLikes = await Promise.all(pending.map(async (rl) => {
-      const fromProfile = await fetchUserProfile(rl.fromUid);
+      const fromProfile = await fetchPublicProfile(rl.fromUid);
       return {
         id: rl.id,
         fromProfileId: rl.fromUid,
@@ -482,7 +509,26 @@ export const api = {
     };
   },
 
-  reports: async () => ({ reports: [], flaggedUsers: [] }),
-  adminUnhide: async () => ({}),
+  reports: async () => {
+    const uid = await getUid();
+    if (!uid) return { reports: [], flaggedUsers: [] };
+    const me = await fetchUserProfile(uid);
+    if (!me?.isAdmin) return { reports: [], flaggedUsers: [] };
+    const { collection, getDocs, db } = await getMods();
+    const snap = await getDocs(collection(db, 'reports'));
+    const reports = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return { reports, flaggedUsers: [] };
+  },
+
+  adminUnhide: async ({ profileId }) => {
+    const uid = await currentUserOrThrow();
+    const me = await fetchUserProfile(uid);
+    if (!me?.isAdmin) throw apiError('権限がありません', 403);
+    if (!profileId) throw apiError('対象ユーザーが必要です', 400);
+    const { doc, updateDoc, db } = await getMods();
+    await updateDoc(doc(db, 'users', profileId), { autoHidden: false });
+    return {};
+  },
+
   adminAudit: async () => ({ audit: [] }),
 };
