@@ -14,6 +14,10 @@ service cloud.firestore {
       return signedIn() && participants is list && request.auth.uid in participants;
     }
 
+    function isAdmin() {
+      return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
     function hasOnlyKeys(keys) {
       return request.resource.data.keys().hasOnly(keys);
     }
@@ -128,7 +132,10 @@ service cloud.firestore {
         && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
                         'rank', 'role', 'tags', 'agents', 'bio', 'voiceIntro', 'vc', 'maps',
                         'favoriteWeapon', 'verified', 'createdAt', 'updatedAt'])
-        && profileFieldsValid(request.resource.data);
+        && profileFieldsValid(request.resource.data)
+        && request.resource.data.id == uid
+        && (!('verified' in request.resource.data) ||
+            request.resource.data.verified == get(/databases/$(database)/documents/users/$(uid)).data.verified);
       allow delete: if false;
     }
 
@@ -208,19 +215,20 @@ service cloud.firestore {
         && request.resource.data.actorUid == request.auth.uid
         && request.resource.data.profileId is string
         && request.resource.data.profileId != request.auth.uid
-        && request.resource.data.action is string
+        && request.resource.data.action in ['見送り', 'LIKE', 'SUPER LIKE', '両LIKE', 'プロフィール閲覧']
         && hasOnlyKeys(['actorUid', 'profileId', 'action', 'createdAt']);
       allow update, delete: if false;
     }
 
     match /reports/{reportId} {
-      allow read: if signedIn() && resource.data.reporterUid == request.auth.uid;
+      allow read: if signedIn() && (resource.data.reporterUid == request.auth.uid || isAdmin());
       // reportId = {reporterUid}_{profileId} の形式を強制して重複通報を防ぐ（2回目は update で deny）。
       allow create: if signedIn()
         && reportId == request.auth.uid + '_' + request.resource.data.profileId
         && request.resource.data.reporterUid == request.auth.uid
         && request.resource.data.profileId is string
         && request.resource.data.profileId != request.auth.uid
+        && exists(/databases/$(database)/documents/publicProfiles/$(request.resource.data.profileId))
         && request.resource.data.reason is string
         && request.resource.data.reason.size() <= 200
         && request.resource.data.status == 'open'
