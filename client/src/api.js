@@ -224,7 +224,7 @@ function buildMatchObject(matchId, otherProfile, createdAt = '') {
   return {
     id: matchId,
     profileId: otherProfile.id,
-    profileName: otherProfile.name || '',
+    profileName: otherProfile.name || '相手',
     profilePhoto: pickProfilePhoto(otherProfile),
     profileRank: otherProfile.rank || '未設定',
     profileRole: otherProfile.role || '未設定',
@@ -271,7 +271,41 @@ function messageFromMatchSummary(match, uid, otherUid) {
 }
 
 function matchSortTime(match) {
-  return match?.lastMessageAt || match?.updatedAt || match?.createdAt || '';
+  return match?.matchSortAt || match?.lastMessageAt || match?.updatedAt || match?.createdAt || '';
+}
+
+function profileFromMatchData(match, uid) {
+  const otherUid = Array.isArray(match.participants) ? match.participants.find((p) => p !== uid) : null;
+  const profile = match.profileData?.[otherUid] || {};
+  return { id: otherUid, ...profile };
+}
+
+async function fetchMatchDocs(uid) {
+  const { collection, query, where, orderBy, getDocs, limit, db } = await getMods();
+  const byId = new Map();
+
+  try {
+    const ordered = await getDocs(query(
+      collection(db, 'matches'),
+      where('participants', 'array-contains', uid),
+      orderBy('matchSortAt', 'desc'),
+      limit(MATCH_THREAD_LIMIT)
+    ));
+    ordered.docs.forEach((d) => byId.set(d.id, d));
+  } catch (error) {
+    console.warn('[palry] ordered matches query failed; using fallback:', error.code || error.message);
+  }
+
+  if (byId.size < MATCH_THREAD_LIMIT) {
+    const fallback = await getDocs(query(
+      collection(db, 'matches'),
+      where('participants', 'array-contains', uid),
+      limit(MATCH_THREAD_LIMIT)
+    ));
+    fallback.docs.forEach((d) => byId.set(d.id, d));
+  }
+
+  return Array.from(byId.values());
 }
 
 async function currentUserOrThrow() {
@@ -360,19 +394,12 @@ export const api = {
   matches: async () => {
     const uid = await getUid();
     if (!uid) return { matches: [] };
-    const { collection, query, where, getDocs, limit, db } = await getMods();
-    const snap = await getDocs(query(
-      collection(db, 'matches'),
-      where('participants', 'array-contains', uid),
-      limit(MATCH_THREAD_LIMIT)
-    ));
-    const matches = (await Promise.all(snap.docs.map(async (d) => {
+    const docs = await fetchMatchDocs(uid);
+    const matches = docs.map((d) => {
       const m = { ...d.data(), id: d.id };
-      const otherUid = m.participants?.find((p) => p !== uid);
-      const otherProfile = await fetchPublicProfile(otherUid);
-      const extra = m.profileData?.[otherUid] || {};
-      return buildMatchObject(m.id, { ...otherProfile, ...extra }, m.createdAt);
-    }))).filter(Boolean);
+      const otherProfile = profileFromMatchData(m, uid);
+      return buildMatchObject(m.id, otherProfile, m.createdAt);
+    }).filter(Boolean);
     matches.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     return { matches };
   },
@@ -380,24 +407,18 @@ export const api = {
   dmThreads: async () => {
     const uid = await getUid();
     if (!uid) return { threads: [] };
-    const { collection, query, where, getDocs, limit, db } = await getMods();
-    const matchesSnap = await getDocs(query(
-      collection(db, 'matches'),
-      where('participants', 'array-contains', uid),
-      limit(MATCH_THREAD_LIMIT)
-    ));
-    const threads = await Promise.all(matchesSnap.docs.map(async (matchDoc) => {
+    const docs = await fetchMatchDocs(uid);
+    const threads = docs.map((matchDoc) => {
       const match = { ...matchDoc.data(), id: matchDoc.id };
-      const otherUid = match.participants?.find((p) => p !== uid);
-      const otherProfile = await fetchPublicProfile(otherUid);
-      const extra = match.profileData?.[otherUid] || {};
+      const otherUid = Array.isArray(match.participants) ? match.participants.find((p) => p !== uid) : null;
+      const otherProfile = profileFromMatchData(match, uid);
       return {
-        match: buildMatchObject(match.id, { ...otherProfile, ...extra }, match.createdAt),
+        match: buildMatchObject(match.id, otherProfile, match.createdAt),
         messages: messageFromMatchSummary(match, uid, otherUid),
         unreadCount: Number(match.unreadCountBy?.[uid] || 0),
         updatedAt: matchSortTime(match),
       };
-    }));
+    });
     threads.sort((a, b) => (b.updatedAt || b.match?.createdAt || '').localeCompare(a.updatedAt || a.match?.createdAt || ''));
     return { threads: threads.filter((t) => t.match) };
   },
@@ -410,20 +431,13 @@ export const api = {
   },
 
   sendDm: async ({ matchId, body }) => {
-    const uid = await currentUserOrThrow();
+    await currentUserOrThrow();
     const text = String(body || '').trim();
     if (!matchId || !text) throw apiError('送信内容が不正です', 400);
     if (text.length > 500) throw apiError('DMは500文字以内です', 400);
-    const { collection, addDoc, db } = await getMods();
-    const createdAt = now();
-    const ref = await addDoc(collection(db, 'messages'), {
-      matchId,
-      senderUid: uid,
-      body: text,
-      createdAt,
-      readAt: null,
-    });
-    return { message: { id: ref.id, sender: 'user', body: text, createdAt, readAt: null } };
+    const { httpsCallable, functions } = await getFunctionsMods();
+    const result = await httpsCallable(functions, 'sendDm')({ matchId, body: text });
+    return { message: result.data?.message };
   },
 
   receivedLikes: async () => {
