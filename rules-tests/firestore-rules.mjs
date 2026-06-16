@@ -29,7 +29,7 @@ if (rulesTesting && emulatorHost) {
     initializeTestEnvironment,
   } = rulesTesting;
 
-  const projectId = `palry-rules-${Date.now()}`;
+  const projectId = process.env.GCLOUD_PROJECT || process.env.FIREBASE_CONFIG_PROJECT || 'demo-palry-rules';
   const testEnv = await initializeTestEnvironment({
     projectId,
     firestore: {
