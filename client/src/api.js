@@ -17,6 +17,7 @@ async function getMods() {
       setDoc: fs.setDoc,
       updateDoc: fs.updateDoc,
       addDoc: fs.addDoc,
+      writeBatch: fs.writeBatch,
       deleteField: fs.deleteField,
       query: fs.query,
       where: fs.where,
@@ -93,17 +94,19 @@ async function getFunctionsMods() {
 }
 
 async function writeUserProfile(uid, data) {
-  const { doc, setDoc, db } = await getMods();
+  const { doc, writeBatch, db } = await getMods();
   try {
-    await setDoc(doc(db, 'users', uid), data, { merge: true });
-    // riotId/xHandle/plan など非公開フィールドを除いた公開プロフィールを同期する。
+    // users と publicProfiles を同一バッチで書き込み、中間状態を防ぐ。
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', uid), data, { merge: true });
     const publicData = {};
     for (const key of PUBLIC_PROFILE_KEYS) {
       if (Object.prototype.hasOwnProperty.call(data, key)) publicData[key] = data[key];
     }
     if (Object.keys(publicData).length > 0) {
-      await setDoc(doc(db, 'publicProfiles', uid), publicData, { merge: true });
+      batch.set(doc(db, 'publicProfiles', uid), publicData, { merge: true });
     }
+    await batch.commit();
   } catch (e) {
     console.error('[palry] Firestore write failed:', e.message);
     if (e.message?.includes('Database') || e.message?.includes('not-found') || e.code === 'not-found') {

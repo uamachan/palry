@@ -691,9 +691,6 @@ function App() {
       showAuth('login');
       return;
     }
-    const prevPlan = plan;
-    setPlan(nextPlan);
-    setUser((u) => ({ ...u, plan: nextPlan }));
     try {
       const payload = await api.purchase({ userId: user.id, plan: nextPlan });
       const confirmedPlan = payload?.purchase?.plan || payload?.plan || nextPlan;
@@ -709,8 +706,6 @@ function App() {
       track('purchase', { kind: 'plan', item: confirmedPlan });
       showToast(`${planLabel(confirmedPlan)} に切り替えました（デモ）`);
     } catch (e) {
-      setPlan(prevPlan);
-      setUser((u) => ({ ...u, plan: prevPlan }));
       showToast(e.message || 'プラン変更に失敗しました');
     }
   }

@@ -13,10 +13,12 @@ export const DEV_UID = 'dev-user';
 const SESSION_KEY = 'palry-dev-session';
 
 export function isDevSession() {
+  if (!import.meta.env.DEV) return false;
   try { return sessionStorage.getItem(SESSION_KEY) === '1'; } catch { return false; }
 }
 
 export function startDevSession() {
+  if (!import.meta.env.DEV) return;
   try { sessionStorage.setItem(SESSION_KEY, '1'); } catch { /* storage 不可環境は無視 */ }
 }
 
