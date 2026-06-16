@@ -30,6 +30,11 @@ jobs:
       - name: Check Functions syntax
         run: node --check functions/index.js
 
+      - name: Firestore Rules tests
+        run: |
+          npm install --no-save --package-lock=false @firebase/rules-unit-testing firebase-tools
+          npx firebase emulators:exec --only firestore "npm run test:rules"
+
       - name: Security audit (high+)
         run: npm audit --audit-level=high
         continue-on-error: true
