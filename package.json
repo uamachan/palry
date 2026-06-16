@@ -9,7 +9,7 @@
     "local": "vite --host localhost --open /",
     "prebuild": "node scripts/generate-sitemap.mjs",
     "build": "vite build",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "npm run build && wrangler deploy --no-experimental-autoconfig",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "test": "node --test",
     "test:rules": "node --test rules-tests/firestore-rules.mjs",
