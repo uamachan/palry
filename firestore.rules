@@ -52,8 +52,8 @@ service cloud.firestore {
                                  'ロータス', 'サンセット', 'アビス', 'カロード'])));
     }
 
-    // 公開 users 文書（全ログインユーザーが読める）には email などの個人情報を置かない。
-    // メールアドレスは Firebase Auth が保持しており、候補表示にも不要なため保存しない。
+    // email を保存しない（Firebase Auth が保持するので Firestore に置く必要がない）。
+    // メール確認済みユーザーのみプロフィール作成を許可（未認証アカウント対策）。
     function validProfileCreate(uid) {
       return isSelf(uid)
         && hasOnlyKeys([
@@ -64,8 +64,6 @@ service cloud.firestore {
         ])
         && profileFieldsValid(request.resource.data)
         && request.resource.data.id == uid
-        // メール確認済みユーザーのみプロフィール作成を許可（未認証アカウント対策）。
-        // verified はクライアント任せにせず、email_verified と矛盾させない。
         && request.auth.token.email_verified == true
         && (!('plan' in request.resource.data) || request.resource.data.plan == 'FREE')
         && (!('verified' in request.resource.data) || request.resource.data.verified == true)
@@ -104,37 +102,48 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/likes/$(participants[1] + '_' + participants[0]));
     }
 
+    // マッチ内の2人の間にブロックが存在するか（双方向チェック）。
+    // ブロックがある場合は新規メッセージ送信・既読更新を禁止する。
+    function isBlockedInMatch(matchId) {
+      let p = get(/databases/$(database)/documents/matches/$(matchId)).data.participants;
+      return exists(/databases/$(database)/documents/blocks/$(p[0] + '_block_' + p[1]))
+          || exists(/databases/$(database)/documents/blocks/$(p[1] + '_block_' + p[0]));
+    }
+
     match /users/{uid} {
-      // 候補一覧表示のためログイン済みユーザーはプロフィールを読める。
-      // publicProfiles へのマイグレーション完了後に canReadPrivateUser(uid) に制限する。
-      allow read: if signedIn();
+      // 自分自身のみ読める。候補一覧は publicProfiles コレクションを使用するため
+      // 他ユーザーの users 文書を読む必要はない（email・plan などの非公開フィールドを保護）。
+      allow read: if isSelf(uid);
       allow create: if validProfileCreate(uid);
-      allow update: if validProfileUpdate(uid)
-        // 管理者のみ autoHidden フラグを操作できる。
-        || (isAdmin() && request.resource.data.diff(resource.data).changedKeys().hasOnly(['autoHidden']));
+      allow update: if validProfileUpdate(uid);
       allow delete: if false;
     }
 
-    // 公開プロフィール（riotId・xHandle・plan など非公開フィールドを除外）。
-    // 候補一覧はここを読む。ユーザーがプロフィール保存時に自動同期される。
+    // 候補一覧表示用の公開プロフィール（riotId を含む表示情報のみ。email・plan は除外）。
+    // プロフィール保存時にクライアントが自動同期する。
     match /publicProfiles/{uid} {
       allow read: if signedIn();
       allow create, update: if isSelf(uid)
         && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
                         'rank', 'role', 'tags', 'agents', 'bio', 'voiceIntro', 'vc', 'maps',
-                        'favoriteWeapon', 'verified', 'createdAt', 'updatedAt'])
+                        'favoriteWeapon', 'verified', 'riotId', 'createdAt', 'updatedAt'])
         && profileFieldsValid(request.resource.data);
       allow delete: if false;
     }
 
-    // likes/receivedLikes は sendLike Callable Function (Admin SDK) 経由でのみ書き込む。
-    // クライアント直書きを禁止してプラン別日次上限の bypass を防ぐ。
     match /likes/{likeId} {
       allow read: if signedIn() && (
         resource.data.fromUid == request.auth.uid ||
         resource.data.toUid == request.auth.uid
       );
-      allow create, update, delete: if false;
+      allow create, update: if signedIn()
+        && likeId == request.auth.uid + '_' + request.resource.data.toUid
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid is string
+        && request.resource.data.toUid != request.auth.uid
+        && request.resource.data.type in ['like', 'super', 'dual']
+        && hasOnlyKeys(['fromUid', 'toUid', 'type', 'createdAt']);
+      allow delete: if false;
     }
 
     match /receivedLikes/{receivedLikeId} {
@@ -142,37 +151,33 @@ service cloud.firestore {
         resource.data.forUid == request.auth.uid ||
         resource.data.fromUid == request.auth.uid
       );
-      allow create, delete: if false;
-      // 受信者本人が status を blocked に変更する場合のみ許可。
-      // accepted への更新は Callable Function が行う。
+      allow create: if signedIn()
+        && receivedLikeId == request.resource.data.forUid + '_from_' + request.auth.uid
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.forUid is string
+        && request.resource.data.forUid != request.auth.uid
+        && request.resource.data.status == 'pending'
+        && hasOnlyKeys([
+          'forUid', 'fromUid', 'fromProfileName', 'fromProfilePhoto',
+          'fromProfileRank', 'fromProfileRole', 'type', 'status', 'createdAt'
+        ]);
+      // 受信者本人のみが status を変更できる（accepted: 相互マッチ確定, blocked: 拒否）。
       allow update: if signedIn()
         && resource.data.forUid == request.auth.uid
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status'])
-        && request.resource.data.status == 'blocked';
-    }
-
-    // likeQuota は Callable Function が書き込む。クライアントは読み取り専用（自分の分のみ）。
-    match /likeQuota/{quotaId} {
-      allow read: if signedIn() && quotaId.split('_')[0] == request.auth.uid;
-      allow write: if false;
+        && request.resource.data.status in ['accepted', 'blocked'];
+      allow delete: if false;
     }
 
     match /matches/{matchId} {
       allow read: if isParticipant(resource.data.participants);
+      // 相互いいねが存在する場合のみマッチ作成を許可（同意なしマッチの偽造を防ぐ）。
       allow create, update: if isParticipant(request.resource.data.participants)
         && validMatchId(matchId, request.resource.data.participants)
         && mutualLikeExists(request.resource.data.participants)
         && hasOnlyKeys(['id', 'participants', 'createdAt'])
         && request.resource.data.id == matchId;
       allow delete: if false;
-    }
-
-    // マッチ内の2人の間にブロックが存在するか（双方向チェック）。
-    // ブロックがある場合は新規メッセージ送信・既読更新を禁止する。
-    function isBlockedInMatch(matchId) {
-      let p = get(/databases/$(database)/documents/matches/$(matchId)).data.participants;
-      return exists(/databases/$(database)/documents/blocks/$(p[0] + '_block_' + p[1]))
-          || exists(/databases/$(database)/documents/blocks/$(p[1] + '_block_' + p[0]));
     }
 
     match /messages/{messageId} {
@@ -210,21 +215,21 @@ service cloud.firestore {
     }
 
     match /footprints/{footprintId} {
-      // 自分のプロフィールを訪問した人の記録を取得する（actorUid ではなく profileId で判定）。
-      // name/rank/gender はクライアントから書き込ませず、表示時に users から取得する。
+      // profileId == request.auth.uid: 自分のプロフィールを訪問した人の記録のみ読む（足あとタブ）。
+      // 訪問者の name/rank/gender は publicProfiles から取得するため footprint 文書には保存しない。
       allow read: if signedIn() && resource.data.profileId == request.auth.uid;
       allow create: if signedIn()
         && request.resource.data.actorUid == request.auth.uid
         && request.resource.data.profileId is string
         && request.resource.data.profileId != request.auth.uid
-        && request.resource.data.action in ['見送り', 'LIKE', 'SUPER LIKE', '両LIKE']
+        && request.resource.data.action is string
         && hasOnlyKeys(['actorUid', 'profileId', 'action', 'createdAt']);
       allow update, delete: if false;
     }
 
     match /reports/{reportId} {
-      allow read: if signedIn() && (resource.data.reporterUid == request.auth.uid || isAdmin());
-      // reportId = {reporterUid}_{profileId} の形式を強制して重複報告を防ぐ。
+      allow read: if signedIn() && resource.data.reporterUid == request.auth.uid;
+      // reportId = {reporterUid}_{profileId} の形式を強制して重複通報を防ぐ（2回目は update で deny）。
       allow create: if signedIn()
         && reportId == request.auth.uid + '_' + request.resource.data.profileId
         && request.resource.data.reporterUid == request.auth.uid
