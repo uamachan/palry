@@ -5,6 +5,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "participants", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "matchSortAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "matches",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "participants", "arrayConfig": "CONTAINS" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
