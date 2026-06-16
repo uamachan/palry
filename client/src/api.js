@@ -1,6 +1,3 @@
-// Cloudflare Pages などの静的ホスティングでは Express /api が動かないため、
-// フロントは Firebase Auth + Firestore を直接利用する。
-// Node/Express API を別ホストで使う場合は、別途 API クライアントへ切り替える。
 let _modsPromise = null;
 async function getMods() {
   if (!_modsPromise) {
@@ -19,6 +16,7 @@ async function getMods() {
       deleteField: fs.deleteField,
       query: fs.query,
       where: fs.where,
+      limit: fs.limit,
       onSnapshot: fs.onSnapshot,
       db: fb.firebaseDb,
       auth: fb.firebaseAuth,
@@ -44,6 +42,63 @@ function apiError(message, httpStatus) {
   return e;
 }
 
+const PUBLIC_PROFILE_KEYS = [
+  'id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
+  'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role', 'tags', 'agents',
+  'bio', 'voiceIntro', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
+  'favoriteWeapon', 'verified', 'createdAt', 'updatedAt',
+];
+
+const INLINE_PROFILE_PHOTO_MAX_CHARS = 300000;
+const INLINE_VOICE_INTRO_MAX_CHARS = 300000;
+const PROFILE_RESULT_LIMIT = 20;
+const PROFILE_FALLBACK_READ_LIMIT = 50;
+
+function validateInlineMediaPayload(data) {
+  // TODO(storage-migration): upload profile media to Firebase Storage and keep only URL/path in Firestore.
+  if (typeof data?.profilePhoto === 'string' && data.profilePhoto.length > INLINE_PROFILE_PHOTO_MAX_CHARS) {
+    throw apiError('プロフィール画像が大きすぎます。画像を圧縮してください。', 413);
+  }
+  if (typeof data?.voiceIntro === 'string' && data.voiceIntro.length > INLINE_VOICE_INTRO_MAX_CHARS) {
+    throw apiError('ボイス紹介が大きすぎます。短く録音してください。', 413);
+  }
+}
+
+function pickProfilePhoto(profile) {
+  return profile?.profilePhotoUrl || profile?.profilePhoto || '';
+}
+
+function pickVoiceIntro(profile) {
+  return profile?.voiceIntroUrl || profile?.voiceIntro || '';
+}
+
+function shuffleInPlace(items) {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return items;
+}
+
+function candidateAllowed(profile, excludedUids, targetGender, targetRank) {
+  if (!profile?.id || excludedUids.has(profile.id)) return false;
+  if (profile.visible === false) return false;
+  if (profile.autoHidden === true) return false;
+  if (targetGender !== 'all') {
+    const gender = profile.gender || '';
+    if (targetGender === 'その他/未設定') {
+      if (gender !== '' && gender !== 'その他/未設定') return false;
+    } else if (gender !== targetGender) {
+      return false;
+    }
+  }
+  if (targetRank !== 'all') {
+    const tier = (profile.rank || '').split(' ')[0];
+    if (tier !== targetRank) return false;
+  }
+  return true;
+}
+
 async function fetchUserProfile(uid) {
   if (!uid) return null;
   try {
@@ -56,12 +111,6 @@ async function fetchUserProfile(uid) {
     return null;
   }
 }
-
-const PUBLIC_PROFILE_KEYS = [
-  'id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
-  'rank', 'role', 'tags', 'agents', 'bio', 'voiceIntro', 'vc', 'maps',
-  'favoriteWeapon', 'verified', 'createdAt', 'updatedAt',
-];
 
 async function fetchPublicProfile(uid) {
   if (!uid) return null;
@@ -91,9 +140,9 @@ async function getFunctionsMods() {
 }
 
 async function writeUserProfile(uid, data) {
+  validateInlineMediaPayload(data);
   const { doc, writeBatch, db } = await getMods();
   try {
-    // users と publicProfiles を同一バッチで書き込み、中間状態を防ぐ。
     const batch = writeBatch(db);
     batch.set(doc(db, 'users', uid), data, { merge: true });
     const publicData = {};
@@ -115,6 +164,29 @@ async function writeUserProfile(uid, data) {
     throw e;
   }
   return fetchUserProfile(uid);
+}
+
+async function fallbackProfiles(uid, targetGender, targetRank) {
+  const { collection, query, where, getDocs, limit, db } = await getMods();
+  const [blocksSnap, blockedBySnap, likesSnap] = await Promise.all([
+    getDocs(query(collection(db, 'blocks'), where('byUid', '==', uid))),
+    getDocs(query(collection(db, 'blocks'), where('targetUid', '==', uid))),
+    getDocs(query(collection(db, 'likes'), where('fromUid', '==', uid))),
+  ]);
+
+  const excludedUids = new Set([
+    uid,
+    ...blocksSnap.docs.map((d) => d.data().targetUid).filter(Boolean),
+    ...blockedBySnap.docs.map((d) => d.data().byUid).filter(Boolean),
+    ...likesSnap.docs.map((d) => d.data().toUid).filter(Boolean),
+  ]);
+
+  const snap = await getDocs(query(collection(db, 'publicProfiles'), limit(PROFILE_FALLBACK_READ_LIMIT)));
+  const candidates = snap.docs
+    .map((d) => ({ ...d.data(), id: d.id }))
+    .filter((p) => candidateAllowed(p, excludedUids, targetGender, targetRank));
+
+  return { profiles: shuffleInPlace(candidates).slice(0, PROFILE_RESULT_LIMIT) };
 }
 
 const PLANS_DATA = {
@@ -146,7 +218,7 @@ function buildMatchObject(matchId, otherProfile, createdAt = '') {
     id: matchId,
     profileId: otherProfile.id,
     profileName: otherProfile.name || '',
-    profilePhoto: otherProfile.profilePhoto || '',
+    profilePhoto: pickProfilePhoto(otherProfile),
     profileRank: otherProfile.rank || '未設定',
     profileRole: otherProfile.role || '未設定',
     profileGender: otherProfile.gender || '',
@@ -158,7 +230,7 @@ function buildMatchObject(matchId, otherProfile, createdAt = '') {
     profileVc: otherProfile.vc || '',
     profileMaps: otherProfile.maps || [],
     profileFavoriteWeapon: otherProfile.favoriteWeapon || '',
-    profileVoiceIntro: otherProfile.voiceIntro || '',
+    profileVoiceIntro: pickVoiceIntro(otherProfile),
     profileBio: otherProfile.bio || '',
     profileRiotId: otherProfile.riotId || '',
     dmUnlocked: true,
@@ -185,15 +257,13 @@ export const api = {
 
   register: async (body) => {
     const uid = await currentUserOrThrow();
-    // email は公開 users 文書（全ログインユーザーが読める）へ保存しない（個人情報漏洩の防止）。
-    // 認証用メールは Firebase Auth が保持しており、候補表示にも不要。
     const { password, emailConfirm, idToken, agreed, age, email, ...rest } = body || {};
     const { deleteField } = await getMods();
     const userData = {
       ...rest,
       id: uid,
       ageRange: age || rest.ageRange || '',
-      email: deleteField(), // 旧データに残った email を確実に削除する
+      email: deleteField(),
       plan: 'FREE',
       verified: true,
       agreedAt: now(),
@@ -206,13 +276,12 @@ export const api = {
 
   updateProfile: async (body) => {
     const uid = await currentUserOrThrow();
-    // email は公開 users 文書へ保存しない（register と同じ理由）。
     const { password, emailConfirm, idToken, age, agreed, email, ...rest } = body || {};
     const { deleteField } = await getMods();
     const user = await writeUserProfile(uid, {
       ...rest,
       ageRange: age || rest.ageRange || '',
-      email: deleteField(), // 旧データに残った email を確実に削除する
+      email: deleteField(),
       updatedAt: now(),
     });
     return { user };
@@ -221,47 +290,18 @@ export const api = {
   profiles: async ({ targetGender = 'all', targetRank = 'all' } = {}) => {
     const uid = await getUid();
     if (!uid) return { profiles: [] };
-    const { collection, query, where, getDocs, db } = await getMods();
-
-    const [blocksSnap, blockedBySnap, likesSnap] = await Promise.all([
-      getDocs(query(collection(db, 'blocks'), where('byUid', '==', uid))),
-      getDocs(query(collection(db, 'blocks'), where('targetUid', '==', uid))),
-      getDocs(query(collection(db, 'likes'), where('fromUid', '==', uid))),
-    ]);
-
-    const excludedUids = new Set([
-      uid,
-      ...blocksSnap.docs.map((d) => d.data().targetUid),
-      ...blockedBySnap.docs.map((d) => d.data().byUid),
-      ...likesSnap.docs.map((d) => d.data().toUid),
-    ]);
-
-    const snap = await getDocs(query(collection(db, 'publicProfiles')));
-    const candidates = snap.docs
-      .map((d) => ({ ...d.data(), id: d.id }))
-      .filter((p) => {
-        if (excludedUids.has(p.id)) return false;
-        if (p.visible === false) return false;
-        if (p.autoHidden === true) return false;
-        if (targetGender !== 'all') {
-          const g = p.gender || '';
-          if (targetGender === 'その他/未設定') {
-            if (g !== '' && g !== 'その他/未設定') return false;
-          } else if (g !== targetGender) return false;
-        }
-        if (targetRank !== 'all') {
-          const tier = (p.rank || '').split(' ')[0];
-          if (tier !== targetRank) return false;
-        }
-        return true;
+    try {
+      const { httpsCallable, functions } = await getFunctionsMods();
+      const result = await httpsCallable(functions, 'getCandidateProfiles')({
+        targetGender,
+        targetRank,
+        limit: PROFILE_RESULT_LIMIT,
       });
-
-    for (let i = candidates.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+      return { profiles: Array.isArray(result.data?.profiles) ? result.data.profiles : [] };
+    } catch (e) {
+      console.warn('[palry] getCandidateProfiles failed; using limited fallback:', e.code || e.message);
+      return fallbackProfiles(uid, targetGender, targetRank);
     }
-
-    return { profiles: candidates.slice(0, 20) };
   },
 
   like: async ({ profileId, type = 'like' }) => {
@@ -366,15 +406,13 @@ export const api = {
     const pending = snap.docs
       .map((d) => ({ ...d.data(), id: d.id }))
       .filter((rl) => rl.status === 'pending');
-    // 表示名/写真は保存値ではなく fromUid の本人プロフィールから取得する（なりすまし防止）。
-    // 互換性: 旧データが fromProfile* を持っていればフォールバックで利用する。
     const receivedLikes = await Promise.all(pending.map(async (rl) => {
       const fromProfile = await fetchPublicProfile(rl.fromUid);
       return {
         id: rl.id,
         fromProfileId: rl.fromUid,
         fromProfileName: fromProfile?.name || rl.fromProfileName || '',
-        fromPhoto: fromProfile?.profilePhoto || rl.fromProfilePhoto || '',
+        fromPhoto: pickProfilePhoto(fromProfile) || rl.fromProfilePhoto || '',
         fromRank: fromProfile?.rank || rl.fromProfileRank || '',
         fromRole: fromProfile?.role || rl.fromProfileRole || '',
         type: rl.type || 'like',
@@ -408,7 +446,6 @@ export const api = {
     const uid = await getUid();
     if (!uid) return { footprints: [] };
     const { collection, query, where, getDocs, db } = await getMods();
-    // profileId == uid: 自分のプロフィールを訪問した人の記録を取得する。
     const snap = await getDocs(query(collection(db, 'footprints'), where('profileId', '==', uid)));
     const raw = snap.docs
       .map((d) => ({ ...d.data(), id: d.id }))
@@ -432,7 +469,6 @@ export const api = {
 
   recordFootprint: async ({ profileId, action }) => {
     const uid = await getUid();
-    // 自分自身への足あとは記録しない。
     if (!uid || !profileId || uid === profileId) return {};
     const { collection, addDoc, db } = await getMods();
     await addDoc(collection(db, 'footprints'), {
@@ -477,9 +513,6 @@ export const api = {
 
   purchase: async ({ plan }) => {
     await currentUserOrThrow();
-    // Cloudflare + Firestore直利用では、クライアントだけで本物のプラン変更を保存しない。
-    // Firestore Rulesも通常プロフィール更新による plan 変更を拒否する。
-    // ここはUI確認用のデモレスポンスだけ返す。
     return { purchase: { plan, demo: true }, entitlements: buildEntitlements(plan) };
   },
 
