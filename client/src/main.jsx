@@ -461,7 +461,7 @@ function App() {
       refreshReceivedLikes();
       refreshDmThreads();
     };
-    const intervalId = window.setInterval(refreshNotifications, 15000);
+    const intervalId = window.setInterval(refreshNotifications, 60000);
     const handleFocus = () => refreshNotifications();
     const handleVisibility = () => { if (!document.hidden) refreshNotifications(); };
     window.addEventListener('focus', handleFocus);
