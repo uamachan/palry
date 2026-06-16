@@ -115,17 +115,27 @@ if (rulesTesting && emulatorHost) {
     }));
   });
 
-  test('footprints.action は許可リストだけ保存できる', async () => {
-    await assertSucceeds(addDoc(collection(authDb('alice'), 'footprints'), {
+  test('footprints.action は許可リストだけ保存でき、日別固定ID以外は拒否される', async () => {
+    const db = authDb('alice');
+    await assertSucceeds(setDoc(doc(db, 'footprints', 'bob_from_alice_2026-06-16'), {
       actorUid: 'alice',
       profileId: 'bob',
       action: 'プロフィール閲覧',
+      day: '2026-06-16',
       createdAt: '2026-06-16T00:00:00.000Z',
     }));
-    await assertFails(addDoc(collection(authDb('alice'), 'footprints'), {
+    await assertFails(setDoc(doc(db, 'footprints', 'random'), {
+      actorUid: 'alice',
+      profileId: 'bob',
+      action: 'プロフィール閲覧',
+      day: '2026-06-16',
+      createdAt: '2026-06-16T00:00:00.000Z',
+    }));
+    await assertFails(setDoc(doc(db, 'footprints', 'bob_from_alice_2026-06-16'), {
       actorUid: 'alice',
       profileId: 'bob',
       action: '外部誘導',
+      day: '2026-06-16',
       createdAt: '2026-06-16T00:00:00.000Z',
     }));
   });
@@ -159,6 +169,23 @@ if (rulesTesting && emulatorHost) {
     await assertFails(setDoc(doc(db, 'publicProfiles', 'alice'), {
       ...validPublicProfile('alice'),
       voiceIntro: 'x'.repeat(300001),
+    }));
+  });
+
+  test('publicProfiles の外部メディアURLと他人のStorage pathは拒否される', async () => {
+    const db = authDb('alice');
+    await assertSucceeds(setDoc(doc(db, 'publicProfiles', 'alice'), {
+      ...validPublicProfile('alice'),
+      profilePhotoUrl: 'https://firebasestorage.googleapis.com/v0/b/demo/o/profileMedia%2Falice%2Fa.png?alt=media',
+      profilePhotoPath: 'profileMedia/alice/a.png',
+    }));
+    await assertFails(setDoc(doc(db, 'publicProfiles', 'alice'), {
+      ...validPublicProfile('alice'),
+      profilePhotoUrl: 'https://example.com/track.png',
+    }));
+    await assertFails(setDoc(doc(db, 'publicProfiles', 'alice'), {
+      ...validPublicProfile('alice'),
+      profilePhotoPath: 'profileMedia/bob/a.png',
     }));
   });
 }
