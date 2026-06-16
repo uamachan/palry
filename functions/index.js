@@ -15,14 +15,23 @@ const PLAN_LIMITS = {
 };
 
 const CANDIDATE_RESPONSE_LIMIT = 20;
-const CANDIDATE_QUERY_LIMIT = 120;
-const CANDIDATE_MAX_LIMIT = 50;
-const CANDIDATE_MAX_ATTEMPTS = 4;
+const CANDIDATE_QUERY_LIMIT = 60;
+const CANDIDATE_MAX_LIMIT = 30;
+const CANDIDATE_MAX_ATTEMPTS = 2;
+const CANDIDATE_SELECT_FIELDS = [
+  'name', 'ageRange', 'age', 'gender', 'region',
+  'profilePhotoUrl', 'profilePhotoPath',
+  'rank', 'role', 'tags', 'agents', 'bio',
+  'voiceIntroUrl', 'voiceIntroPath',
+  'vc', 'maps', 'favoriteWeapon', 'verified',
+  'visible', 'autoHidden', 'createdAt', 'updatedAt',
+];
 const PUBLIC_PROFILE_FIELDS = [
-  'id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
-  'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role', 'tags', 'agents',
-  'bio', 'voiceIntro', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
-  'favoriteWeapon', 'verified', 'createdAt', 'updatedAt',
+  'id', 'name', 'ageRange', 'age', 'gender', 'region',
+  'profilePhoto', 'profilePhotoUrl', 'profilePhotoPath',
+  'rank', 'role', 'tags', 'agents', 'bio',
+  'voiceIntro', 'voiceIntroUrl', 'voiceIntroPath',
+  'vc', 'maps', 'favoriteWeapon', 'verified', 'createdAt', 'updatedAt',
 ];
 
 function today() {
@@ -30,7 +39,6 @@ function today() {
 }
 
 function randomCursorId() {
-  // Firestore auto IDs are distributed enough to avoid always reading the same first page.
   return db.collection('_candidateCursors').doc().id;
 }
 
@@ -68,6 +76,14 @@ function sanitizePublicProfile(data, id) {
   const profile = { id };
   for (const key of PUBLIC_PROFILE_FIELDS) {
     if (key === 'id') continue;
+    if (key === 'profilePhoto') {
+      profile.profilePhoto = data.profilePhotoUrl || '';
+      continue;
+    }
+    if (key === 'voiceIntro') {
+      profile.voiceIntro = data.voiceIntroUrl || '';
+      continue;
+    }
     if (Object.prototype.hasOwnProperty.call(data, key)) profile[key] = data[key];
   }
   return profile;
@@ -81,7 +97,39 @@ function publicVoice(profile) {
   return profile?.voiceIntroUrl || profile?.voiceIntro || '';
 }
 
-exports.getCandidateProfiles = onCall({ region: 'asia-northeast1' }, async (request) => {
+function candidatePageQuery(cursorId = '') {
+  let q = db.collection('publicProfiles').orderBy(FieldPath.documentId());
+  if (cursorId) q = q.startAt(cursorId);
+  return q.limit(CANDIDATE_QUERY_LIMIT).select(...CANDIDATE_SELECT_FIELDS);
+}
+
+async function removeExcludedCandidates(profiles, uid, targetGender, targetRank) {
+  const selfOnly = new Set([uid]);
+  const prelim = profiles.filter((profile) => candidateMatchesFilters(profile, targetGender, targetRank, selfOnly));
+  if (prelim.length === 0) return [];
+
+  const refs = [];
+  for (const profile of prelim) {
+    refs.push(db.collection('likes').doc(`${uid}_${profile.id}`));
+    refs.push(db.collection('blocks').doc(`${uid}_block_${profile.id}`));
+    refs.push(db.collection('blocks').doc(`${profile.id}_block_${uid}`));
+  }
+
+  const snaps = await db.getAll(...refs);
+  const allowed = [];
+  for (let i = 0; i < prelim.length; i++) {
+    const base = i * 3;
+    const alreadyLiked = snaps[base]?.exists;
+    const blockedByMe = snaps[base + 1]?.exists;
+    const blockedByThem = snaps[base + 2]?.exists;
+    if (!alreadyLiked && !blockedByMe && !blockedByThem) {
+      allowed.push(sanitizePublicProfile(prelim[i], prelim[i].id));
+    }
+  }
+  return allowed;
+}
+
+exports.getCandidateProfiles = onCall({ region: 'asia-northeast1', maxInstances: 20 }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
 
   const uid = request.auth.uid;
@@ -91,56 +139,27 @@ exports.getCandidateProfiles = onCall({ region: 'asia-northeast1' }, async (requ
     ? Math.min(Math.max(Number(request.data.limit), 1), CANDIDATE_MAX_LIMIT)
     : CANDIDATE_RESPONSE_LIMIT;
 
-  const [blocksSnap, blockedBySnap, likesSnap] = await Promise.all([
-    db.collection('blocks').where('byUid', '==', uid).get(),
-    db.collection('blocks').where('targetUid', '==', uid).get(),
-    db.collection('likes').where('fromUid', '==', uid).get(),
-  ]);
-
-  const excludedUids = new Set([uid]);
-  blocksSnap.forEach((doc) => {
-    const targetUid = doc.data()?.targetUid;
-    if (targetUid) excludedUids.add(targetUid);
-  });
-  blockedBySnap.forEach((doc) => {
-    const byUid = doc.data()?.byUid;
-    if (byUid) excludedUids.add(byUid);
-  });
-  likesSnap.forEach((doc) => {
-    const toUid = doc.data()?.toUid;
-    if (toUid) excludedUids.add(toUid);
-  });
-
   const seen = new Set();
   const candidates = [];
 
   async function collectFromQuery(query) {
     const snap = await query.get();
+    const page = [];
     snap.forEach((doc) => {
       if (seen.has(doc.id)) return;
       seen.add(doc.id);
-      const profile = sanitizePublicProfile(doc.data() || {}, doc.id);
-      if (candidateMatchesFilters(profile, targetGender, targetRank, excludedUids)) {
-        candidates.push(profile);
-      }
+      page.push({ id: doc.id, ...(doc.data() || {}) });
     });
+    const allowed = await removeExcludedCandidates(page, uid, targetGender, targetRank);
+    candidates.push(...allowed);
   }
 
   for (let attempt = 0; attempt < CANDIDATE_MAX_ATTEMPTS && candidates.length < requestedLimit; attempt++) {
-    await collectFromQuery(
-      db.collection('publicProfiles')
-        .orderBy(FieldPath.documentId())
-        .startAt(randomCursorId())
-        .limit(CANDIDATE_QUERY_LIMIT)
-    );
+    await collectFromQuery(candidatePageQuery(randomCursorId()));
   }
 
   if (candidates.length < requestedLimit) {
-    await collectFromQuery(
-      db.collection('publicProfiles')
-        .orderBy(FieldPath.documentId())
-        .limit(CANDIDATE_QUERY_LIMIT)
-    );
+    await collectFromQuery(candidatePageQuery());
   }
 
   return { profiles: shuffleInPlace(candidates).slice(0, requestedLimit) };
