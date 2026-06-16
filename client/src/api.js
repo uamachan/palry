@@ -52,7 +52,7 @@ async function fetchUserProfile(uid) {
     const { doc, getDoc, db } = await getMods();
     const snap = await getDoc(doc(db, 'users', uid));
     if (!snap.exists()) return null;
-    return { id: snap.id, ...snap.data() };
+    return { ...snap.data(), id: snap.id };
   } catch (e) {
     console.warn('[pairly] Firestore read failed:', e.message);
     return null;
@@ -71,7 +71,7 @@ async function fetchPublicProfile(uid) {
     const { doc, getDoc, db } = await getMods();
     const snap = await getDoc(doc(db, 'publicProfiles', uid));
     if (!snap.exists()) return null;
-    return { id: snap.id, ...snap.data() };
+    return { ...snap.data(), id: snap.id };
   } catch (e) {
     console.warn('[palry] publicProfiles read failed:', e.message);
     return null;
@@ -241,7 +241,7 @@ export const api = {
 
     const snap = await getDocs(query(collection(db, 'publicProfiles')));
     const candidates = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
+      .map((d) => ({ ...d.data(), id: d.id }))
       .filter((p) => {
         if (excludedUids.has(p.id)) return false;
         if (p.visible === false) return false;
@@ -290,7 +290,7 @@ export const api = {
     const { collection, query, where, getDocs, db } = await getMods();
     const snap = await getDocs(query(collection(db, 'matches'), where('participants', 'array-contains', uid)));
     const matches = (await Promise.all(snap.docs.map(async (d) => {
-      const m = { id: d.id, ...d.data() };
+      const m = { ...d.data(), id: d.id };
       const otherUid = m.participants?.find((p) => p !== uid);
       const otherProfile = await fetchPublicProfile(otherUid);
       const extra = m.profileData?.[otherUid] || {};
@@ -305,7 +305,7 @@ export const api = {
     const { collection, query, where, getDocs, db } = await getMods();
     const matchesSnap = await getDocs(query(collection(db, 'matches'), where('participants', 'array-contains', uid)));
     const threads = await Promise.all(matchesSnap.docs.map(async (matchDoc) => {
-      const match = { id: matchDoc.id, ...matchDoc.data() };
+      const match = { ...matchDoc.data(), id: matchDoc.id };
       const otherUid = match.participants?.find((p) => p !== uid);
       const [otherProfile, msgsSnap] = await Promise.all([
         fetchPublicProfile(otherUid),
@@ -367,7 +367,7 @@ export const api = {
     const { collection, query, where, getDocs, db } = await getMods();
     const snap = await getDocs(query(collection(db, 'receivedLikes'), where('forUid', '==', uid)));
     const pending = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
+      .map((d) => ({ ...d.data(), id: d.id }))
       .filter((rl) => rl.status === 'pending');
     // 表示名/写真は保存値ではなく fromUid の本人プロフィールから取得する（なりすまし防止）。
     // 互換性: 旧データが fromProfile* を持っていればフォールバックで利用する。
@@ -414,7 +414,7 @@ export const api = {
     // profileId == uid: 自分のプロフィールを訪問した人の記録を取得する。
     const snap = await getDocs(query(collection(db, 'footprints'), where('profileId', '==', uid)));
     const raw = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
+      .map((d) => ({ ...d.data(), id: d.id }))
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
       .slice(0, 50);
     const footprints = await Promise.all(raw.map(async (f) => {
@@ -519,17 +519,20 @@ export const api = {
     if (!me?.isAdmin) return { reports: [], flaggedUsers: [] };
     const { collection, getDocs, db } = await getMods();
     const snap = await getDocs(collection(db, 'reports'));
-    const reports = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const reports = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
     return { reports, flaggedUsers: [] };
   },
 
   adminUnhide: async ({ profileId }) => {
-    const uid = await currentUserOrThrow();
-    const me = await fetchUserProfile(uid);
-    if (!me?.isAdmin) throw apiError('権限がありません', 403);
+    await currentUserOrThrow();
     if (!profileId) throw apiError('対象ユーザーが必要です', 400);
-    const { doc, updateDoc, db } = await getMods();
-    await updateDoc(doc(db, 'users', profileId), { autoHidden: false });
+    const { httpsCallable, functions } = await getFunctionsMods();
+    try {
+      await httpsCallable(functions, 'adminUnhide')({ profileId });
+    } catch (e) {
+      if (e.code === 'functions/permission-denied') throw apiError('権限がありません', 403);
+      throw e;
+    }
     return {};
   },
 

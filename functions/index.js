@@ -190,6 +190,21 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
   return { match: null, matched: false, pending_sent: true };
 });
 
+exports.adminUnhide = onCall({ region: 'asia-northeast1' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+  const callerSnap = await db.collection('users').doc(request.auth.uid).get();
+  if (!callerSnap.exists || !callerSnap.data().isAdmin) {
+    throw new HttpsError('permission-denied', '権限がありません');
+  }
+  const { profileId } = request.data || {};
+  if (!profileId || typeof profileId !== 'string') {
+    throw new HttpsError('invalid-argument', 'profileId が不正です');
+  }
+  await db.collection('users').doc(profileId).update({ autoHidden: false });
+  await db.collection('publicProfiles').doc(profileId).set({ visible: true }, { merge: true });
+  return {};
+});
+
 // 通報が 3 件以上になったプロフィールを自動非表示にする。
 // Admin SDK で書き込むため Firestore Rules のクライアント制限を回避できる。
 exports.autoHideOnReport = onDocumentCreated(
