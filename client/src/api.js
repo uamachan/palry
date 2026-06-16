@@ -342,10 +342,11 @@ export const api = {
   matches: async () => {
     const uid = await getUid();
     if (!uid) return { matches: [] };
-    const { collection, query, where, getDocs, limit, db } = await getMods();
+    const { collection, query, where, orderBy, getDocs, limit, db } = await getMods();
     const snap = await getDocs(query(
       collection(db, 'matches'),
       where('participants', 'array-contains', uid),
+      orderBy('createdAt', 'desc'),
       limit(MATCH_THREAD_LIMIT)
     ));
     const matches = (await Promise.all(snap.docs.map(async (d) => {
@@ -365,6 +366,7 @@ export const api = {
     const matchesSnap = await getDocs(query(
       collection(db, 'matches'),
       where('participants', 'array-contains', uid),
+      orderBy('createdAt', 'desc'),
       limit(MATCH_THREAD_LIMIT)
     ));
     const threads = await Promise.all(matchesSnap.docs.map(async (matchDoc) => {
