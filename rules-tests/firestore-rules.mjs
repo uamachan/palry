@@ -83,35 +83,27 @@ if (rulesTesting && emulatorHost) {
     await assertFails(setDoc(doc(db, 'reports', 'alice_bob'), { reporterUid: 'alice', profileId: 'bob', reason: '', createdAt: 'now' }));
   });
 
-  test('messages はマッチ参加者だけ作成できる', async () => {
-    await seed((db) => setDoc(doc(db, 'matches', 'alice_match_bob'), { participants: ['alice', 'bob'] }));
-    await assertSucceeds(addDoc(collection(authDb('alice'), 'messages'), {
-      matchId: 'alice_match_bob',
-      senderUid: 'alice',
-      body: 'こんにちは',
-      createdAt: '2026-06-16T00:00:00.000Z',
-      readAt: null,
-    }));
-    await assertFails(addDoc(collection(authDb('mallory'), 'messages'), {
-      matchId: 'alice_match_bob',
-      senderUid: 'mallory',
-      body: '割り込み',
-      createdAt: '2026-06-16T00:00:00.000Z',
-      readAt: null,
-    }));
-  });
-
-  test('ブロック済み相手にはDMできない', async () => {
+  test('messages は参加者だけ読めるがクライアントから作成できない', async () => {
     await seed(async (db) => {
       await setDoc(doc(db, 'matches', 'alice_match_bob'), { participants: ['alice', 'bob'] });
-      await setDoc(doc(db, 'blocks', 'bob_block_alice'), { byUid: 'bob', targetUid: 'alice', createdAt: 'now' });
+      await setDoc(doc(db, 'messages', 'm1'), {
+        matchId: 'alice_match_bob',
+        senderUid: 'alice',
+        body: 'こんにちは',
+        createdAt: '2026-06-16T00:00:00.000Z',
+        readAt: null,
+      });
     });
+
+    await assertSucceeds(getDoc(doc(authDb('alice'), 'messages', 'm1')));
+    await assertSucceeds(getDoc(doc(authDb('bob'), 'messages', 'm1')));
+    await assertFails(getDoc(doc(authDb('mallory'), 'messages', 'm1')));
     await assertFails(addDoc(collection(authDb('alice'), 'messages'), {
       matchId: 'alice_match_bob',
       senderUid: 'alice',
-      body: '送れないはず',
-      createdAt: '2026-06-16T00:00:00.000Z',
-      readAt: null,
+      body: '直接送信は拒否される',
+      createdAt: '2099-01-01T00:00:00.000Z',
+      readAt: '2099-01-01T00:00:00.000Z',
     }));
   });
 
