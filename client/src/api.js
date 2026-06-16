@@ -16,6 +16,7 @@ async function getMods() {
       deleteField: fs.deleteField,
       query: fs.query,
       where: fs.where,
+      orderBy: fs.orderBy,
       limit: fs.limit,
       onSnapshot: fs.onSnapshot,
       db: fb.firebaseDb,
@@ -53,6 +54,11 @@ const INLINE_PROFILE_PHOTO_MAX_CHARS = 300000;
 const INLINE_VOICE_INTRO_MAX_CHARS = 300000;
 const PROFILE_RESULT_LIMIT = 20;
 const PROFILE_FALLBACK_READ_LIMIT = 50;
+const MATCH_THREAD_LIMIT = 100;
+const DM_MESSAGE_LIMIT = 50;
+const RECEIVED_LIKES_LIMIT = 50;
+const FOOTPRINT_LIMIT = 50;
+const ADMIN_REPORT_LIMIT = 100;
 
 function validateInlineMediaPayload(data) {
   // TODO(storage-migration): upload profile media to Firebase Storage and keep only URL/path in Firestore.
@@ -169,9 +175,9 @@ async function writeUserProfile(uid, data) {
 async function fallbackProfiles(uid, targetGender, targetRank) {
   const { collection, query, where, getDocs, limit, db } = await getMods();
   const [blocksSnap, blockedBySnap, likesSnap] = await Promise.all([
-    getDocs(query(collection(db, 'blocks'), where('byUid', '==', uid))),
-    getDocs(query(collection(db, 'blocks'), where('targetUid', '==', uid))),
-    getDocs(query(collection(db, 'likes'), where('fromUid', '==', uid))),
+    getDocs(query(collection(db, 'blocks'), where('byUid', '==', uid), limit(PROFILE_FALLBACK_READ_LIMIT))),
+    getDocs(query(collection(db, 'blocks'), where('targetUid', '==', uid), limit(PROFILE_FALLBACK_READ_LIMIT))),
+    getDocs(query(collection(db, 'likes'), where('fromUid', '==', uid), limit(PROFILE_FALLBACK_READ_LIMIT))),
   ]);
 
   const excludedUids = new Set([
@@ -236,6 +242,17 @@ function buildMatchObject(matchId, otherProfile, createdAt = '') {
     dmUnlocked: true,
     createdAt: createdAt || now(),
     opener: `${otherProfile.name || '相手'}さんとマッチしました！`,
+  };
+}
+
+function messageFromDoc(docSnap, uid) {
+  const msg = docSnap.data();
+  return {
+    id: docSnap.id,
+    sender: msg.senderUid === uid ? 'user' : 'other',
+    body: msg.body,
+    createdAt: msg.createdAt,
+    readAt: msg.readAt || null,
   };
 }
 
@@ -311,7 +328,8 @@ export const api = {
     const sendLike = httpsCallable(functions, 'sendLike');
     try {
       const result = await sendLike({ profileId, type });
-      return { ...result.data, entitlements: buildEntitlements('FREE') };
+      const user = await fetchUserProfile(uid);
+      return { ...result.data, entitlements: buildEntitlements(user?.plan || 'FREE') };
     } catch (e) {
       if (e.code === 'functions/resource-exhausted') throw apiError('本日のLIKE上限に達しました', 429);
       if (e.code === 'functions/not-found') throw apiError('相手が見つかりません', 404);
@@ -324,8 +342,12 @@ export const api = {
   matches: async () => {
     const uid = await getUid();
     if (!uid) return { matches: [] };
-    const { collection, query, where, getDocs, db } = await getMods();
-    const snap = await getDocs(query(collection(db, 'matches'), where('participants', 'array-contains', uid)));
+    const { collection, query, where, getDocs, limit, db } = await getMods();
+    const snap = await getDocs(query(
+      collection(db, 'matches'),
+      where('participants', 'array-contains', uid),
+      limit(MATCH_THREAD_LIMIT)
+    ));
     const matches = (await Promise.all(snap.docs.map(async (d) => {
       const m = { ...d.data(), id: d.id };
       const otherUid = m.participants?.find((p) => p !== uid);
@@ -339,25 +361,27 @@ export const api = {
   dmThreads: async () => {
     const uid = await getUid();
     if (!uid) return { threads: [] };
-    const { collection, query, where, getDocs, db } = await getMods();
-    const matchesSnap = await getDocs(query(collection(db, 'matches'), where('participants', 'array-contains', uid)));
+    const { collection, query, where, orderBy, getDocs, limit, db } = await getMods();
+    const matchesSnap = await getDocs(query(
+      collection(db, 'matches'),
+      where('participants', 'array-contains', uid),
+      limit(MATCH_THREAD_LIMIT)
+    ));
     const threads = await Promise.all(matchesSnap.docs.map(async (matchDoc) => {
       const match = { ...matchDoc.data(), id: matchDoc.id };
       const otherUid = match.participants?.find((p) => p !== uid);
       const [otherProfile, msgsSnap] = await Promise.all([
         fetchPublicProfile(otherUid),
-        getDocs(query(collection(db, 'messages'), where('matchId', '==', match.id))),
+        getDocs(query(
+          collection(db, 'messages'),
+          where('matchId', '==', match.id),
+          orderBy('createdAt', 'desc'),
+          limit(DM_MESSAGE_LIMIT)
+        )),
       ]);
-      const messages = msgsSnap.docs.map((d) => {
-        const msg = d.data();
-        return {
-          id: d.id,
-          sender: msg.senderUid === uid ? 'user' : 'other',
-          body: msg.body,
-          createdAt: msg.createdAt,
-          readAt: msg.readAt || null,
-        };
-      }).sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+      const messages = msgsSnap.docs
+        .map((d) => messageFromDoc(d, uid))
+        .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
       const unreadCount = messages.filter((m) => m.sender === 'other' && !m.readAt).length;
       const extra = match.profileData?.[otherUid] || {};
       return { match: buildMatchObject(match.id, { ...otherProfile, ...extra }, match.createdAt), messages, unreadCount };
@@ -373,12 +397,24 @@ export const api = {
   markDmRead: async ({ matchId }) => {
     const uid = await getUid();
     if (!uid || !matchId) return {};
-    const { collection, query, where, getDocs, updateDoc, db } = await getMods();
-    const snap = await getDocs(query(collection(db, 'messages'), where('matchId', '==', matchId)));
+    const { collection, query, where, orderBy, getDocs, writeBatch, limit, db } = await getMods();
+    const snap = await getDocs(query(
+      collection(db, 'messages'),
+      where('matchId', '==', matchId),
+      orderBy('createdAt', 'desc'),
+      limit(DM_MESSAGE_LIMIT)
+    ));
     const readAt = now();
-    await Promise.all(snap.docs
-      .filter((d) => d.data().senderUid !== uid && !d.data().readAt)
-      .map((d) => updateDoc(d.ref, { readAt })));
+    const batch = writeBatch(db);
+    let writes = 0;
+    snap.docs.forEach((d) => {
+      const msg = d.data();
+      if (msg.senderUid !== uid && !msg.readAt) {
+        batch.update(d.ref, { readAt });
+        writes += 1;
+      }
+    });
+    if (writes > 0) await batch.commit();
     return {};
   },
 
@@ -386,6 +422,7 @@ export const api = {
     const uid = await currentUserOrThrow();
     const text = String(body || '').trim();
     if (!matchId || !text) throw apiError('送信内容が不正です', 400);
+    if (text.length > 500) throw apiError('DMは500文字以内です', 400);
     const { collection, addDoc, db } = await getMods();
     const createdAt = now();
     const ref = await addDoc(collection(db, 'messages'), {
@@ -401,11 +438,15 @@ export const api = {
   receivedLikes: async () => {
     const uid = await getUid();
     if (!uid) return { receivedLikes: [] };
-    const { collection, query, where, getDocs, db } = await getMods();
-    const snap = await getDocs(query(collection(db, 'receivedLikes'), where('forUid', '==', uid)));
-    const pending = snap.docs
-      .map((d) => ({ ...d.data(), id: d.id }))
-      .filter((rl) => rl.status === 'pending');
+    const { collection, query, where, orderBy, getDocs, limit, db } = await getMods();
+    const snap = await getDocs(query(
+      collection(db, 'receivedLikes'),
+      where('forUid', '==', uid),
+      where('status', '==', 'pending'),
+      orderBy('createdAt', 'desc'),
+      limit(RECEIVED_LIKES_LIMIT)
+    ));
+    const pending = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
     const receivedLikes = await Promise.all(pending.map(async (rl) => {
       const fromProfile = await fetchPublicProfile(rl.fromUid);
       return {
@@ -445,12 +486,14 @@ export const api = {
   footprints: async () => {
     const uid = await getUid();
     if (!uid) return { footprints: [] };
-    const { collection, query, where, getDocs, db } = await getMods();
-    const snap = await getDocs(query(collection(db, 'footprints'), where('profileId', '==', uid)));
-    const raw = snap.docs
-      .map((d) => ({ ...d.data(), id: d.id }))
-      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-      .slice(0, 50);
+    const { collection, query, where, orderBy, getDocs, limit, db } = await getMods();
+    const snap = await getDocs(query(
+      collection(db, 'footprints'),
+      where('profileId', '==', uid),
+      orderBy('createdAt', 'desc'),
+      limit(FOOTPRINT_LIMIT)
+    ));
+    const raw = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
     const footprints = await Promise.all(raw.map(async (f) => {
       const actor = await fetchPublicProfile(f.actorUid);
       return {
@@ -470,6 +513,8 @@ export const api = {
   recordFootprint: async ({ profileId, action }) => {
     const uid = await getUid();
     if (!uid || !profileId || uid === profileId) return {};
+    const allowedActions = ['見送り', 'LIKE', '両LIKE', 'プロフィール閲覧'];
+    if (!allowedActions.includes(action)) return {};
     const { collection, addDoc, db } = await getMods();
     await addDoc(collection(db, 'footprints'), {
       actorUid: uid,
@@ -512,31 +557,38 @@ export const api = {
   },
 
   purchase: async ({ plan }) => {
-    await currentUserOrThrow();
-    return { purchase: { plan, demo: true }, entitlements: buildEntitlements(plan) };
+    const uid = await currentUserOrThrow();
+    const requestedPlan = Object.prototype.hasOwnProperty.call(PLANS_DATA.plans, plan) ? plan : 'FREE';
+    const user = await fetchUserProfile(uid);
+    return {
+      purchase: { plan: requestedPlan, demo: true },
+      entitlements: buildEntitlements(user?.plan || 'FREE'),
+    };
   },
 
-  purchaseItem: async () => ({ entitlements: buildEntitlements('FREE') }),
+  purchaseItem: async () => {
+    const uid = await getUid();
+    const user = uid ? await fetchUserProfile(uid) : null;
+    return { entitlements: buildEntitlements(user?.plan || 'FREE') };
+  },
 
   subscribeDmThread: (matchId, uid, onUpdate) => {
     let unsubscribeFirestore = null;
     let cancelled = false;
-    getMods().then(({ collection, query, where, onSnapshot, db }) => {
+    getMods().then(({ collection, query, where, orderBy, limit, onSnapshot, db }) => {
       if (cancelled) return;
       unsubscribeFirestore = onSnapshot(
-        query(collection(db, 'messages'), where('matchId', '==', matchId)),
+        query(
+          collection(db, 'messages'),
+          where('matchId', '==', matchId),
+          orderBy('createdAt', 'desc'),
+          limit(DM_MESSAGE_LIMIT)
+        ),
         (snap) => {
           if (cancelled) return;
-          const messages = snap.docs.map((d) => {
-            const msg = d.data();
-            return {
-              id: d.id,
-              sender: msg.senderUid === uid ? 'user' : 'other',
-              body: msg.body,
-              createdAt: msg.createdAt,
-              readAt: msg.readAt || null,
-            };
-          }).sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+          const messages = snap.docs
+            .map((d) => messageFromDoc(d, uid))
+            .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
           onUpdate(messages);
         }
       );
@@ -552,8 +604,12 @@ export const api = {
     if (!uid) return { reports: [], flaggedUsers: [] };
     const me = await fetchUserProfile(uid);
     if (!me?.isAdmin) return { reports: [], flaggedUsers: [] };
-    const { collection, getDocs, db } = await getMods();
-    const snap = await getDocs(collection(db, 'reports'));
+    const { collection, query, orderBy, getDocs, limit, db } = await getMods();
+    const snap = await getDocs(query(
+      collection(db, 'reports'),
+      orderBy('createdAt', 'desc'),
+      limit(ADMIN_REPORT_LIMIT)
+    ));
     const reports = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
     return { reports, flaggedUsers: [] };
   },
