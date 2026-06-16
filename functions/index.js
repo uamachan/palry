@@ -196,7 +196,8 @@ exports.sendReport = onCall({ region: 'asia-northeast1' }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
 
   const uid = request.auth.uid;
-  const { profileId, reason = '' } = request.data || {};
+  const { profileId } = request.data || {};
+  const reason = String(request.data?.reason || '').trim();
 
   if (!profileId || typeof profileId !== 'string') {
     throw new HttpsError('invalid-argument', 'profileId が不正です');
@@ -204,7 +205,7 @@ exports.sendReport = onCall({ region: 'asia-northeast1' }, async (request) => {
   if (profileId === uid) {
     throw new HttpsError('invalid-argument', '自分自身を通報できません');
   }
-  if (typeof reason !== 'string' || reason.length > 200) {
+  if (reason.length > 200) {
     throw new HttpsError('invalid-argument', '通報理由が不正です');
   }
 

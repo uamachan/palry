@@ -10,7 +10,6 @@ import SiteHeader from './SiteHeader.jsx';
 import { appTabs, defaultRole, planLabel } from './constants.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import { initAnalytics, track, shouldAskConsent, setConsent } from './analytics.js';
-import { DEV_TOKEN, DEV_EMAIL, DEV_UID, isDevSession, startDevSession, endDevSession } from './dev-auth.js';
 import { initMonitoring } from './monitoring.js';
 import { NotFound } from './ui/primitives.jsx';
 import './dm-submit-guard.js';
@@ -116,8 +115,6 @@ function App() {
   const [authReady, setAuthReady] = useState(false);
   const [pendingScrollId, setPendingScrollId] = useState(null);
   const [askConsent, setAskConsent] = useState(false);
-  // 開発者モードの可否。ローカル(npm run dev)は既定ON、デプロイ環境はサーバの /api/config に追従。
-  const [devLoginAllowed, setDevLoginAllowed] = useState(Boolean(import.meta.env.DEV));
   // ルーティング未導入のため、ルート('/')以外の URL は存在しないページとして 404 を出す。
   const [isUnknownRoute] = useState(() => typeof window !== 'undefined' && window.location.pathname !== '/');
 
@@ -131,12 +128,6 @@ function App() {
 
   useEffect(() => {
     api.plans().then(setPlansData).catch(() => null);
-    // サーバの開発者モード可否を取得。無効なら残存セッションを掃除する。
-    api.config().then((cfg) => {
-      const allowed = Boolean(cfg?.devLogin) || Boolean(import.meta.env.DEV);
-      setDevLoginAllowed(allowed);
-      if (!allowed) endDevSession();
-    }).catch(() => null);
     getFirebaseMods().then(({ onAuthStateChanged, firebaseAuth, firebaseReady }) => {
       firebaseReady.catch(() => null).finally(() => {
         onAuthStateChanged(firebaseAuth, async (fbUser) => {
@@ -264,17 +255,6 @@ function App() {
     if (message) showToast(message);
   }
 
-  // 開発者モード: Firebaseログイン/メール認証を飛ばして直接プロフィール作成画面へ。
-  function startDevMode() {
-    if (!devLoginAllowed) return;
-    startDevSession();
-    setPendingFirebaseUser({ uid: DEV_UID, email: DEV_EMAIL, emailVerified: true });
-    setForm((f) => ({ ...initialForm(), email: DEV_EMAIL, emailConfirm: DEV_EMAIL, agreed: false }));
-    setProfileSetupPrompt(false);
-    setAuthMode('profileSetup');
-    showToast('開発者モード: ログインをスキップしました');
-  }
-
   async function loginWithFirebase(e) {
     e.preventDefault();
     try {
@@ -346,14 +326,6 @@ function App() {
   async function register(e) {
     e.preventDefault();
     try {
-      // 開発者モードは Firebase を介さず、固定の開発トークンでプロフィールを作成する。
-      if (isDevSession()) {
-        const { password, emailConfirm, ...profileData } = form;
-        const payload = await api.register({ ...profileData, idToken: DEV_TOKEN, email: DEV_EMAIL });
-        track('sign_up', { method: 'dev' });
-        completeAuth(payload.user, payload.message || '開発者モードでプロフィールを作成しました');
-        return;
-      }
       const { firebaseAuth } = await getFirebaseMods();
       const current = firebaseAuth.currentUser;
       if (!current) return showToast('Firebaseログインが必要です');
@@ -391,7 +363,6 @@ function App() {
   }
 
   async function logout() {
-    endDevSession();
     const { signOut, firebaseAuth } = await getFirebaseMods();
     await signOut(firebaseAuth).catch(() => null);
     setUser(null);
@@ -769,8 +740,6 @@ function App() {
             pendingFirebaseUser={pendingFirebaseUser}
             createAccount={createAccount}
             register={register}
-            startDevMode={startDevMode}
-            devEnabled={devLoginAllowed}
             continueWithGoogle={continueWithGoogle}
             loginWithFirebase={loginWithFirebase}
             resendVerificationEmail={resendVerificationEmail}

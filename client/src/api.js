@@ -1,5 +1,3 @@
-import { isDevSession, DEV_UID } from './dev-auth.js';
-
 // Cloudflare Pages などの静的ホスティングでは Express /api が動かないため、
 // フロントは Firebase Auth + Firestore を直接利用する。
 // Node/Express API を別ホストで使う場合は、別途 API クライアントへ切り替える。
@@ -30,7 +28,6 @@ async function getMods() {
 }
 
 async function getUid() {
-  if (isDevSession()) return DEV_UID;
   try {
     const { auth } = await getMods();
     return auth?.currentUser?.uid ?? null;
@@ -180,7 +177,6 @@ async function currentUserOrThrow() {
 
 export const api = {
   plans: async () => PLANS_DATA,
-  config: async () => ({ devLogin: Boolean(import.meta.env.DEV) }),
 
   login: async () => {
     const uid = await currentUserOrThrow();
