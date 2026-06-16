@@ -135,6 +135,9 @@ service cloud.firestore {
         && profileFieldsValid(request.resource.data)
         && request.resource.data.id == uid
         && (!('verified' in request.resource.data) ||
+            // users doc が存在しない場合は初回登録バッチ（users と publicProfiles を同時作成）なので許可する。
+            // Rules はバッチ適用前の状態で評価するため get() が null を返す。
+            !exists(/databases/$(database)/documents/users/$(uid)) ||
             request.resource.data.verified == get(/databases/$(database)/documents/users/$(uid)).data.verified);
       allow delete: if false;
     }
