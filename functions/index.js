@@ -190,6 +190,56 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
   return { match: null, matched: false, pending_sent: true };
 });
 
+const DAILY_REPORT_LIMIT = 5;
+
+exports.sendReport = onCall({ region: 'asia-northeast1' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+
+  const uid = request.auth.uid;
+  const { profileId, reason = '' } = request.data || {};
+
+  if (!profileId || typeof profileId !== 'string') {
+    throw new HttpsError('invalid-argument', 'profileId が不正です');
+  }
+  if (profileId === uid) {
+    throw new HttpsError('invalid-argument', '自分自身を通報できません');
+  }
+  if (typeof reason !== 'string' || reason.length > 200) {
+    throw new HttpsError('invalid-argument', '通報理由が不正です');
+  }
+
+  // users ドキュメントで対象ユーザーの存在を確認する（publicProfiles は autoHidden 時に非表示になるため users で確認）。
+  const targetSnap = await db.collection('users').doc(profileId).get();
+  if (!targetSnap.exists) {
+    throw new HttpsError('not-found', '対象ユーザーが見つかりません');
+  }
+
+  const reportRef = db.collection('reports').doc(`${uid}_${profileId}`);
+  const quotaRef  = db.collection('reportQuota').doc(`${uid}_${today()}`);
+  const nowStr    = new Date().toISOString();
+
+  await db.runTransaction(async (tx) => {
+    const [existingReport, quotaSnap] = await Promise.all([
+      tx.get(reportRef),
+      tx.get(quotaRef),
+    ]);
+
+    if (existingReport.exists) {
+      throw new HttpsError('already-exists', 'すでにこのユーザーを通報済みです');
+    }
+
+    const todayCount = quotaSnap.exists ? (quotaSnap.data().count || 0) : 0;
+    if (todayCount >= DAILY_REPORT_LIMIT) {
+      throw new HttpsError('resource-exhausted', '本日の通報上限に達しました');
+    }
+
+    tx.set(reportRef, { reporterUid: uid, profileId, reason, status: 'open', createdAt: nowStr });
+    tx.set(quotaRef, { uid, date: today(), count: FieldValue.increment(1) }, { merge: true });
+  });
+
+  return {};
+});
+
 exports.adminUnhide = onCall({ region: 'asia-northeast1' }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
   const callerSnap = await db.collection('users').doc(request.auth.uid).get();
@@ -214,12 +264,14 @@ exports.autoHideOnReport = onDocumentCreated(
     if (!data?.profileId) return;
     const { profileId } = data;
 
-    const snap = await db.collection('reports')
-      .where('profileId', '==', profileId)
-      .where('status', '==', 'open')
-      .get();
+    const [reportsSnap, userSnap] = await Promise.all([
+      db.collection('reports').where('profileId', '==', profileId).where('status', '==', 'open').get(),
+      db.collection('users').doc(profileId).get(),
+    ]);
 
-    if (snap.size < 3) return;
+    if (reportsSnap.size < 3) return;
+    // users doc が存在しない場合（削除済みアカウント等）は何もしない。
+    if (!userSnap.exists) return;
 
     const batch = db.batch();
     batch.update(db.collection('users').doc(profileId), { autoHidden: true });

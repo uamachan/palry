@@ -222,18 +222,9 @@ service cloud.firestore {
 
     match /reports/{reportId} {
       allow read: if signedIn() && (resource.data.reporterUid == request.auth.uid || isAdmin());
-      // reportId = {reporterUid}_{profileId} の形式を強制して重複通報を防ぐ（2回目は update で deny）。
-      allow create: if signedIn()
-        && reportId == request.auth.uid + '_' + request.resource.data.profileId
-        && request.resource.data.reporterUid == request.auth.uid
-        && request.resource.data.profileId is string
-        && request.resource.data.profileId != request.auth.uid
-        && exists(/databases/$(database)/documents/publicProfiles/$(request.resource.data.profileId))
-        && request.resource.data.reason is string
-        && request.resource.data.reason.size() <= 200
-        && request.resource.data.status == 'open'
-        && hasOnlyKeys(['reporterUid', 'profileId', 'reason', 'status', 'createdAt']);
-      allow update, delete: if false;
+      // 通報の作成は sendReport Callable Function (Admin SDK) 経由のみ。
+      // 重複防止・日次上限・対象存在チェックをサーバーサイドで強制する。
+      allow create, update, delete: if false;
     }
 
     match /{document=**} {
