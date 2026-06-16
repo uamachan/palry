@@ -12,6 +12,7 @@
     "deploy": "npm run build && wrangler deploy",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "test": "node --test",
+    "test:rules": "node --test rules-tests/firestore-rules.mjs",
     "release:check": "npm run build && node --test"
   },
   "dependencies": {
