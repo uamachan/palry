@@ -119,14 +119,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // 候補一覧表示用の公開プロフィール（riotId を含む表示情報のみ。email・plan は除外）。
+    // 候補一覧表示用の公開プロフィール（riotId・xHandle・plan・email は除外）。
+    // riotId/xHandle はマッチ後に matches.profileData から参照する設計。
     // プロフィール保存時にクライアントが自動同期する。
     match /publicProfiles/{uid} {
       allow read: if signedIn();
       allow create, update: if isSelf(uid)
         && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
                         'rank', 'role', 'tags', 'agents', 'bio', 'voiceIntro', 'vc', 'maps',
-                        'favoriteWeapon', 'verified', 'riotId', 'createdAt', 'updatedAt'])
+                        'favoriteWeapon', 'verified', 'createdAt', 'updatedAt'])
         && profileFieldsValid(request.resource.data);
       allow delete: if false;
     }
@@ -136,14 +137,9 @@ service cloud.firestore {
         resource.data.fromUid == request.auth.uid ||
         resource.data.toUid == request.auth.uid
       );
-      allow create, update: if signedIn()
-        && likeId == request.auth.uid + '_' + request.resource.data.toUid
-        && request.resource.data.fromUid == request.auth.uid
-        && request.resource.data.toUid is string
-        && request.resource.data.toUid != request.auth.uid
-        && request.resource.data.type in ['like', 'super', 'dual']
-        && hasOnlyKeys(['fromUid', 'toUid', 'type', 'createdAt']);
-      allow delete: if false;
+      // likes の書き込みは sendLike Callable Function (Admin SDK) 経由でのみ行う。
+      // クライアント直書きを禁止してプラン別日次上限の回避を防ぐ。
+      allow create, update, delete: if false;
     }
 
     match /receivedLikes/{receivedLikeId} {
@@ -151,33 +147,21 @@ service cloud.firestore {
         resource.data.forUid == request.auth.uid ||
         resource.data.fromUid == request.auth.uid
       );
-      allow create: if signedIn()
-        && receivedLikeId == request.resource.data.forUid + '_from_' + request.auth.uid
-        && request.resource.data.fromUid == request.auth.uid
-        && request.resource.data.forUid is string
-        && request.resource.data.forUid != request.auth.uid
-        && request.resource.data.status == 'pending'
-        && hasOnlyKeys([
-          'forUid', 'fromUid', 'fromProfileName', 'fromProfilePhoto',
-          'fromProfileRank', 'fromProfileRole', 'type', 'status', 'createdAt'
-        ]);
-      // 受信者本人のみが status を変更できる（accepted: 相互マッチ確定, blocked: 拒否）。
+      // create/delete は sendLike Callable Function 経由のみ。
+      allow create, delete: if false;
+      // 受信者本人が status: 'blocked'（拒否）にする場合のみ許可。
+      // status: 'accepted' への更新は Callable Function が行う。
       allow update: if signedIn()
         && resource.data.forUid == request.auth.uid
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status'])
-        && request.resource.data.status in ['accepted', 'blocked'];
-      allow delete: if false;
+        && request.resource.data.status == 'blocked';
     }
 
     match /matches/{matchId} {
       allow read: if isParticipant(resource.data.participants);
-      // 相互いいねが存在する場合のみマッチ作成を許可（同意なしマッチの偽造を防ぐ）。
-      allow create, update: if isParticipant(request.resource.data.participants)
-        && validMatchId(matchId, request.resource.data.participants)
-        && mutualLikeExists(request.resource.data.participants)
-        && hasOnlyKeys(['id', 'participants', 'createdAt'])
-        && request.resource.data.id == matchId;
-      allow delete: if false;
+      // matches の作成は sendLike Callable Function (Admin SDK) 経由のみ。
+      // クライアントが同意なしマッチを偽造できないようにする。
+      allow create, update, delete: if false;
     }
 
     match /messages/{messageId} {
@@ -196,7 +180,9 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/matches/$(resource.data.matchId))
         && request.auth.uid in get(/databases/$(database)/documents/matches/$(resource.data.matchId)).data.participants
         && !isBlockedInMatch(resource.data.matchId)
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['readAt']);
+        && resource.data.senderUid != request.auth.uid
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['readAt'])
+        && request.resource.data.readAt is string;
       allow delete: if false;
     }
 

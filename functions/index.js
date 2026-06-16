@@ -140,7 +140,17 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
 
     if (isMatching) {
       if (!existingMatch.exists) {
-        tx.set(matchRef, { id: matchId, participants: [uid, profileId], createdAt: nowStr });
+        tx.set(matchRef, {
+          id: matchId,
+          participants: [uid, profileId],
+          createdAt: nowStr,
+          // マッチ成立後のみ riotId/xHandle を双方が参照できるよう保存する。
+          // publicProfiles には含めない（マッチ前の漏洩防止）。
+          profileData: {
+            [uid]: { riotId: myData.riotId || '', xHandle: myData.xHandle || '' },
+            [profileId]: { riotId: theirData.riotId || '', xHandle: theirData.xHandle || '' },
+          },
+        });
       }
       // 相手が以前送った receivedLike（自分が受け取ったいいね）も accepted に更新
       tx.set(theirRlRef, { status: 'accepted' }, { merge: true });
