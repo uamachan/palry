@@ -274,15 +274,22 @@ function matchSortTime(match) {
   return match?.matchSortAt || match?.lastMessageAt || match?.updatedAt || match?.createdAt || '';
 }
 
-function profileFromMatchData(match, uid) {
+async function profileFromMatchData(match, uid) {
   const otherUid = Array.isArray(match.participants) ? match.participants.find((p) => p !== uid) : null;
-  const profile = match.profileData?.[otherUid] || {};
-  return { id: otherUid, ...profile };
+  if (!otherUid) return { id: null };
+  const stored = match.profileData?.[otherUid] || {};
+  // Old matches may lack name in profileData — fall back to publicProfiles once
+  if (!stored.name) {
+    const fetched = await fetchPublicProfile(otherUid);
+    if (fetched?.name) return { id: otherUid, ...fetched };
+  }
+  return { id: otherUid, ...stored };
 }
 
 async function fetchMatchDocs(uid) {
   const { collection, query, where, orderBy, getDocs, limit, db } = await getMods();
   const byId = new Map();
+  let orderedSucceeded = false;
 
   try {
     const ordered = await getDocs(query(
@@ -292,11 +299,13 @@ async function fetchMatchDocs(uid) {
       limit(MATCH_THREAD_LIMIT)
     ));
     ordered.docs.forEach((d) => byId.set(d.id, d));
+    // Only skip fallback if we got results (empty could mean all docs lack matchSortAt)
+    orderedSucceeded = ordered.docs.length > 0;
   } catch (error) {
     console.warn('[palry] ordered matches query failed; using fallback:', error.code || error.message);
   }
 
-  if (byId.size < MATCH_THREAD_LIMIT) {
+  if (!orderedSucceeded) {
     const fallback = await getDocs(query(
       collection(db, 'matches'),
       where('participants', 'array-contains', uid),
@@ -395,30 +404,31 @@ export const api = {
     const uid = await getUid();
     if (!uid) return { matches: [] };
     const docs = await fetchMatchDocs(uid);
-    const matches = docs.map((d) => {
+    // Sort by matchSortAt before building objects (aligns with dmThreads ordering)
+    docs.sort((a, b) => matchSortTime(b.data()).localeCompare(matchSortTime(a.data())));
+    const matchObjects = await Promise.all(docs.map(async (d) => {
       const m = { ...d.data(), id: d.id };
-      const otherProfile = profileFromMatchData(m, uid);
+      const otherProfile = await profileFromMatchData(m, uid);
       return buildMatchObject(m.id, otherProfile, m.createdAt);
-    }).filter(Boolean);
-    matches.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-    return { matches };
+    }));
+    return { matches: matchObjects.filter(Boolean) };
   },
 
   dmThreads: async () => {
     const uid = await getUid();
     if (!uid) return { threads: [] };
     const docs = await fetchMatchDocs(uid);
-    const threads = docs.map((matchDoc) => {
+    const threads = await Promise.all(docs.map(async (matchDoc) => {
       const match = { ...matchDoc.data(), id: matchDoc.id };
       const otherUid = Array.isArray(match.participants) ? match.participants.find((p) => p !== uid) : null;
-      const otherProfile = profileFromMatchData(match, uid);
+      const otherProfile = await profileFromMatchData(match, uid);
       return {
         match: buildMatchObject(match.id, otherProfile, match.createdAt),
         messages: messageFromMatchSummary(match, uid, otherUid),
         unreadCount: Number(match.unreadCountBy?.[uid] || 0),
         updatedAt: matchSortTime(match),
       };
-    });
+    }));
     threads.sort((a, b) => (b.updatedAt || b.match?.createdAt || '').localeCompare(a.updatedAt || a.match?.createdAt || ''));
     return { threads: threads.filter((t) => t.match) };
   },

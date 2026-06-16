@@ -251,7 +251,7 @@ exports.sendDm = onCall({ region: 'asia-northeast1', maxInstances: 40 }, async (
   if (!matchId || !body) throw new HttpsError('invalid-argument', '送信内容が不正です');
   if (body.length > 500) throw new HttpsError('invalid-argument', 'DMは500文字以内です');
 
-  const { matchRef } = await assertDmAllowed(matchId, uid);
+  const { matchRef, otherUid } = await assertDmAllowed(matchId, uid);
   const createdAt = new Date().toISOString();
   const messageRef = db.collection('messages').doc();
   const message = {
@@ -264,11 +264,21 @@ exports.sendDm = onCall({ region: 'asia-northeast1', maxInstances: 40 }, async (
   };
 
   await db.runTransaction(async (tx) => {
-    const matchSnap = await tx.get(matchRef);
+    // Re-check blocks inside the transaction to close the race with concurrent block creation
+    const txReads = [tx.get(matchRef)];
+    if (otherUid) {
+      txReads.push(tx.get(db.collection('blocks').doc(`${uid}_block_${otherUid}`)));
+      txReads.push(tx.get(db.collection('blocks').doc(`${otherUid}_block_${uid}`)));
+    }
+    const [matchSnap, blockByMe, blockByThem] = await Promise.all(txReads);
+
     if (!matchSnap.exists) throw new HttpsError('not-found', 'マッチが見つかりません');
     const match = matchSnap.data() || {};
     const participants = Array.isArray(match.participants) ? match.participants : [];
     if (!participants.includes(uid)) throw new HttpsError('permission-denied', 'このDMを操作できません');
+    if (blockByMe?.exists || blockByThem?.exists) {
+      throw new HttpsError('permission-denied', 'このユーザーにDMできません');
+    }
 
     const recipientUid = otherParticipant(participants, uid);
     const update = {
@@ -561,6 +571,31 @@ exports.updateMatchSummaryOnMessage = onDocumentCreated(
     });
   }
 );
+
+// 管理者専用: matchSortAt が無い古い matches に補完する。
+// limit 付き・再実行可能・バッチ書き込みで大量書き込みを抑制。
+exports.migrateMatchSortAt = onCall({ region: 'asia-northeast1' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+  const callerSnap = await db.collection('users').doc(request.auth.uid).get();
+  if (!callerSnap.exists || !callerSnap.data().isAdmin) {
+    throw new HttpsError('permission-denied', '権限がありません');
+  }
+  const batchSize = Math.min(Math.max(Number(request.data?.limit) || 100, 1), 500);
+  const snap = await db.collection('matches').limit(batchSize * 5).get();
+  const batch = db.batch();
+  let updated = 0;
+  for (const d of snap.docs) {
+    if (updated >= batchSize) break;
+    const data = d.data();
+    if (!data.matchSortAt) {
+      const sortAt = data.lastMessageAt || data.updatedAt || data.createdAt || new Date().toISOString();
+      batch.update(d.ref, { matchSortAt: sortAt });
+      updated++;
+    }
+  }
+  if (updated > 0) await batch.commit();
+  return { updated };
+});
 
 exports.autoHideOnReport = onDocumentCreated(
   { document: 'reports/{reportId}', region: 'asia-northeast1' },

@@ -105,6 +105,10 @@ if (rulesTesting && emulatorHost) {
       createdAt: '2099-01-01T00:00:00.000Z',
       readAt: '2099-01-01T00:00:00.000Z',
     }));
+    // update / delete も不可
+    const { updateDoc, deleteDoc } = await import('firebase/firestore');
+    await assertFails(updateDoc(doc(authDb('alice'), 'messages', 'm1'), { readAt: '2026-06-16T00:00:00.000Z' }));
+    await assertFails(deleteDoc(doc(authDb('alice'), 'messages', 'm1')));
   });
 
   test('footprints.action は許可リストだけ保存でき、日別固定ID以外は拒否される', async () => {
