@@ -9,9 +9,9 @@ initializeApp();
 const db = getFirestore();
 
 const PLAN_LIMITS = {
-  FREE: { dailyLikes: 10 },
-  PLUS: { dailyLikes: 40 },
-  VIP:  { dailyLikes: -1 },
+  FREE: { dailyLikes: 10, dailyDualLikes: 5 },
+  PLUS: { dailyLikes: 40, dailyDualLikes: 10 },
+  VIP:  { dailyLikes: -1, dailyDualLikes: -1 },
 };
 
 const CANDIDATE_RESPONSE_LIMIT = 20;
@@ -129,6 +129,30 @@ async function removeExcludedCandidates(profiles, uid, targetGender, targetRank)
   return allowed;
 }
 
+function otherParticipant(participants, uid) {
+  return Array.isArray(participants) ? participants.find((p) => p !== uid) : null;
+}
+
+async function assertDmAllowed(matchId, uid) {
+  const matchRef = db.collection('matches').doc(matchId);
+  const matchSnap = await matchRef.get();
+  if (!matchSnap.exists) throw new HttpsError('not-found', 'マッチが見つかりません');
+  const match = matchSnap.data() || {};
+  const participants = Array.isArray(match.participants) ? match.participants : [];
+  if (!participants.includes(uid)) throw new HttpsError('permission-denied', 'このDMを操作できません');
+  const otherUid = otherParticipant(participants, uid);
+  if (otherUid) {
+    const [blockByMe, blockByThem] = await Promise.all([
+      db.collection('blocks').doc(`${uid}_block_${otherUid}`).get(),
+      db.collection('blocks').doc(`${otherUid}_block_${uid}`).get(),
+    ]);
+    if (blockByMe.exists || blockByThem.exists) {
+      throw new HttpsError('permission-denied', 'このユーザーにDMできません');
+    }
+  }
+  return { matchRef, match, participants, otherUid };
+}
+
 exports.getCandidateProfiles = onCall({ region: 'asia-northeast1', maxInstances: 20 }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
 
@@ -165,6 +189,38 @@ exports.getCandidateProfiles = onCall({ region: 'asia-northeast1', maxInstances:
   return { profiles: shuffleInPlace(candidates).slice(0, requestedLimit) };
 });
 
+exports.markDmRead = onCall({ region: 'asia-northeast1', maxInstances: 20 }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+  const uid = request.auth.uid;
+  const matchId = String(request.data?.matchId || '').trim();
+  if (!matchId) throw new HttpsError('invalid-argument', 'matchId が不正です');
+
+  const { matchRef } = await assertDmAllowed(matchId, uid);
+  const readAt = new Date().toISOString();
+  const msgsSnap = await db.collection('messages')
+    .where('matchId', '==', matchId)
+    .orderBy('createdAt', 'desc')
+    .limit(50)
+    .get();
+
+  const batch = db.batch();
+  let writes = 0;
+  msgsSnap.forEach((doc) => {
+    const msg = doc.data() || {};
+    if (msg.senderUid !== uid && !msg.readAt) {
+      batch.update(doc.ref, { readAt });
+      writes += 1;
+    }
+  });
+  batch.set(matchRef, {
+    [`lastReadAtBy.${uid}`]: readAt,
+    [`unreadCountBy.${uid}`]: 0,
+    updatedAt: readAt,
+  }, { merge: true });
+  await batch.commit();
+  return { updatedMessages: writes };
+});
+
 exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
 
@@ -196,7 +252,6 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
     throw new HttpsError('not-found', '相手が見つかりません');
   }
 
-  // ブロックチェック（双方向）
   const [blockByMe, blockByThem] = await Promise.all([
     db.collection('blocks').doc(`${uid}_block_${profileId}`).get(),
     db.collection('blocks').doc(`${profileId}_block_${uid}`).get(),
@@ -209,7 +264,6 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
   const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.FREE;
   const nowStr = new Date().toISOString();
 
-  // acceptingLikeId が指定された場合: 自分への receivedLike であることをサーバーで確認してからクォータ免除。
   let skipQuota = false;
   if (acceptingLikeId) {
     const rlSnap = await db.collection('receivedLikes').doc(acceptingLikeId).get();
@@ -221,11 +275,9 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
 
   const quotaId = `${uid}_${today()}`;
   const quotaRef = db.collection('likeQuota').doc(quotaId);
-
   const matchId = [uid, profileId].sort().join('_match_');
 
   const result = await db.runTransaction(async (tx) => {
-    // トランザクション内は先にすべてのドキュメントを read してから write する。
     const likeRef    = db.collection('likes').doc(`${uid}_${profileId}`);
     const rlRef      = db.collection('receivedLikes').doc(`${profileId}_from_${uid}`);
     const mutualRef  = db.collection('likes').doc(`${profileId}_${uid}`);
@@ -240,38 +292,38 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
       tx.get(matchRef),
     ]);
 
-    const quota = quotaSnap.exists ? quotaSnap.data() : { likes: 0 };
+    const quota = quotaSnap.exists ? quotaSnap.data() : { likes: 0, dualLikes: 0 };
 
     if (!skipQuota) {
       if (limits.dailyLikes !== -1 && (quota.likes || 0) >= limits.dailyLikes) {
         throw new HttpsError('resource-exhausted', '本日のLIKE上限に達しました');
+      }
+      if (type === 'dual' && limits.dailyDualLikes !== -1 && (quota.dualLikes || 0) >= limits.dailyDualLikes) {
+        throw new HttpsError('resource-exhausted', '本日の両LIKE上限に達しました');
       }
     }
 
     if (existingLike.exists) throw new HttpsError('already-exists', 'すでにLIKE済みです');
 
     const isMatching = mutualSnap.exists;
-
-    // likes 書き込み
     tx.set(likeRef, { fromUid: uid, toUid: profileId, type, createdAt: nowStr });
 
-    // receivedLikes 書き込み: 相互LIKE成立なら最初から accepted にする。
     if (!existingRl.exists) {
       tx.set(rlRef, { forUid: profileId, fromUid: uid, type, status: isMatching ? 'accepted' : 'pending', createdAt: nowStr });
     } else if (isMatching && existingRl.data().status === 'pending') {
       tx.update(rlRef, { status: 'accepted' });
     }
 
-    // クォータ更新
     if (!skipQuota) {
-      tx.set(quotaRef, {
+      const quotaUpdate = {
         uid,
         date: today(),
         likes: FieldValue.increment(1),
-      }, { merge: true });
+      };
+      if (type === 'dual') quotaUpdate.dualLikes = FieldValue.increment(1);
+      tx.set(quotaRef, quotaUpdate, { merge: true });
     }
 
-    // acceptingLikeId があれば自分宛ての receivedLike を accepted に更新
     if (skipQuota && acceptingLikeId) {
       tx.update(db.collection('receivedLikes').doc(acceptingLikeId), { status: 'accepted' });
     }
@@ -282,15 +334,17 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
           id: matchId,
           participants: [uid, profileId],
           createdAt: nowStr,
-          // マッチ成立後のみ riotId/xHandle を双方が参照できるよう保存する。
-          // publicProfiles には含めない（マッチ前の漏洩防止）。
+          updatedAt: nowStr,
+          unreadCountBy: { [uid]: 0, [profileId]: 0 },
+          lastReadAtBy: { [uid]: nowStr, [profileId]: nowStr },
           profileData: {
             [uid]: { riotId: myData.riotId || '', xHandle: myData.xHandle || '' },
             [profileId]: { riotId: theirData.riotId || '', xHandle: theirData.xHandle || '' },
           },
         });
+      } else {
+        tx.set(matchRef, { updatedAt: nowStr }, { merge: true });
       }
-      // 相手が以前送った receivedLike（自分が受け取ったいいね）も accepted に更新
       tx.set(theirRlRef, { status: 'accepted' }, { merge: true });
       return { matched: true };
     }
@@ -347,7 +401,6 @@ exports.sendReport = onCall({ region: 'asia-northeast1' }, async (request) => {
     throw new HttpsError('invalid-argument', '通報理由が不正です');
   }
 
-  // users ドキュメントで対象ユーザーの存在を確認する（publicProfiles は autoHidden 時に非表示になるため users で確認）。
   const targetSnap = await db.collection('users').doc(profileId).get();
   if (!targetSnap.exists) {
     throw new HttpsError('not-found', '対象ユーザーが見つかりません');
@@ -394,8 +447,37 @@ exports.adminUnhide = onCall({ region: 'asia-northeast1' }, async (request) => {
   return {};
 });
 
-// 通報が 3 件以上になったプロフィールを自動非表示にする。
-// Admin SDK で書き込むため Firestore Rules のクライアント制限を回避できる。
+exports.updateMatchSummaryOnMessage = onDocumentCreated(
+  { document: 'messages/{messageId}', region: 'asia-northeast1' },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data?.matchId || !data?.senderUid || typeof data.body !== 'string') return;
+    const createdAt = typeof data.createdAt === 'string' ? data.createdAt : new Date().toISOString();
+    const matchRef = db.collection('matches').doc(data.matchId);
+
+    await db.runTransaction(async (tx) => {
+      const matchSnap = await tx.get(matchRef);
+      if (!matchSnap.exists) return;
+      const match = matchSnap.data() || {};
+      const participants = Array.isArray(match.participants) ? match.participants : [];
+      if (!participants.includes(data.senderUid)) return;
+      const recipientUid = otherParticipant(participants, data.senderUid);
+      const update = {
+        lastMessage: {
+          id: event.params.messageId,
+          body: data.body.slice(0, 500),
+          senderUid: data.senderUid,
+          createdAt,
+        },
+        lastMessageAt: createdAt,
+        updatedAt: createdAt,
+      };
+      if (recipientUid) update[`unreadCountBy.${recipientUid}`] = FieldValue.increment(1);
+      tx.set(matchRef, update, { merge: true });
+    });
+  }
+);
+
 exports.autoHideOnReport = onDocumentCreated(
   { document: 'reports/{reportId}', region: 'asia-northeast1' },
   async (event) => {
@@ -404,12 +486,15 @@ exports.autoHideOnReport = onDocumentCreated(
     const { profileId } = data;
 
     const [reportsSnap, userSnap] = await Promise.all([
-      db.collection('reports').where('profileId', '==', profileId).where('status', '==', 'open').get(),
+      db.collection('reports')
+        .where('profileId', '==', profileId)
+        .where('status', '==', 'open')
+        .limit(3)
+        .get(),
       db.collection('users').doc(profileId).get(),
     ]);
 
     if (reportsSnap.size < 3) return;
-    // users doc が存在しない場合（削除済みアカウント等）は何もしない。
     if (!userSnap.exists) return;
 
     const batch = db.batch();
