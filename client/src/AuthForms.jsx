@@ -65,7 +65,7 @@ function AuthModal({ children, onClose, size }) {
   );
 }
 
-function AuthEntrySection({ onShowRegister, onShowLogin, onGoogle, onStartDev }) {
+function AuthEntrySection({ onShowRegister, onShowLogin, onGoogle }) {
   return (
     <section className="email-signup-panel auth-entry-panel">
       <div className="email-signup-header">
@@ -76,7 +76,6 @@ function AuthEntrySection({ onShowRegister, onShowLogin, onGoogle, onStartDev })
         <button type="button" className="primary" onClick={onShowRegister}>無料で新規登録</button>
         <button type="button" className="secondary google-button" onClick={onGoogle}>Googleで続ける</button>
         <button type="button" className="secondary" onClick={onShowLogin}>ログイン（登録済みの方）</button>
-        {onStartDev && <button type="button" className="plain dev-login-link" onClick={onStartDev}>開発者モード（ログインをスキップ）</button>}
       </div>
     </section>
   );
@@ -503,7 +502,7 @@ export default function AuthFormsContainer(props) {
     isAuthed, profileEditorOpen, setProfileEditorOpen, user, editForm, setEditForm,
     saveProfileEdit, showToast, authMode, setAuthMode, showAuth, form, setForm,
     pendingFirebaseUser, createAccount, register, continueWithGoogle, loginWithFirebase,
-    resendVerificationEmail, confirmEmailVerified, resetPassword, startDevMode, devEnabled
+    resendVerificationEmail, confirmEmailVerified, resetPassword
   } = props;
 
   return <>
@@ -515,7 +514,7 @@ export default function AuthFormsContainer(props) {
 
     {authMode && !profileEditorOpen && (
       <AuthModal size={authMode === 'profileSetup' ? 'profile' : 'narrow'} onClose={() => setAuthMode(null)}>
-        {authMode === 'entry' && <AuthEntrySection onShowRegister={() => showAuth('register')} onShowLogin={() => showAuth('login')} onGoogle={continueWithGoogle} onStartDev={devEnabled ? startDevMode : undefined} />}
+        {authMode === 'entry' && <AuthEntrySection onShowRegister={() => showAuth('register')} onShowLogin={() => showAuth('login')} onGoogle={continueWithGoogle} />}
         {authMode === 'register' && <AccountSignupSection form={form} setForm={setForm} onSubmit={createAccount} onGoogle={continueWithGoogle} onShowLogin={() => showAuth('login')} />}
         {authMode === 'emailVerification' && <EmailVerificationSection pendingEmail={pendingFirebaseUser?.email} onCheck={confirmEmailVerified} onResend={resendVerificationEmail} onShowLogin={() => showAuth('login')} />}
         {authMode === 'profileSetup' && <SignupForm form={form} setForm={setForm} onSubmit={register} onShowLogin={() => showAuth('login')} showToast={showToast} showBackButton={false} showCancelButton={false} />}
