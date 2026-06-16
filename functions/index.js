@@ -97,6 +97,28 @@ function publicVoice(profile) {
   return profile?.voiceIntroUrl || profile?.voiceIntro || '';
 }
 
+function profileSnapshot(profile, id) {
+  return {
+    id,
+    name: profile?.name || '',
+    profilePhoto: publicPhoto(profile),
+    rank: profile?.rank || '未設定',
+    role: profile?.role || '未設定',
+    gender: profile?.gender || '',
+    ageRange: profile?.ageRange || profile?.age || '',
+    region: profile?.region || '',
+    tags: Array.isArray(profile?.tags) ? profile.tags : [],
+    agents: Array.isArray(profile?.agents) ? profile.agents : [],
+    xHandle: profile?.xHandle || '',
+    riotId: profile?.riotId || '',
+    vc: profile?.vc || '',
+    maps: Array.isArray(profile?.maps) ? profile.maps : [],
+    favoriteWeapon: profile?.favoriteWeapon || '',
+    voiceIntro: publicVoice(profile),
+    bio: profile?.bio || '',
+  };
+}
+
 function candidatePageQuery(cursorId = '') {
   let q = db.collection('publicProfiles').orderBy(FieldPath.documentId());
   if (cursorId) q = q.startAt(cursorId);
@@ -215,10 +237,65 @@ exports.markDmRead = onCall({ region: 'asia-northeast1', maxInstances: 20 }, asy
   batch.set(matchRef, {
     [`lastReadAtBy.${uid}`]: readAt,
     [`unreadCountBy.${uid}`]: 0,
-    updatedAt: readAt,
   }, { merge: true });
   await batch.commit();
   return { updatedMessages: writes };
+});
+
+exports.sendDm = onCall({ region: 'asia-northeast1', maxInstances: 40 }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+  const uid = request.auth.uid;
+  const matchId = String(request.data?.matchId || '').trim();
+  const body = String(request.data?.body || '').trim();
+
+  if (!matchId || !body) throw new HttpsError('invalid-argument', '送信内容が不正です');
+  if (body.length > 500) throw new HttpsError('invalid-argument', 'DMは500文字以内です');
+
+  const { matchRef } = await assertDmAllowed(matchId, uid);
+  const createdAt = new Date().toISOString();
+  const messageRef = db.collection('messages').doc();
+  const message = {
+    matchId,
+    senderUid: uid,
+    body,
+    createdAt,
+    readAt: null,
+    summaryApplied: true,
+  };
+
+  await db.runTransaction(async (tx) => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists) throw new HttpsError('not-found', 'マッチが見つかりません');
+    const match = matchSnap.data() || {};
+    const participants = Array.isArray(match.participants) ? match.participants : [];
+    if (!participants.includes(uid)) throw new HttpsError('permission-denied', 'このDMを操作できません');
+
+    const recipientUid = otherParticipant(participants, uid);
+    const update = {
+      lastMessage: {
+        id: messageRef.id,
+        body,
+        senderUid: uid,
+        createdAt,
+      },
+      lastMessageAt: createdAt,
+      updatedAt: createdAt,
+      matchSortAt: createdAt,
+      [`lastReadAtBy.${uid}`]: createdAt,
+    };
+
+    if (recipientUid) {
+      const recipientReadAt = match.lastReadAtBy?.[recipientUid] || '';
+      if (!recipientReadAt || recipientReadAt < createdAt) {
+        update[`unreadCountBy.${recipientUid}`] = FieldValue.increment(1);
+      }
+    }
+
+    tx.set(messageRef, message);
+    tx.set(matchRef, update, { merge: true });
+  });
+
+  return { message: { id: messageRef.id, sender: 'user', body, createdAt, readAt: null } };
 });
 
 exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
@@ -276,6 +353,8 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
   const quotaId = `${uid}_${today()}`;
   const quotaRef = db.collection('likeQuota').doc(quotaId);
   const matchId = [uid, profileId].sort().join('_match_');
+  const mySnapshot = profileSnapshot(myData, uid);
+  const theirSnapshot = profileSnapshot(theirData, profileId);
 
   const result = await db.runTransaction(async (tx) => {
     const likeRef    = db.collection('likes').doc(`${uid}_${profileId}`);
@@ -329,22 +408,21 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
     }
 
     if (isMatching) {
-      if (!existingMatch.exists) {
-        tx.set(matchRef, {
-          id: matchId,
-          participants: [uid, profileId],
-          createdAt: nowStr,
-          updatedAt: nowStr,
-          unreadCountBy: { [uid]: 0, [profileId]: 0 },
-          lastReadAtBy: { [uid]: nowStr, [profileId]: nowStr },
-          profileData: {
-            [uid]: { riotId: myData.riotId || '', xHandle: myData.xHandle || '' },
-            [profileId]: { riotId: theirData.riotId || '', xHandle: theirData.xHandle || '' },
-          },
-        });
-      } else {
-        tx.set(matchRef, { updatedAt: nowStr }, { merge: true });
-      }
+      const existingMatchData = existingMatch.exists ? existingMatch.data() : {};
+      const matchSortAt = existingMatchData.matchSortAt || existingMatchData.updatedAt || existingMatchData.createdAt || nowStr;
+      tx.set(matchRef, {
+        id: matchId,
+        participants: [uid, profileId],
+        createdAt: existingMatchData.createdAt || nowStr,
+        updatedAt: existingMatchData.updatedAt || nowStr,
+        matchSortAt,
+        unreadCountBy: existingMatchData.unreadCountBy || { [uid]: 0, [profileId]: 0 },
+        lastReadAtBy: existingMatchData.lastReadAtBy || { [uid]: nowStr, [profileId]: nowStr },
+        profileData: {
+          [uid]: mySnapshot,
+          [profileId]: theirSnapshot,
+        },
+      }, { merge: true });
       tx.set(theirRlRef, { status: 'accepted' }, { merge: true });
       return { matched: true };
     }
@@ -352,29 +430,28 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
   });
 
   if (result.matched) {
-    const theirProfile = theirData;
     const match = {
       id: matchId,
-      profileId: theirProfile.id || profileId,
-      profileName: theirProfile.name || '',
-      profilePhoto: publicPhoto(theirProfile),
-      profileRank: theirProfile.rank || '未設定',
-      profileRole: theirProfile.role || '未設定',
-      profileGender: theirProfile.gender || '',
-      profileAgeRange: theirProfile.ageRange || theirProfile.age || '',
-      profileRegion: theirProfile.region || '',
-      profileTags: theirProfile.tags || [],
-      profileAgents: theirProfile.agents || [],
-      profileXHandle: theirProfile.xHandle || '',
-      profileVc: theirProfile.vc || '',
-      profileMaps: theirProfile.maps || [],
-      profileFavoriteWeapon: theirProfile.favoriteWeapon || '',
-      profileVoiceIntro: publicVoice(theirProfile),
-      profileBio: theirProfile.bio || '',
-      profileRiotId: theirProfile.riotId || '',
+      profileId: theirSnapshot.id,
+      profileName: theirSnapshot.name || '',
+      profilePhoto: theirSnapshot.profilePhoto || '',
+      profileRank: theirSnapshot.rank || '未設定',
+      profileRole: theirSnapshot.role || '未設定',
+      profileGender: theirSnapshot.gender || '',
+      profileAgeRange: theirSnapshot.ageRange || '',
+      profileRegion: theirSnapshot.region || '',
+      profileTags: theirSnapshot.tags || [],
+      profileAgents: theirSnapshot.agents || [],
+      profileXHandle: theirSnapshot.xHandle || '',
+      profileVc: theirSnapshot.vc || '',
+      profileMaps: theirSnapshot.maps || [],
+      profileFavoriteWeapon: theirSnapshot.favoriteWeapon || '',
+      profileVoiceIntro: theirSnapshot.voiceIntro || '',
+      profileBio: theirSnapshot.bio || '',
+      profileRiotId: theirSnapshot.riotId || '',
       dmUnlocked: true,
       createdAt: nowStr,
-      opener: `${theirProfile.name || '相手'}さんとマッチしました！`,
+      opener: `${theirSnapshot.name || '相手'}さんとマッチしました！`,
     };
     return { match, matched: true, pending_sent: false };
   }
@@ -451,6 +528,7 @@ exports.updateMatchSummaryOnMessage = onDocumentCreated(
   { document: 'messages/{messageId}', region: 'asia-northeast1' },
   async (event) => {
     const data = event.data?.data();
+    if (data?.summaryApplied === true) return;
     if (!data?.matchId || !data?.senderUid || typeof data.body !== 'string') return;
     const createdAt = typeof data.createdAt === 'string' ? data.createdAt : new Date().toISOString();
     const matchRef = db.collection('matches').doc(data.matchId);
@@ -471,8 +549,14 @@ exports.updateMatchSummaryOnMessage = onDocumentCreated(
         },
         lastMessageAt: createdAt,
         updatedAt: createdAt,
+        matchSortAt: createdAt,
       };
-      if (recipientUid) update[`unreadCountBy.${recipientUid}`] = FieldValue.increment(1);
+      if (recipientUid) {
+        const recipientReadAt = match.lastReadAtBy?.[recipientUid] || '';
+        if (!recipientReadAt || recipientReadAt < createdAt) {
+          update[`unreadCountBy.${recipientUid}`] = FieldValue.increment(1);
+        }
+      }
       tx.set(matchRef, update, { merge: true });
     });
   }
