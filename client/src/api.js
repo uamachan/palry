@@ -283,6 +283,7 @@ function profileFromMatchData(match, uid) {
 async function fetchMatchDocs(uid) {
   const { collection, query, where, orderBy, getDocs, limit, db } = await getMods();
   const byId = new Map();
+  let orderedFailed = false;
 
   try {
     const ordered = await getDocs(query(
@@ -293,10 +294,11 @@ async function fetchMatchDocs(uid) {
     ));
     ordered.docs.forEach((d) => byId.set(d.id, d));
   } catch (error) {
+    orderedFailed = true;
     console.warn('[palry] ordered matches query failed; using fallback:', error.code || error.message);
   }
 
-  if (byId.size < MATCH_THREAD_LIMIT) {
+  if (orderedFailed || byId.size === 0) {
     const fallback = await getDocs(query(
       collection(db, 'matches'),
       where('participants', 'array-contains', uid),
