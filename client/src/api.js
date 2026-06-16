@@ -463,14 +463,16 @@ export const api = {
     ));
     const pending = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
     const receivedLikes = await Promise.all(pending.map(async (rl) => {
-      const fromProfile = await fetchPublicProfile(rl.fromUid);
+      const s = rl.fromProfileSnapshot;
+      // Fall back to a publicProfiles read only when the snapshot (saved by sendLike) is missing
+      const fromProfile = s?.name ? null : await fetchPublicProfile(rl.fromUid);
       return {
         id: rl.id,
         fromProfileId: rl.fromUid,
-        fromProfileName: fromProfile?.name || rl.fromProfileName || '',
-        fromPhoto: pickProfilePhoto(fromProfile) || rl.fromProfilePhoto || '',
-        fromRank: fromProfile?.rank || rl.fromProfileRank || '',
-        fromRole: fromProfile?.role || rl.fromProfileRole || '',
+        fromProfileName: s?.name || fromProfile?.name || rl.fromProfileName || '',
+        fromPhoto: s?.profilePhoto || pickProfilePhoto(fromProfile) || rl.fromProfilePhoto || '',
+        fromRank: s?.rank || fromProfile?.rank || rl.fromProfileRank || '',
+        fromRole: s?.role || fromProfile?.role || rl.fromProfileRole || '',
         type: rl.type || 'like',
         status: 'pending',
         createdAt: rl.createdAt,
@@ -510,13 +512,15 @@ export const api = {
     ));
     const raw = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
     const footprints = await Promise.all(raw.map(async (f) => {
-      const actor = await fetchPublicProfile(f.actorUid);
+      const s = f.actorSnapshot;
+      // Fall back to a publicProfiles read only when the snapshot (saved by recordFootprint) is missing
+      const actor = s?.name ? null : await fetchPublicProfile(f.actorUid);
       return {
         id: f.id,
         actorUid: f.actorUid,
-        name: typeof actor?.name === 'string' ? actor.name : '',
-        rank: typeof actor?.rank === 'string' ? actor.rank : '',
-        gender: typeof actor?.gender === 'string' ? actor.gender : '',
+        name: s?.name || (typeof actor?.name === 'string' ? actor.name : ''),
+        rank: s?.rank || (typeof actor?.rank === 'string' ? actor.rank : ''),
+        gender: s?.gender || (typeof actor?.gender === 'string' ? actor.gender : ''),
         action: f.action,
         createdAt: f.createdAt,
         time: f.createdAt,
@@ -525,7 +529,7 @@ export const api = {
     return { footprints };
   },
 
-  recordFootprint: async ({ profileId, action }) => {
+  recordFootprint: async ({ profileId, action, actorSnapshot }) => {
     const uid = await getUid();
     if (!uid || !profileId || uid === profileId) return {};
     const allowedActions = ['見送り', 'LIKE', '両LIKE', 'プロフィール閲覧'];
@@ -533,13 +537,16 @@ export const api = {
     const { doc, setDoc, db } = await getMods();
     const day = dayKey();
     const footprintId = `${profileId}_from_${uid}_${day}`;
-    await setDoc(doc(db, 'footprints', footprintId), {
-      actorUid: uid,
-      profileId,
-      action,
-      day,
-      createdAt: now(),
-    }).catch(() => null);
+    const data = { actorUid: uid, profileId, action, day, createdAt: now() };
+    if (actorSnapshot?.name) {
+      data.actorSnapshot = {
+        name: String(actorSnapshot.name || '').slice(0, 80),
+        profilePhoto: String(actorSnapshot.profilePhoto || '').slice(0, 1000),
+        rank: String(actorSnapshot.rank || '').slice(0, 80),
+        gender: String(actorSnapshot.gender || '').slice(0, 40),
+      };
+    }
+    await setDoc(doc(db, 'footprints', footprintId), data).catch(() => null);
     return {};
   },
 

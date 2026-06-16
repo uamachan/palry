@@ -32,7 +32,7 @@ jobs:
 
       - name: Firestore Rules tests
         run: |
-          npm install --no-save --package-lock=false @firebase/rules-unit-testing firebase-tools
+          npm install --no-save --package-lock=false firebase-tools
           npx firebase emulators:exec --project demo-palry-rules --only firestore "npm run test:rules"
 
       - name: Security audit (high+)

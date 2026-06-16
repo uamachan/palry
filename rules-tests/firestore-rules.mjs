@@ -120,6 +120,15 @@ if (rulesTesting && emulatorHost) {
       day: '2026-06-16',
       createdAt: '2026-06-16T00:00:00.000Z',
     }));
+    // actorSnapshot 付きでも保存できる
+    await assertSucceeds(setDoc(doc(db, 'footprints', 'bob_from_alice_2026-06-16'), {
+      actorUid: 'alice',
+      profileId: 'bob',
+      action: 'LIKE',
+      day: '2026-06-16',
+      createdAt: '2026-06-16T00:00:00.000Z',
+      actorSnapshot: { name: 'Alice', rank: 'Gold 1', gender: '女性', profilePhoto: '' },
+    }));
     await assertFails(setDoc(doc(db, 'footprints', 'random'), {
       actorUid: 'alice',
       profileId: 'bob',

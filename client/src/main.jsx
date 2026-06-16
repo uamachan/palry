@@ -445,11 +445,15 @@ function App() {
 
   useEffect(() => { if (user) refreshProfiles(); }, [user?.id, plan, targetGender, targetRank, entitlements.rankFilter]);
 
-  // 候補カードが尽きたら自動で再取得（新規登録ユーザーをリアルタイムに反映）。
+  // 候補カードが尽きたら自動で再取得。4s→15s→60s のバックオフで最大3回に抑制。
   const deckEmpty = Boolean(user) && index >= profiles.length;
+  const deckRefetchRef = useRef(0);
   useEffect(() => {
-    if (!deckEmpty) return;
-    const id = setTimeout(() => refreshProfiles(), 4000);
+    if (!deckEmpty) { deckRefetchRef.current = 0; return; }
+    const delays = [4000, 15000, 60000];
+    const attempt = deckRefetchRef.current;
+    if (attempt >= delays.length) return;
+    const id = setTimeout(() => { deckRefetchRef.current += 1; refreshProfiles(); }, delays[attempt]);
     return () => clearTimeout(id);
   }, [deckEmpty]);
   useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); refreshFootprints(); } }, [user?.id]);
@@ -521,7 +525,7 @@ function App() {
     const directionLabel = type === 'pass' ? '見送り' : type === 'dual' ? '両LIKE' : 'LIKE';
     if (type === 'pass') {
       setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: '見送り', time: '今' }, ...f].slice(0, 50));
-      api.recordFootprint({ profileId: current.id, action: '見送り' }).catch(() => null);
+      api.recordFootprint({ profileId: current.id, action: '見送り', actorSnapshot: { name: user.name, profilePhoto: user.profilePhotoUrl || user.profilePhoto || '', rank: user.rank, gender: user.gender } }).catch(() => null);
       nextCard();
       return;
     }
@@ -540,7 +544,7 @@ function App() {
         showToast(`${directionLabel} しました`);
       }
       setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: directionLabel, time: '今' }, ...f].slice(0, 50));
-      api.recordFootprint({ profileId: current.id, action: directionLabel }).catch(() => null);
+      api.recordFootprint({ profileId: current.id, action: directionLabel, actorSnapshot: { name: user.name, profilePhoto: user.profilePhotoUrl || user.profilePhoto || '', rank: user.rank, gender: user.gender } }).catch(() => null);
       nextCard();
     } catch (error) {
       showToast(error.message || '操作に失敗しました');

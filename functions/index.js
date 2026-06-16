@@ -179,8 +179,14 @@ exports.getCandidateProfiles = onCall({ region: 'asia-northeast1', maxInstances:
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
 
   const uid = request.auth.uid;
-  const targetGender = typeof request.data?.targetGender === 'string' ? request.data.targetGender : 'all';
-  const targetRank = typeof request.data?.targetRank === 'string' ? request.data.targetRank : 'all';
+
+  // Server-side plan gate: FREE users cannot use gender/rank filters
+  const userSnap = await db.collection('users').doc(uid).get();
+  const plan = userSnap.exists ? (userSnap.data()?.plan || 'FREE') : 'FREE';
+  const isPaid = plan === 'PLUS' || plan === 'VIP';
+
+  const targetGender = isPaid && typeof request.data?.targetGender === 'string' ? request.data.targetGender : 'all';
+  const targetRank   = isPaid && typeof request.data?.targetRank   === 'string' ? request.data.targetRank   : 'all';
   const requestedLimit = Number.isFinite(Number(request.data?.limit))
     ? Math.min(Math.max(Number(request.data.limit), 1), CANDIDATE_MAX_LIMIT)
     : CANDIDATE_RESPONSE_LIMIT;
@@ -398,7 +404,13 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
     tx.set(likeRef, { fromUid: uid, toUid: profileId, type, createdAt: nowStr });
 
     if (!existingRl.exists) {
-      tx.set(rlRef, { forUid: profileId, fromUid: uid, type, status: isMatching ? 'accepted' : 'pending', createdAt: nowStr });
+      const fromSnap = {
+        name: myData.name || '',
+        profilePhoto: publicPhoto(myData),
+        rank: myData.rank || '未設定',
+        role: myData.role || '未設定',
+      };
+      tx.set(rlRef, { forUid: profileId, fromUid: uid, type, status: isMatching ? 'accepted' : 'pending', fromProfileSnapshot: fromSnap, createdAt: nowStr });
     } else if (isMatching && existingRl.data().status === 'pending') {
       tx.update(rlRef, { status: 'accepted' });
     }
@@ -572,24 +584,79 @@ exports.updateMatchSummaryOnMessage = onDocumentCreated(
   }
 );
 
-// 管理者専用: matchSortAt が無い古い matches に補完する。
-// limit 付き・再実行可能・バッチ書き込みで大量書き込みを抑制。
-exports.migrateMatchSortAt = onCall({ region: 'asia-northeast1' }, async (request) => {
+// 管理者専用: matchSortAt / profileData が欠落した古い matches を補完する。
+// limit 付き・再実行可能。大量書き込みを防ぐためデフォルト50件上限。
+exports.adminBackfillMatches = onCall({ region: 'asia-northeast1' }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
   const callerSnap = await db.collection('users').doc(request.auth.uid).get();
   if (!callerSnap.exists || !callerSnap.data().isAdmin) {
     throw new HttpsError('permission-denied', '権限がありません');
   }
-  const batchSize = Math.min(Math.max(Number(request.data?.limit) || 100, 1), 500);
-  const snap = await db.collection('matches').limit(batchSize * 5).get();
+  const batchSize = Math.min(Math.max(Number(request.data?.limit) || 50, 1), 200);
+
+  // 候補を多めに取得してフィルタリング
+  const snap = await db.collection('matches').limit(batchSize * 10).get();
+
+  const toUpdate = [];
+  for (const d of snap.docs) {
+    if (toUpdate.length >= batchSize) break;
+    const data = d.data();
+    const participants = Array.isArray(data.participants) ? data.participants : [];
+    const needsSortAt = !data.matchSortAt;
+    const needsProfileData = participants.some((p) => !data.profileData?.[p]?.name);
+    if (needsSortAt || needsProfileData) {
+      toUpdate.push({ ref: d.ref, data, participants, needsSortAt, needsProfileData });
+    }
+  }
+
+  if (toUpdate.length === 0) return { updated: 0 };
+
+  // 不足プロフィールを一括取得
+  const uidsNeeded = new Set();
+  for (const { participants, data, needsProfileData } of toUpdate) {
+    if (needsProfileData) {
+      for (const uid of participants) {
+        if (!data.profileData?.[uid]?.name) uidsNeeded.add(uid);
+      }
+    }
+  }
+
+  const profileMap = {};
+  if (uidsNeeded.size > 0) {
+    const uidsArray = Array.from(uidsNeeded);
+    const refs = uidsArray.flatMap((uid) => [
+      db.collection('publicProfiles').doc(uid),
+      db.collection('users').doc(uid),
+    ]);
+    const snaps = await db.getAll(...refs);
+    for (let i = 0; i < uidsArray.length; i++) {
+      const uid = uidsArray[i];
+      const pubSnap = snaps[i * 2];
+      const userSnap = snaps[i * 2 + 1];
+      const rawData = (pubSnap.exists ? pubSnap.data() : null) || (userSnap.exists ? userSnap.data() : null);
+      if (rawData) profileMap[uid] = rawData;
+    }
+  }
+
   const batch = db.batch();
   let updated = 0;
-  for (const d of snap.docs) {
-    if (updated >= batchSize) break;
-    const data = d.data();
-    if (!data.matchSortAt) {
-      const sortAt = data.lastMessageAt || data.updatedAt || data.createdAt || new Date().toISOString();
-      batch.update(d.ref, { matchSortAt: sortAt });
+  const nowStr = new Date().toISOString();
+  for (const { ref, data, participants, needsSortAt, needsProfileData } of toUpdate) {
+    const update = {};
+    if (needsSortAt) {
+      update.matchSortAt = data.lastMessageAt || data.updatedAt || data.createdAt || nowStr;
+    }
+    if (needsProfileData) {
+      const profileData = { ...(data.profileData || {}) };
+      for (const uid of participants) {
+        if (!profileData[uid]?.name && profileMap[uid]) {
+          profileData[uid] = profileSnapshot(profileMap[uid], uid);
+        }
+      }
+      update.profileData = profileData;
+    }
+    if (Object.keys(update).length > 0) {
+      batch.update(ref, update);
       updated++;
     }
   }

@@ -113,7 +113,13 @@ service cloud.firestore {
         && request.resource.data.day.size() == 10
         && footprintId == request.resource.data.profileId + '_from_' + request.auth.uid + '_' + request.resource.data.day
         && request.resource.data.action in ['見送り', 'LIKE', '両LIKE', 'プロフィール閲覧']
-        && hasOnlyKeys(['actorUid', 'profileId', 'action', 'day', 'createdAt']);
+        && hasOnlyKeys(['actorUid', 'profileId', 'action', 'day', 'createdAt', 'actorSnapshot'])
+        && (!('actorSnapshot' in request.resource.data)
+            || (request.resource.data.actorSnapshot is map
+                && (!('name' in request.resource.data.actorSnapshot) || (request.resource.data.actorSnapshot.name is string && request.resource.data.actorSnapshot.name.size() <= 80))
+                && (!('rank' in request.resource.data.actorSnapshot) || (request.resource.data.actorSnapshot.rank is string && request.resource.data.actorSnapshot.rank.size() <= 80))
+                && (!('gender' in request.resource.data.actorSnapshot) || (request.resource.data.actorSnapshot.gender is string && request.resource.data.actorSnapshot.gender.size() <= 40))
+                && (!('profilePhoto' in request.resource.data.actorSnapshot) || (request.resource.data.actorSnapshot.profilePhoto is string && request.resource.data.actorSnapshot.profilePhoto.size() <= 1000))));
     }
 
     match /users/{uid} {
