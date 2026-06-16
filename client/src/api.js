@@ -36,6 +36,7 @@ async function getUid() {
 }
 
 function now() { return new Date().toISOString(); }
+function dayKey() { return now().slice(0, 10); }
 
 function apiError(message, httpStatus) {
   const e = new Error(message || 'リクエストに失敗しました');
@@ -256,6 +257,23 @@ function messageFromDoc(docSnap, uid) {
   };
 }
 
+function messageFromMatchSummary(match, uid, otherUid) {
+  const last = match?.lastMessage;
+  if (!last?.body) return [];
+  return [{
+    id: last.id || `${match.id}_last`,
+    sender: last.senderUid === uid ? 'user' : 'other',
+    body: last.body,
+    createdAt: last.createdAt || match.lastMessageAt || match.updatedAt || match.createdAt,
+    readAt: last.senderUid === uid ? (match.lastReadAtBy?.[otherUid] || null) : null,
+    summary: true,
+  }];
+}
+
+function matchSortTime(match) {
+  return match?.lastMessageAt || match?.updatedAt || match?.createdAt || '';
+}
+
 async function currentUserOrThrow() {
   const uid = await getUid();
   if (!uid) throw apiError('未認証です', 401);
@@ -331,7 +349,7 @@ export const api = {
       const user = await fetchUserProfile(uid);
       return { ...result.data, entitlements: buildEntitlements(user?.plan || 'FREE') };
     } catch (e) {
-      if (e.code === 'functions/resource-exhausted') throw apiError('本日のLIKE上限に達しました', 429);
+      if (e.code === 'functions/resource-exhausted') throw apiError(e.message || '本日のLIKE上限に達しました', 429);
       if (e.code === 'functions/not-found') throw apiError('相手が見つかりません', 404);
       if (e.code === 'functions/permission-denied') throw apiError('このユーザーにLIKEできません', 403);
       if (e.code === 'functions/already-exists') throw apiError('すでにLIKE済みです', 409);
@@ -342,11 +360,10 @@ export const api = {
   matches: async () => {
     const uid = await getUid();
     if (!uid) return { matches: [] };
-    const { collection, query, where, orderBy, getDocs, limit, db } = await getMods();
+    const { collection, query, where, getDocs, limit, db } = await getMods();
     const snap = await getDocs(query(
       collection(db, 'matches'),
       where('participants', 'array-contains', uid),
-      orderBy('createdAt', 'desc'),
       limit(MATCH_THREAD_LIMIT)
     ));
     const matches = (await Promise.all(snap.docs.map(async (d) => {
@@ -356,67 +373,39 @@ export const api = {
       const extra = m.profileData?.[otherUid] || {};
       return buildMatchObject(m.id, { ...otherProfile, ...extra }, m.createdAt);
     }))).filter(Boolean);
+    matches.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     return { matches };
   },
 
   dmThreads: async () => {
     const uid = await getUid();
     if (!uid) return { threads: [] };
-    const { collection, query, where, orderBy, getDocs, limit, db } = await getMods();
+    const { collection, query, where, getDocs, limit, db } = await getMods();
     const matchesSnap = await getDocs(query(
       collection(db, 'matches'),
       where('participants', 'array-contains', uid),
-      orderBy('createdAt', 'desc'),
       limit(MATCH_THREAD_LIMIT)
     ));
     const threads = await Promise.all(matchesSnap.docs.map(async (matchDoc) => {
       const match = { ...matchDoc.data(), id: matchDoc.id };
       const otherUid = match.participants?.find((p) => p !== uid);
-      const [otherProfile, msgsSnap] = await Promise.all([
-        fetchPublicProfile(otherUid),
-        getDocs(query(
-          collection(db, 'messages'),
-          where('matchId', '==', match.id),
-          orderBy('createdAt', 'desc'),
-          limit(DM_MESSAGE_LIMIT)
-        )),
-      ]);
-      const messages = msgsSnap.docs
-        .map((d) => messageFromDoc(d, uid))
-        .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-      const unreadCount = messages.filter((m) => m.sender === 'other' && !m.readAt).length;
+      const otherProfile = await fetchPublicProfile(otherUid);
       const extra = match.profileData?.[otherUid] || {};
-      return { match: buildMatchObject(match.id, { ...otherProfile, ...extra }, match.createdAt), messages, unreadCount };
+      return {
+        match: buildMatchObject(match.id, { ...otherProfile, ...extra }, match.createdAt),
+        messages: messageFromMatchSummary(match, uid, otherUid),
+        unreadCount: Number(match.unreadCountBy?.[uid] || 0),
+        updatedAt: matchSortTime(match),
+      };
     }));
-    threads.sort((a, b) => {
-      const at = a.messages.at(-1)?.createdAt || a.match?.createdAt || '';
-      const bt = b.messages.at(-1)?.createdAt || b.match?.createdAt || '';
-      return bt.localeCompare(at);
-    });
+    threads.sort((a, b) => (b.updatedAt || b.match?.createdAt || '').localeCompare(a.updatedAt || a.match?.createdAt || ''));
     return { threads: threads.filter((t) => t.match) };
   },
 
   markDmRead: async ({ matchId }) => {
-    const uid = await getUid();
-    if (!uid || !matchId) return {};
-    const { collection, query, where, orderBy, getDocs, writeBatch, limit, db } = await getMods();
-    const snap = await getDocs(query(
-      collection(db, 'messages'),
-      where('matchId', '==', matchId),
-      orderBy('createdAt', 'desc'),
-      limit(DM_MESSAGE_LIMIT)
-    ));
-    const readAt = now();
-    const batch = writeBatch(db);
-    let writes = 0;
-    snap.docs.forEach((d) => {
-      const msg = d.data();
-      if (msg.senderUid !== uid && !msg.readAt) {
-        batch.update(d.ref, { readAt });
-        writes += 1;
-      }
-    });
-    if (writes > 0) await batch.commit();
+    if (!matchId) return {};
+    const { httpsCallable, functions } = await getFunctionsMods();
+    await httpsCallable(functions, 'markDmRead')({ matchId });
     return {};
   },
 
@@ -517,13 +506,16 @@ export const api = {
     if (!uid || !profileId || uid === profileId) return {};
     const allowedActions = ['見送り', 'LIKE', '両LIKE', 'プロフィール閲覧'];
     if (!allowedActions.includes(action)) return {};
-    const { collection, addDoc, db } = await getMods();
-    await addDoc(collection(db, 'footprints'), {
+    const { doc, setDoc, db } = await getMods();
+    const day = dayKey();
+    const footprintId = `${profileId}_from_${uid}_${day}`;
+    await setDoc(doc(db, 'footprints', footprintId), {
       actorUid: uid,
       profileId,
       action,
+      day,
       createdAt: now(),
-    });
+    }).catch(() => null);
     return {};
   },
 
