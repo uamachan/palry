@@ -9,9 +9,9 @@ initializeApp();
 const db = getFirestore();
 
 const PLAN_LIMITS = {
-  FREE: { dailyLikes: 10, dailySuperLikes: 1 },
-  PLUS: { dailyLikes: 40, dailySuperLikes: 5 },
-  VIP:  { dailyLikes: -1, dailySuperLikes: -1 },
+  FREE: { dailyLikes: 10 },
+  PLUS: { dailyLikes: 40 },
+  VIP:  { dailyLikes: -1 },
 };
 
 function today() {
@@ -30,7 +30,7 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
   if (profileId === uid) {
     throw new HttpsError('invalid-argument', '自分自身にLIKEできません');
   }
-  if (!['like', 'super', 'dual'].includes(type)) {
+  if (!['like', 'dual'].includes(type)) {
     throw new HttpsError('invalid-argument', 'type が不正です');
   }
 
@@ -60,7 +60,6 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
 
   const plan = myData.plan || 'FREE';
   const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.FREE;
-  const isSuperLike = type === 'super';
   const nowStr = new Date().toISOString();
 
   // acceptingLikeId が指定された場合: 自分への receivedLike であることをサーバーで確認してからクォータ免除。
@@ -94,17 +93,11 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
       tx.get(matchRef),
     ]);
 
-    const quota = quotaSnap.exists ? quotaSnap.data() : { likes: 0, superLikes: 0 };
+    const quota = quotaSnap.exists ? quotaSnap.data() : { likes: 0 };
 
     if (!skipQuota) {
-      if (isSuperLike) {
-        if (limits.dailySuperLikes !== -1 && (quota.superLikes || 0) >= limits.dailySuperLikes) {
-          throw new HttpsError('resource-exhausted', '本日のSUPER LIKE上限に達しました');
-        }
-      } else {
-        if (limits.dailyLikes !== -1 && (quota.likes || 0) >= limits.dailyLikes) {
-          throw new HttpsError('resource-exhausted', '本日のLIKE上限に達しました');
-        }
+      if (limits.dailyLikes !== -1 && (quota.likes || 0) >= limits.dailyLikes) {
+        throw new HttpsError('resource-exhausted', '本日のLIKE上限に達しました');
       }
     }
 
@@ -124,12 +117,10 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
 
     // クォータ更新
     if (!skipQuota) {
-      const increment = FieldValue.increment(1);
       tx.set(quotaRef, {
         uid,
         date: today(),
-        likes: isSuperLike ? (quota.likes || 0) : increment,
-        superLikes: isSuperLike ? increment : (quota.superLikes || 0),
+        likes: FieldValue.increment(1),
       }, { merge: true });
     }
 

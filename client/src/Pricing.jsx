@@ -8,17 +8,17 @@ const fallbackPlansData = {
     FREE: {
       name: 'FREE',
       price: 0,
-      features: ['通常LIKE 10回/day', 'SUPER LIKE 1回/day', '両LIKE 5回', 'マッチ後DM']
+      features: ['LIKE 10回/day', '両LIKE 5回', 'マッチ後DM']
     },
     PLUS: {
       name: 'PLUS',
       price: 980,
-      features: ['通常LIKE 40回/day', 'SUPER LIKE 5回/day', '性別指定フィルター', '足あと詳細']
+      features: ['LIKE 40回/day', '両LIKE 10回', '性別指定フィルター', '足あと詳細']
     },
     VIP: {
       name: 'VIP',
       price: 1980,
-      features: ['LIKE無制限', 'SUPER LIKE無制限', '性別指定フィルター', '全制限解除']
+      features: ['LIKE無制限', '両LIKE無制限', '性別指定フィルター', '全制限解除']
     }
   },
   singleItems: []

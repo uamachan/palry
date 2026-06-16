@@ -105,7 +105,7 @@ function App() {
   const [plansData, setPlansData] = useState(null);
   const [pricingTab, setPricingTab] = useState('plans');
   const [activePlan, setActivePlan] = useState('FREE');
-  const [entitlements, setEntitlements] = useState({ genderFilter: false, rankFilter: false, boost: false, spotlight: false, superCredits: 0 });
+  const [entitlements, setEntitlements] = useState({ genderFilter: false, rankFilter: false, boost: false, spotlight: false, });
   const [targetGender, setTargetGender] = useState('all');
   const [targetRank, setTargetRank] = useState('all');
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
@@ -191,7 +191,6 @@ function App() {
       rankFilter: nextPlan === 'PLUS' || nextPlan === 'VIP',
       boost: false,
       spotlight: nextPlan === 'VIP',
-      superCredits: nextPlan === 'VIP' ? 999 : 0,
     });
     setAuthMode(null);
     setProfileSetupPrompt(false);
@@ -382,7 +381,7 @@ function App() {
     setAuditLog([]);
     setProfileEditorOpen(false);
     setPendingFirebaseUser(null);
-    setEntitlements({ genderFilter: false, rankFilter: false, boost: false, spotlight: false, superCredits: 0 });
+    setEntitlements({ genderFilter: false, rankFilter: false, boost: false, spotlight: false, });
     showToast('ログアウトしました');
   }
 
@@ -519,7 +518,7 @@ function App() {
 
   async function swipe(type) {
     if (!current || !user) return;
-    const directionLabel = type === 'pass' ? '見送り' : type === 'super' ? 'SUPER LIKE' : type === 'dual' ? '両LIKE' : 'LIKE';
+    const directionLabel = type === 'pass' ? '見送り' : type === 'dual' ? '両LIKE' : 'LIKE';
     if (type === 'pass') {
       setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: '見送り', time: '今' }, ...f].slice(0, 50));
       api.recordFootprint({ profileId: current.id, action: '見送り' }).catch(() => null);
@@ -672,8 +671,7 @@ function App() {
         rankFilter: confirmedPlan === 'PLUS' || confirmedPlan === 'VIP',
         boost: false,
         spotlight: confirmedPlan === 'VIP',
-        superCredits: confirmedPlan === 'VIP' ? 999 : 0,
-      });
+        });
       track('purchase', { kind: 'plan', item: confirmedPlan });
       showToast(`${planLabel(confirmedPlan)} に切り替えました（デモ）`);
     } catch (e) {
