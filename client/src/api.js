@@ -571,19 +571,22 @@ export const api = {
   },
 
   purchase: async ({ plan }) => {
-    const uid = await currentUserOrThrow();
+    await currentUserOrThrow();
     const requestedPlan = Object.prototype.hasOwnProperty.call(PLANS_DATA.plans, plan) ? plan : 'FREE';
-    const user = await fetchUserProfile(uid);
     return {
       purchase: { plan: requestedPlan, demo: true },
-      entitlements: buildEntitlements(user?.plan || 'FREE'),
+      entitlements: buildEntitlements(requestedPlan),
     };
   },
 
-  purchaseItem: async () => {
+  purchaseItem: async ({ item } = {}) => {
     const uid = await getUid();
     const user = uid ? await fetchUserProfile(uid) : null;
-    return { entitlements: buildEntitlements(user?.plan || 'FREE') };
+    const base = buildEntitlements(user?.plan || 'FREE');
+    if (item === '性別指定フィルター7日') base.genderFilter = true;
+    if (item === 'ブースト24時間') base.boost = true;
+    if (item === 'プロフィール目立たせ7日') base.spotlight = true;
+    return { entitlements: base };
   },
 
   subscribeDmThread: (matchId, uid, onUpdate) => {
