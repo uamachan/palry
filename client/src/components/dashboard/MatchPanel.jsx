@@ -41,7 +41,7 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
   const handleSwipe = useCallback(async (type) => {
     if (actionBusy || !current) return;
     setActionBusy(true);
-    const dir = type === 'pass' ? 'left' : type === 'super' ? 'up' : 'right';
+    const dir = type === 'pass' ? 'left' : 'right';
     try {
       setSwipeDir(dir);
       await new Promise((r) => setTimeout(r, 200));

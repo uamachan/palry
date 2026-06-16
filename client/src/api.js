@@ -119,14 +119,13 @@ async function writeUserProfile(uid, data) {
 
 const PLANS_DATA = {
   plans: {
-    FREE: { name: 'FREE', price: 0, dailyLikes: 10, dailySuperLikes: 1, dualLikes: 5, genderFilter: false, rankFilter: false, footprints: false, spotlight: false, features: ['通常LIKE 10回/day', 'SUPER LIKE 1回/day', '両LIKE 5回', 'マッチ後DM'] },
-    PLUS: { name: 'PLUS', price: 980, dailyLikes: 40, dailySuperLikes: 5, dualLikes: 10, genderFilter: true, rankFilter: true, footprints: true, spotlight: false, features: ['通常LIKE 40回/day', 'SUPER LIKE 5回/day', '性別指定フィルター', '足あと詳細'] },
-    VIP: { name: 'VIP', price: 1980, dailyLikes: -1, dailySuperLikes: -1, dualLikes: -1, genderFilter: true, rankFilter: true, footprints: true, spotlight: true, features: ['LIKE無制限', 'SUPER LIKE無制限', '性別指定フィルター', '全制限解除'] },
+    FREE: { name: 'FREE', price: 0, dailyLikes: 10, dualLikes: 5, genderFilter: false, rankFilter: false, footprints: false, spotlight: false, features: ['LIKE 10回/day', '両LIKE 5回', 'マッチ後DM'] },
+    PLUS: { name: 'PLUS', price: 980, dailyLikes: 40, dualLikes: 10, genderFilter: true, rankFilter: true, footprints: true, spotlight: false, features: ['LIKE 40回/day', '両LIKE 10回', '性別指定フィルター', '足あと詳細'] },
+    VIP: { name: 'VIP', price: 1980, dailyLikes: -1, dualLikes: -1, genderFilter: true, rankFilter: true, footprints: true, spotlight: true, features: ['LIKE無制限', '両LIKE無制限', '性別指定フィルター', '全制限解除'] },
   },
   singleItems: [
     { name: '性別指定フィルター7日', price: 400, detail: 'FREEでも7日間だけ表示性別を指定できます。' },
     { name: 'ブースト24時間', price: 300, detail: 'プロフィールを表示候補に出やすくします。' },
-    { name: 'SUPER LIKE 3回', price: 500, detail: '相手に強めのLIKEを送れます。' },
     { name: 'プロフィール目立たせ7日', price: 700, detail: '検索・候補カードで視認性を上げます。' },
   ],
 };
@@ -138,7 +137,6 @@ function buildEntitlements(plan) {
     rankFilter: paid,
     boost: false,
     spotlight: plan === 'VIP',
-    superCredits: plan === 'VIP' ? 999 : 0,
   };
 }
 
