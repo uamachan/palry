@@ -3,7 +3,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue, FieldPath } = require('firebase-admin/firestore');
 
 initializeApp();
 const db = getFirestore();
@@ -14,9 +14,137 @@ const PLAN_LIMITS = {
   VIP:  { dailyLikes: -1 },
 };
 
+const CANDIDATE_RESPONSE_LIMIT = 20;
+const CANDIDATE_QUERY_LIMIT = 120;
+const CANDIDATE_MAX_LIMIT = 50;
+const CANDIDATE_MAX_ATTEMPTS = 4;
+const PUBLIC_PROFILE_FIELDS = [
+  'id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
+  'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role', 'tags', 'agents',
+  'bio', 'voiceIntro', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
+  'favoriteWeapon', 'verified', 'createdAt', 'updatedAt',
+];
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
+
+function randomCursorId() {
+  // Firestore auto IDs are distributed enough to avoid always reading the same first page.
+  return db.collection('_candidateCursors').doc().id;
+}
+
+function shuffleInPlace(items) {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return items;
+}
+
+function rankTier(rank) {
+  return String(rank || '').split(' ')[0];
+}
+
+function candidateMatchesFilters(profile, targetGender, targetRank, excludedUids) {
+  if (!profile?.id || excludedUids.has(profile.id)) return false;
+  if (profile.visible === false) return false;
+  if (profile.autoHidden === true) return false;
+
+  if (targetGender !== 'all') {
+    const gender = profile.gender || '';
+    if (targetGender === 'その他/未設定') {
+      if (gender !== '' && gender !== 'その他/未設定') return false;
+    } else if (gender !== targetGender) {
+      return false;
+    }
+  }
+
+  if (targetRank !== 'all' && rankTier(profile.rank) !== targetRank) return false;
+  return true;
+}
+
+function sanitizePublicProfile(data, id) {
+  const profile = { id };
+  for (const key of PUBLIC_PROFILE_FIELDS) {
+    if (key === 'id') continue;
+    if (Object.prototype.hasOwnProperty.call(data, key)) profile[key] = data[key];
+  }
+  return profile;
+}
+
+function publicPhoto(profile) {
+  return profile?.profilePhotoUrl || profile?.profilePhoto || '';
+}
+
+function publicVoice(profile) {
+  return profile?.voiceIntroUrl || profile?.voiceIntro || '';
+}
+
+exports.getCandidateProfiles = onCall({ region: 'asia-northeast1' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+
+  const uid = request.auth.uid;
+  const targetGender = typeof request.data?.targetGender === 'string' ? request.data.targetGender : 'all';
+  const targetRank = typeof request.data?.targetRank === 'string' ? request.data.targetRank : 'all';
+  const requestedLimit = Number.isFinite(Number(request.data?.limit))
+    ? Math.min(Math.max(Number(request.data.limit), 1), CANDIDATE_MAX_LIMIT)
+    : CANDIDATE_RESPONSE_LIMIT;
+
+  const [blocksSnap, blockedBySnap, likesSnap] = await Promise.all([
+    db.collection('blocks').where('byUid', '==', uid).get(),
+    db.collection('blocks').where('targetUid', '==', uid).get(),
+    db.collection('likes').where('fromUid', '==', uid).get(),
+  ]);
+
+  const excludedUids = new Set([uid]);
+  blocksSnap.forEach((doc) => {
+    const targetUid = doc.data()?.targetUid;
+    if (targetUid) excludedUids.add(targetUid);
+  });
+  blockedBySnap.forEach((doc) => {
+    const byUid = doc.data()?.byUid;
+    if (byUid) excludedUids.add(byUid);
+  });
+  likesSnap.forEach((doc) => {
+    const toUid = doc.data()?.toUid;
+    if (toUid) excludedUids.add(toUid);
+  });
+
+  const seen = new Set();
+  const candidates = [];
+
+  async function collectFromQuery(query) {
+    const snap = await query.get();
+    snap.forEach((doc) => {
+      if (seen.has(doc.id)) return;
+      seen.add(doc.id);
+      const profile = sanitizePublicProfile(doc.data() || {}, doc.id);
+      if (candidateMatchesFilters(profile, targetGender, targetRank, excludedUids)) {
+        candidates.push(profile);
+      }
+    });
+  }
+
+  for (let attempt = 0; attempt < CANDIDATE_MAX_ATTEMPTS && candidates.length < requestedLimit; attempt++) {
+    await collectFromQuery(
+      db.collection('publicProfiles')
+        .orderBy(FieldPath.documentId())
+        .startAt(randomCursorId())
+        .limit(CANDIDATE_QUERY_LIMIT)
+    );
+  }
+
+  if (candidates.length < requestedLimit) {
+    await collectFromQuery(
+      db.collection('publicProfiles')
+        .orderBy(FieldPath.documentId())
+        .limit(CANDIDATE_QUERY_LIMIT)
+    );
+  }
+
+  return { profiles: shuffleInPlace(candidates).slice(0, requestedLimit) };
+});
 
 exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
@@ -156,7 +284,7 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
       id: matchId,
       profileId: theirProfile.id || profileId,
       profileName: theirProfile.name || '',
-      profilePhoto: theirProfile.profilePhoto || '',
+      profilePhoto: publicPhoto(theirProfile),
       profileRank: theirProfile.rank || '未設定',
       profileRole: theirProfile.role || '未設定',
       profileGender: theirProfile.gender || '',
@@ -168,7 +296,7 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
       profileVc: theirProfile.vc || '',
       profileMaps: theirProfile.maps || [],
       profileFavoriteWeapon: theirProfile.favoriteWeapon || '',
-      profileVoiceIntro: theirProfile.voiceIntro || '',
+      profileVoiceIntro: publicVoice(theirProfile),
       profileBio: theirProfile.bio || '',
       profileRiotId: theirProfile.riotId || '',
       dmUnlocked: true,
