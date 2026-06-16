@@ -587,3 +587,49 @@ exports.autoHideOnReport = onDocumentCreated(
     await batch.commit();
   }
 );
+
+// publicProfiles の全件取得を避け、サーバーサイドで候補を絞り込む。
+// - 性別フィルターはサーバーで適用（Firestoreクエリ）
+// - ブロック・LIKE済みはサーバーで除外（JS フィルター）
+// - visible/autoHidden フィルター適用後に Fisher-Yates シャッフル
+// - limit(200) で最大読み取り数を制限し全件取得を防ぐ
+exports.getCandidateProfiles = onCall({ region: 'asia-northeast1' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+
+  const uid = request.auth.uid;
+  const { targetGender = 'all', targetRank = 'all' } = request.data || {};
+
+  const [blocksSnap, blockedBySnap, likesSnap] = await Promise.all([
+    db.collection('blocks').where('byUid', '==', uid).get(),
+    db.collection('blocks').where('targetUid', '==', uid).get(),
+    db.collection('likes').where('fromUid', '==', uid).get(),
+  ]);
+
+  const excludedUids = new Set([
+    uid,
+    ...blocksSnap.docs.map((d) => d.data().targetUid),
+    ...blockedBySnap.docs.map((d) => d.data().byUid),
+    ...likesSnap.docs.map((d) => d.data().toUid),
+  ]);
+
+  let ref = db.collection('publicProfiles');
+  if (targetGender !== 'all') ref = ref.where('gender', '==', targetGender);
+  const snap = await ref.limit(200).get();
+
+  const candidates = snap.docs
+    .map((d) => ({ ...d.data(), id: d.id }))
+    .filter((p) => {
+      if (excludedUids.has(p.id)) return false;
+      if (p.visible === false) return false;
+      if (p.autoHidden === true) return false;
+      if (targetRank !== 'all' && (p.rank || '').split(' ')[0] !== targetRank) return false;
+      return true;
+    });
+
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  return { profiles: candidates.slice(0, 20) };
+});

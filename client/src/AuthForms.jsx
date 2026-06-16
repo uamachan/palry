@@ -310,7 +310,15 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
     recorder.onstop = () => {
       const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
       const reader = new FileReader();
-      reader.onload = () => setForm((current) => ({ ...current, voiceIntro: String(reader.result || '') }));
+      reader.onload = () => {
+        const result = String(reader.result || '');
+        // TODO: Firebase Storage 移行後はここで Storage にアップロードし URL を保存する。
+        if (result.length > 500000) {
+          showToast?.('録音ファイルが大きすぎます。短く録音し直してください');
+          return;
+        }
+        setForm((current) => ({ ...current, voiceIntro: result }));
+      };
       reader.readAsDataURL(blob);
       stream.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
@@ -331,7 +339,12 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
     const file = e.target.files?.[0];
     if (!file) return;
     try {
+      // TODO: Firebase Storage 移行後はここで Storage にアップロードし URL を保存する。
       const dataUrl = await resizePhoto(file);
+      if (dataUrl.length > 400000) {
+        showToast?.('画像が大きすぎます。別の画像を選んでください');
+        return;
+      }
       setForm((current) => ({ ...current, profilePhoto: dataUrl }));
       showToast?.('プロフィール写真を設定しました');
     } catch {

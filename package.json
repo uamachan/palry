@@ -12,7 +12,8 @@
     "deploy": "npm run build && wrangler deploy",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "test": "node --test",
-    "test:rules": "node --test rules-tests/firestore-rules.mjs",
+    "test:rules": "node --test test/firestore.rules.test.js",
+    "test:rules:emulator": "firebase emulators:exec --only firestore 'node --test test/firestore.rules.test.js'",
     "release:check": "npm run build && node --test"
   },
   "dependencies": {
@@ -24,5 +25,9 @@
   },
   "engines": {
     "node": ">=22.12.0 <25"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
+    "firebase-admin": "^14.0.0"
   }
 }
