@@ -448,13 +448,18 @@ export const api = {
   },
 
   report: async ({ profileId, reason = '' }) => {
-    const uid = await currentUserOrThrow();
+    await currentUserOrThrow();
     if (!profileId) throw apiError('不正なリクエストです', 400);
-    const { doc, setDoc, db } = await getMods();
-    // 重複通報防止: {reporterUid}_{profileId} の deterministic ID を使う。
-    await setDoc(doc(db, 'reports', `${uid}_${profileId}`), {
-      reporterUid: uid, profileId, reason, status: 'open', createdAt: now(),
-    });
+    const { httpsCallable, functions } = await getFunctionsMods();
+    try {
+      await httpsCallable(functions, 'sendReport')({ profileId, reason });
+    } catch (e) {
+      if (e.code === 'functions/already-exists') throw apiError('すでにこのユーザーを通報済みです', 409);
+      if (e.code === 'functions/not-found') throw apiError('対象ユーザーが見つかりません', 404);
+      if (e.code === 'functions/resource-exhausted') throw apiError('本日の通報上限に達しました', 429);
+      if (e.code === 'functions/invalid-argument') throw apiError(e.message, 400);
+      throw e;
+    }
     return {};
   },
 
