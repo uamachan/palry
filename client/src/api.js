@@ -529,24 +529,13 @@ export const api = {
     return { footprints };
   },
 
-  recordFootprint: async ({ profileId, action, actorSnapshot }) => {
+  recordFootprint: async ({ profileId, action }) => {
     const uid = await getUid();
     if (!uid || !profileId || uid === profileId) return {};
     const allowedActions = ['見送り', 'LIKE', '両LIKE', 'プロフィール閲覧'];
     if (!allowedActions.includes(action)) return {};
-    const { doc, setDoc, db } = await getMods();
-    const day = dayKey();
-    const footprintId = `${profileId}_from_${uid}_${day}`;
-    const data = { actorUid: uid, profileId, action, day, createdAt: now() };
-    if (actorSnapshot?.name) {
-      data.actorSnapshot = {
-        name: String(actorSnapshot.name || '').slice(0, 80),
-        profilePhoto: String(actorSnapshot.profilePhoto || '').slice(0, 1000),
-        rank: String(actorSnapshot.rank || '').slice(0, 80),
-        gender: String(actorSnapshot.gender || '').slice(0, 40),
-      };
-    }
-    await setDoc(doc(db, 'footprints', footprintId), data).catch(() => null);
+    const { httpsCallable, functions } = await getFunctionsMods();
+    await httpsCallable(functions, 'recordFootprint')({ profileId, action }).catch(() => null);
     return {};
   },
 

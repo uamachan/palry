@@ -664,6 +664,40 @@ exports.adminBackfillMatches = onCall({ region: 'asia-northeast1' }, async (requ
   return { updated };
 });
 
+exports.recordFootprint = onCall({ region: 'asia-northeast1', maxInstances: 40 }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+  const uid = request.auth.uid;
+  const profileId = String(request.data?.profileId || '').trim();
+  const action = String(request.data?.action || '').trim();
+
+  if (!profileId || profileId === uid) return {};
+  const ALLOWED_ACTIONS = ['見送り', 'LIKE', '両LIKE', 'プロフィール閲覧'];
+  if (!ALLOWED_ACTIONS.includes(action)) return {};
+
+  // actorSnapshot はサーバー側で publicProfiles から取得（クライアント入力を使わない）
+  const actorSnap = await db.collection('publicProfiles').doc(uid).get();
+  const actorData = actorSnap.exists ? (actorSnap.data() || {}) : {};
+
+  const day = new Date().toISOString().slice(0, 10);
+  const footprintId = `${profileId}_from_${uid}_${day}`;
+  const nowStr = new Date().toISOString();
+
+  await db.collection('footprints').doc(footprintId).set({
+    actorUid: uid,
+    profileId,
+    action,
+    day,
+    createdAt: nowStr,
+    actorSnapshot: {
+      name: actorData.name || '',
+      profilePhoto: publicPhoto(actorData),
+      rank: actorData.rank || '未設定',
+      gender: actorData.gender || '',
+    },
+  });
+  return {};
+});
+
 exports.autoHideOnReport = onDocumentCreated(
   { document: 'reports/{reportId}', region: 'asia-northeast1' },
   async (event) => {

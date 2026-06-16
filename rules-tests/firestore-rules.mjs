@@ -111,38 +111,24 @@ if (rulesTesting && emulatorHost) {
     await assertFails(deleteDoc(doc(authDb('alice'), 'messages', 'm1')));
   });
 
-  test('footprints.action は許可リストだけ保存でき、日別固定ID以外は拒否される', async () => {
+  test('footprints はクライアントから作成できない（recordFootprint Callable Function 経由のみ）', async () => {
     const db = authDb('alice');
-    await assertSucceeds(setDoc(doc(db, 'footprints', 'bob_from_alice_2026-06-16'), {
-      actorUid: 'alice',
-      profileId: 'bob',
-      action: 'プロフィール閲覧',
-      day: '2026-06-16',
-      createdAt: '2026-06-16T00:00:00.000Z',
-    }));
-    // actorSnapshot 付きでも保存できる
-    await assertSucceeds(setDoc(doc(db, 'footprints', 'bob_from_alice_2026-06-16'), {
-      actorUid: 'alice',
-      profileId: 'bob',
-      action: 'LIKE',
-      day: '2026-06-16',
-      createdAt: '2026-06-16T00:00:00.000Z',
-      actorSnapshot: { name: 'Alice', rank: 'Gold 1', gender: '女性', profilePhoto: '' },
-    }));
-    await assertFails(setDoc(doc(db, 'footprints', 'random'), {
-      actorUid: 'alice',
-      profileId: 'bob',
-      action: 'プロフィール閲覧',
-      day: '2026-06-16',
-      createdAt: '2026-06-16T00:00:00.000Z',
-    }));
     await assertFails(setDoc(doc(db, 'footprints', 'bob_from_alice_2026-06-16'), {
       actorUid: 'alice',
       profileId: 'bob',
-      action: '外部誘導',
+      action: 'プロフィール閲覧',
       day: '2026-06-16',
       createdAt: '2026-06-16T00:00:00.000Z',
     }));
+  });
+
+  test('footprints は profileId 本人だけ読める', async () => {
+    await seed((db) => setDoc(doc(db, 'footprints', 'bob_from_alice_2026-06-16'), {
+      actorUid: 'alice', profileId: 'bob', action: 'LIKE',
+      day: '2026-06-16', createdAt: '2026-06-16T00:00:00.000Z',
+    }));
+    await assertSucceeds(getDoc(doc(authDb('bob'), 'footprints', 'bob_from_alice_2026-06-16')));
+    await assertFails(getDoc(doc(authDb('alice'), 'footprints', 'bob_from_alice_2026-06-16')));
   });
 
   test('publicProfiles.riotId / xHandle / plan / email は保存できない', async () => {

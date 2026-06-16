@@ -525,7 +525,7 @@ function App() {
     const directionLabel = type === 'pass' ? '見送り' : type === 'dual' ? '両LIKE' : 'LIKE';
     if (type === 'pass') {
       setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: '見送り', time: '今' }, ...f].slice(0, 50));
-      api.recordFootprint({ profileId: current.id, action: '見送り', actorSnapshot: { name: user.name, profilePhoto: user.profilePhotoUrl || user.profilePhoto || '', rank: user.rank, gender: user.gender } }).catch(() => null);
+      api.recordFootprint({ profileId: current.id, action: '見送り' }).catch(() => null);
       nextCard();
       return;
     }
@@ -544,7 +544,7 @@ function App() {
         showToast(`${directionLabel} しました`);
       }
       setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: directionLabel, time: '今' }, ...f].slice(0, 50));
-      api.recordFootprint({ profileId: current.id, action: directionLabel, actorSnapshot: { name: user.name, profilePhoto: user.profilePhotoUrl || user.profilePhoto || '', rank: user.rank, gender: user.gender } }).catch(() => null);
+      api.recordFootprint({ profileId: current.id, action: directionLabel }).catch(() => null);
       nextCard();
     } catch (error) {
       showToast(error.message || '操作に失敗しました');
