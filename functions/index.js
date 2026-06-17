@@ -585,7 +585,7 @@ exports.purchase = onCall({ region: 'asia-northeast1' }, async (request) => {
     throw new HttpsError('not-found', 'Stripe セッションが見つかりません');
   }
 
-  if (session.payment_status !== 'paid' && session.status !== 'complete') {
+  if (session.payment_status !== 'paid' || session.status !== 'complete') {
     throw new HttpsError('failed-precondition', '決済が完了していません');
   }
 
@@ -594,9 +594,9 @@ exports.purchase = onCall({ region: 'asia-northeast1' }, async (request) => {
   }
 
   const priceId = session.line_items?.data?.[0]?.price?.id;
-  const plan = planFromPriceId(priceId) ?? session.metadata?.plan ?? null;
+  const plan = planFromPriceId(priceId);
 
-  if (!plan || !['PLUS', 'VIP'].includes(plan)) {
+  if (!plan) {
     throw new HttpsError('invalid-argument', 'プランを特定できません');
   }
 
