@@ -594,18 +594,22 @@ exports.adminBackfillMatches = onCall({ region: 'asia-northeast1' }, async (requ
   }
   const batchSize = Math.min(Math.max(Number(request.data?.limit) || 50, 1), 200);
 
-  // 候補を多めに取得してフィルタリング
-  const snap = await db.collection('matches').limit(batchSize * 10).get();
+  // 候補を多めに取得してフィルタリング（batchSize * 4 で過剰取得を抑制）
+  const snap = await db.collection('matches').limit(batchSize * 4).get();
 
   const toUpdate = [];
   for (const d of snap.docs) {
     if (toUpdate.length >= batchSize) break;
     const data = d.data();
     const participants = Array.isArray(data.participants) ? data.participants : [];
+    if (participants.length < 2) continue;
     const needsSortAt = !data.matchSortAt;
+    const needsUpdatedAt = !data.updatedAt;
+    const needsUnreadCountBy = !data.unreadCountBy;
+    const needsLastReadAtBy = !data.lastReadAtBy;
     const needsProfileData = participants.some((p) => !data.profileData?.[p]?.name);
-    if (needsSortAt || needsProfileData) {
-      toUpdate.push({ ref: d.ref, data, participants, needsSortAt, needsProfileData });
+    if (needsSortAt || needsUpdatedAt || needsUnreadCountBy || needsLastReadAtBy || needsProfileData) {
+      toUpdate.push({ ref: d.ref, data, participants, needsSortAt, needsUpdatedAt, needsUnreadCountBy, needsLastReadAtBy, needsProfileData });
     }
   }
 
@@ -641,10 +645,20 @@ exports.adminBackfillMatches = onCall({ region: 'asia-northeast1' }, async (requ
   const batch = db.batch();
   let updated = 0;
   const nowStr = new Date().toISOString();
-  for (const { ref, data, participants, needsSortAt, needsProfileData } of toUpdate) {
+  for (const { ref, data, participants, needsSortAt, needsUpdatedAt, needsUnreadCountBy, needsLastReadAtBy, needsProfileData } of toUpdate) {
     const update = {};
-    if (needsSortAt) {
-      update.matchSortAt = data.lastMessageAt || data.updatedAt || data.createdAt || nowStr;
+    const matchSortAtValue = data.matchSortAt || data.lastMessageAt || data.updatedAt || data.createdAt || nowStr;
+    if (needsSortAt) update.matchSortAt = matchSortAtValue;
+    if (needsUpdatedAt) update.updatedAt = matchSortAtValue;
+    if (needsUnreadCountBy) {
+      const countBy = {};
+      for (const p of participants) countBy[p] = 0;
+      update.unreadCountBy = countBy;
+    }
+    if (needsLastReadAtBy) {
+      const readAtBy = {};
+      for (const p of participants) readAtBy[p] = matchSortAtValue;
+      update.lastReadAtBy = readAtBy;
     }
     if (needsProfileData) {
       const profileData = { ...(data.profileData || {}) };

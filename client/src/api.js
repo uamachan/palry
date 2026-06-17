@@ -9,6 +9,7 @@ async function getMods() {
       doc: fs.doc,
       getDoc: fs.getDoc,
       getDocs: fs.getDocs,
+      getCountFromServer: fs.getCountFromServer,
       setDoc: fs.setDoc,
       updateDoc: fs.updateDoc,
       addDoc: fs.addDoc,
@@ -287,30 +288,32 @@ async function profileFromMatchData(match, uid) {
 }
 
 async function fetchMatchDocs(uid) {
-  const { collection, query, where, orderBy, getDocs, limit, db } = await getMods();
+  const { collection, query, where, orderBy, getDocs, getCountFromServer, limit, db } = await getMods();
   const byId = new Map();
-  let orderedSucceeded = false;
+
+  // Base query shared by ordered + count variants
+  const allMatchesQ = query(collection(db, 'matches'), where('participants', 'array-contains', uid));
+  let needsFallback = false;
 
   try {
-    const ordered = await getDocs(query(
-      collection(db, 'matches'),
-      where('participants', 'array-contains', uid),
-      orderBy('matchSortAt', 'desc'),
-      limit(MATCH_THREAD_LIMIT)
-    ));
+    // Run ordered query and cheap count aggregation in parallel.
+    // Count reveals unindexed matches (missing matchSortAt) without reading docs.
+    const [ordered, countSnap] = await Promise.all([
+      getDocs(query(allMatchesQ, orderBy('matchSortAt', 'desc'), limit(MATCH_THREAD_LIMIT))),
+      getCountFromServer(allMatchesQ).catch(() => null),
+    ]);
     ordered.docs.forEach((d) => byId.set(d.id, d));
-    // Only skip fallback if we got results (empty could mean all docs lack matchSortAt)
-    orderedSucceeded = ordered.docs.length > 0;
+    const orderedCount = ordered.docs.length;
+    const totalCount = countSnap?.data().count ?? orderedCount;
+    // Fall back when ordered returned nothing, or count reveals unindexed docs
+    needsFallback = orderedCount === 0 || totalCount > orderedCount;
   } catch (error) {
+    needsFallback = true;
     console.warn('[palry] ordered matches query failed; using fallback:', error.code || error.message);
   }
 
-  if (!orderedSucceeded) {
-    const fallback = await getDocs(query(
-      collection(db, 'matches'),
-      where('participants', 'array-contains', uid),
-      limit(MATCH_THREAD_LIMIT)
-    ));
+  if (needsFallback) {
+    const fallback = await getDocs(query(allMatchesQ, limit(MATCH_THREAD_LIMIT)));
     fallback.docs.forEach((d) => byId.set(d.id, d));
   }
 
