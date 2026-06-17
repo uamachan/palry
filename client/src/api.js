@@ -45,14 +45,12 @@ function apiError(message, httpStatus) {
 }
 
 const PUBLIC_PROFILE_KEYS = [
-  'id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
+  'id', 'name', 'ageRange', 'age', 'gender', 'region',
   'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role', 'tags', 'agents',
-  'bio', 'voiceIntro', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
+  'bio', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
   'favoriteWeapon', 'verified', 'createdAt', 'updatedAt',
 ];
 
-const INLINE_PROFILE_PHOTO_MAX_CHARS = 300000;
-const INLINE_VOICE_INTRO_MAX_CHARS = 300000;
 const PROFILE_RESULT_LIMIT = 20;
 const PROFILE_FALLBACK_READ_LIMIT = 50;
 const MATCH_THREAD_LIMIT = 100;
@@ -61,15 +59,6 @@ const RECEIVED_LIKES_LIMIT = 50;
 const FOOTPRINT_LIMIT = 50;
 const ADMIN_REPORT_LIMIT = 100;
 
-function validateInlineMediaPayload(data) {
-  // TODO(storage-migration): upload profile media to Firebase Storage and keep only URL/path in Firestore.
-  if (typeof data?.profilePhoto === 'string' && data.profilePhoto.length > INLINE_PROFILE_PHOTO_MAX_CHARS) {
-    throw apiError('プロフィール画像が大きすぎます。画像を圧縮してください。', 413);
-  }
-  if (typeof data?.voiceIntro === 'string' && data.voiceIntro.length > INLINE_VOICE_INTRO_MAX_CHARS) {
-    throw apiError('ボイス紹介が大きすぎます。短く録音してください。', 413);
-  }
-}
 
 function pickProfilePhoto(profile) {
   return profile?.profilePhotoUrl || profile?.profilePhoto || '';
@@ -147,14 +136,14 @@ async function getFunctionsMods() {
 }
 
 async function writeUserProfile(uid, data) {
-  validateInlineMediaPayload(data);
+  const { profilePhoto: _ph, voiceIntro: _vi, ...safeData } = data || {};
   const { doc, writeBatch, db } = await getMods();
   try {
     const batch = writeBatch(db);
-    batch.set(doc(db, 'users', uid), data, { merge: true });
+    batch.set(doc(db, 'users', uid), safeData, { merge: true });
     const publicData = {};
     for (const key of PUBLIC_PROFILE_KEYS) {
-      if (Object.prototype.hasOwnProperty.call(data, key)) publicData[key] = data[key];
+      if (Object.prototype.hasOwnProperty.call(safeData, key)) publicData[key] = safeData[key];
     }
     if (Object.keys(publicData).length > 0) {
       batch.set(doc(db, 'publicProfiles', uid), publicData, { merge: true });
@@ -456,14 +445,14 @@ export const api = {
     ));
     const pending = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
     const receivedLikes = await Promise.all(pending.map(async (rl) => {
-      const fromProfile = await fetchPublicProfile(rl.fromUid);
+      const fromProfile = rl.fromProfileSnapshot || await fetchPublicProfile(rl.fromUid);
       return {
         id: rl.id,
         fromProfileId: rl.fromUid,
-        fromProfileName: fromProfile?.name || rl.fromProfileName || '',
-        fromPhoto: pickProfilePhoto(fromProfile) || rl.fromProfilePhoto || '',
-        fromRank: fromProfile?.rank || rl.fromProfileRank || '',
-        fromRole: fromProfile?.role || rl.fromProfileRole || '',
+        fromProfileName: fromProfile?.name || '',
+        fromPhoto: pickProfilePhoto(fromProfile) || '',
+        fromRank: fromProfile?.rank || '',
+        fromRole: fromProfile?.role || '',
         type: rl.type || 'like',
         status: 'pending',
         createdAt: rl.createdAt,
@@ -503,7 +492,7 @@ export const api = {
     ));
     const raw = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
     const footprints = await Promise.all(raw.map(async (f) => {
-      const actor = await fetchPublicProfile(f.actorUid);
+      const actor = f.actorProfileSnapshot || await fetchPublicProfile(f.actorUid);
       return {
         id: f.id,
         actorUid: f.actorUid,
@@ -523,16 +512,12 @@ export const api = {
     if (!uid || !profileId || uid === profileId) return {};
     const allowedActions = ['見送り', 'LIKE', '両LIKE', 'プロフィール閲覧'];
     if (!allowedActions.includes(action)) return {};
-    const { doc, setDoc, db } = await getMods();
-    const day = dayKey();
-    const footprintId = `${profileId}_from_${uid}_${day}`;
-    await setDoc(doc(db, 'footprints', footprintId), {
-      actorUid: uid,
-      profileId,
-      action,
-      day,
-      createdAt: now(),
-    }).catch(() => null);
+    try {
+      const { httpsCallable, functions } = await getFunctionsMods();
+      await httpsCallable(functions, 'recordFootprint')({ profileId, action });
+    } catch (e) {
+      console.warn('[palry] recordFootprint failed:', e.code || e.message);
+    }
     return {};
   },
 

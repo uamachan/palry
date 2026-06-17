@@ -47,8 +47,6 @@ service cloud.firestore {
         && (!('ageRange' in data) || (data.ageRange is string && data.ageRange.size() <= 40))
         && (!('vc' in data) || (data.vc is string && data.vc.size() <= 80))
         && (!('favoriteWeapon' in data) || (data.favoriteWeapon is string && data.favoriteWeapon.size() <= 80))
-        && (!('profilePhoto' in data) || (data.profilePhoto is string && data.profilePhoto.size() <= 300000))
-        && (!('voiceIntro' in data) || (data.voiceIntro is string && data.voiceIntro.size() <= 300000))
         && (!('profilePhotoUrl' in data) || (data.profilePhotoUrl is string && data.profilePhotoUrl.size() <= 1000 && allowedStorageUrl(data.profilePhotoUrl)))
         && (!('voiceIntroUrl' in data) || (data.voiceIntroUrl is string && data.voiceIntroUrl.size() <= 1000 && allowedStorageUrl(data.voiceIntroUrl)))
         && (!('profilePhotoPath' in data) || (data.profilePhotoPath is string && data.profilePhotoPath.size() <= 300 && profileMediaPathFor(uid, data.profilePhotoPath)))
@@ -75,8 +73,8 @@ service cloud.firestore {
       return isSelf(uid)
         && hasOnlyKeys([
           'id', 'name', 'riotId', 'ageRange', 'age', 'gender', 'region',
-          'profilePhoto', 'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role',
-          'tags', 'agents', 'xHandle', 'bio', 'voiceIntro', 'voiceIntroUrl',
+          'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role',
+          'tags', 'agents', 'xHandle', 'bio', 'voiceIntroUrl',
           'voiceIntroPath', 'vc', 'maps', 'favoriteWeapon', 'plan', 'verified',
           'agreedAt', 'createdAt', 'updatedAt'
         ])
@@ -92,8 +90,8 @@ service cloud.firestore {
       return isSelf(uid)
         && hasOnlyKeys([
           'id', 'name', 'riotId', 'ageRange', 'age', 'gender', 'region',
-          'profilePhoto', 'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role',
-          'tags', 'agents', 'xHandle', 'bio', 'voiceIntro', 'voiceIntroUrl',
+          'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role',
+          'tags', 'agents', 'xHandle', 'bio', 'voiceIntroUrl',
           'voiceIntroPath', 'vc', 'maps', 'favoriteWeapon', 'plan', 'verified',
           'agreedAt', 'createdAt', 'updatedAt'
         ])
@@ -113,7 +111,7 @@ service cloud.firestore {
         && request.resource.data.day.size() == 10
         && footprintId == request.resource.data.profileId + '_from_' + request.auth.uid + '_' + request.resource.data.day
         && request.resource.data.action in ['見送り', 'LIKE', '両LIKE', 'プロフィール閲覧']
-        && hasOnlyKeys(['actorUid', 'profileId', 'action', 'day', 'createdAt']);
+        && hasOnlyKeys(['actorUid', 'profileId', 'action', 'day', 'createdAt', 'actorProfileSnapshot']);
     }
 
     match /users/{uid} {
@@ -127,9 +125,9 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if isSelf(uid)
         && request.auth.token.email_verified == true
-        && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
+        && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region',
                         'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role', 'tags', 'agents',
-                        'bio', 'voiceIntro', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
+                        'bio', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
                         'favoriteWeapon', 'verified', 'createdAt', 'updatedAt'])
         && profileFieldsValid(uid, request.resource.data)
         && request.resource.data.id == uid
@@ -137,9 +135,9 @@ service cloud.firestore {
             !exists(/databases/$(database)/documents/users/$(uid)) ||
             request.resource.data.verified == get(/databases/$(database)/documents/users/$(uid)).data.verified);
       allow update: if isSelf(uid)
-        && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
+        && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region',
                         'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role', 'tags', 'agents',
-                        'bio', 'voiceIntro', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
+                        'bio', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
                         'favoriteWeapon', 'verified', 'createdAt', 'updatedAt'])
         && profileFieldsValid(uid, request.resource.data)
         && request.resource.data.id == uid

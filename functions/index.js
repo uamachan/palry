@@ -117,7 +117,8 @@ function profileSnapshot(profile, id) {
   return {
     id,
     name: profile?.name || '',
-    profilePhoto: publicPhoto(profile),
+    profilePhotoUrl: profile?.profilePhotoUrl || '',
+    profilePhotoPath: profile?.profilePhotoPath || '',
     rank: profile?.rank || '未設定',
     role: profile?.role || '未設定',
     gender: profile?.gender || '',
@@ -130,7 +131,8 @@ function profileSnapshot(profile, id) {
     vc: profile?.vc || '',
     maps: Array.isArray(profile?.maps) ? profile.maps : [],
     favoriteWeapon: profile?.favoriteWeapon || '',
-    voiceIntro: publicVoice(profile),
+    voiceIntroUrl: profile?.voiceIntroUrl || '',
+    voiceIntroPath: profile?.voiceIntroPath || '',
     bio: profile?.bio || '',
   };
 }
@@ -450,9 +452,9 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
     tx.set(likeRef, { fromUid: uid, toUid: profileId, type, createdAt: nowStr });
 
     if (!existingRl.exists) {
-      tx.set(rlRef, { forUid: profileId, fromUid: uid, type, status: isMatching ? 'accepted' : 'pending', createdAt: nowStr });
+      tx.set(rlRef, { forUid: profileId, fromUid: uid, type, status: isMatching ? 'accepted' : 'pending', createdAt: nowStr, fromProfileSnapshot: mySnapshot });
     } else if (isMatching && existingRl.data().status === 'pending') {
-      tx.update(rlRef, { status: 'accepted' });
+      tx.update(rlRef, { status: 'accepted', fromProfileSnapshot: mySnapshot });
     }
 
     if (!skipQuota) {
@@ -496,7 +498,7 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
       id: matchId,
       profileId: theirSnapshot.id,
       profileName: theirSnapshot.name || '',
-      profilePhoto: theirSnapshot.profilePhoto || '',
+      profilePhoto: theirSnapshot.profilePhotoUrl || '',
       profileRank: theirSnapshot.rank || '未設定',
       profileRole: theirSnapshot.role || '未設定',
       profileGender: theirSnapshot.gender || '',
@@ -508,7 +510,7 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
       profileVc: theirSnapshot.vc || '',
       profileMaps: theirSnapshot.maps || [],
       profileFavoriteWeapon: theirSnapshot.favoriteWeapon || '',
-      profileVoiceIntro: theirSnapshot.voiceIntro || '',
+      profileVoiceIntro: theirSnapshot.voiceIntroUrl || '',
       profileBio: theirSnapshot.bio || '',
       profileRiotId: theirSnapshot.riotId || '',
       dmUnlocked: true,
@@ -519,6 +521,36 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
   }
 
   return { match: null, matched: false, pending_sent: true };
+});
+
+exports.recordFootprint = onCall({ region: 'asia-northeast1' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+
+  const uid = request.auth.uid;
+  const { profileId, action } = request.data || {};
+
+  const allowedActions = ['見送り', 'LIKE', '両LIKE', 'プロフィール閲覧'];
+  if (!profileId || typeof profileId !== 'string' || profileId === uid) return {};
+  if (!allowedActions.includes(action)) return {};
+
+  const actorSnap = await db.collection('users').doc(uid).get();
+  const actorData = actorSnap.exists ? actorSnap.data() : {};
+  const actorProfileSnapshot = profileSnapshot(actorData, uid);
+
+  const nowStr = new Date().toISOString();
+  const day = nowStr.slice(0, 10);
+  const footprintId = `${profileId}_from_${uid}_${day}`;
+
+  await db.collection('footprints').doc(footprintId).set({
+    actorUid: uid,
+    profileId,
+    action,
+    day,
+    createdAt: nowStr,
+    actorProfileSnapshot,
+  }, { merge: true });
+
+  return {};
 });
 
 const DAILY_REPORT_LIMIT = 5;
