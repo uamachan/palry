@@ -1,5 +1,5 @@
-/* Mobile profile modal viewport/safe-area fixes.
-   Loaded from index.html so it overrides the bundled profile setup CSS. */
+/* Mobile profile setup modal fixes.
+   Loaded from index.html with a version query so it overrides the bundled CSS. */
 @media (max-width: 820px) {
   html body .auth-modal--profile {
     padding: 0 !important;
@@ -22,7 +22,10 @@
   }
 
   html body .auth-modal--profile .auth-close {
-    z-index: 50 !important;
+    position: absolute !important;
+    top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+    right: 12px !important;
+    z-index: 60 !important;
   }
 
   html body .auth-modal--profile .profile-setup-panel,
@@ -34,7 +37,7 @@
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
-    padding: 10px 10px 0 !important;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 10px 0 !important;
     box-sizing: border-box !important;
   }
 
@@ -47,11 +50,13 @@
   html body .auth-modal--profile .profile-setup-heading h2 {
     font-size: clamp(25px, 7.4vw, 34px) !important;
     line-height: 1.12 !important;
+    margin: 0 0 4px !important;
   }
 
   html body .auth-modal--profile .profile-setup-heading p {
     font-size: 13px !important;
     line-height: 1.35 !important;
+    margin: 0 !important;
   }
 
   html body .auth-modal--profile .email-signup-form.profile-setup-card,
@@ -71,6 +76,7 @@
   html body .auth-modal--profile .profile-setup-card .setup-progress {
     grid-row: 1 !important;
     flex: 0 0 auto !important;
+    margin: 0 !important;
   }
 
   html body .auth-modal--profile .profile-setup-card .setup-tabs {
@@ -81,14 +87,18 @@
     flex-wrap: nowrap !important;
     align-items: center !important;
     gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
     min-height: 46px !important;
-    max-height: none !important;
+    max-height: 52px !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
     white-space: nowrap !important;
     -webkit-overflow-scrolling: touch !important;
     scrollbar-width: none !important;
+    margin: 0 !important;
     padding: 0 2px 6px !important;
+    border-bottom: 1px solid var(--line, #e7e0d8) !important;
     background: var(--pv-bg-soft, #F8F3EE) !important;
     box-sizing: border-box !important;
   }
@@ -105,6 +115,20 @@
     padding: 8px 14px !important;
     white-space: nowrap !important;
     font-size: 13px !important;
+    line-height: 1 !important;
+  }
+
+  /* 表示上だけ「ランク/ロール」→「ロール」に短縮 */
+  html body .auth-modal--profile .profile-setup-card .setup-tabs button:nth-child(2) {
+    font-size: 0 !important;
+    letter-spacing: 0 !important;
+  }
+
+  html body .auth-modal--profile .profile-setup-card .setup-tabs button:nth-child(2)::after {
+    content: '2. ロール' !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    letter-spacing: .04em !important;
   }
 
   html body .auth-modal--profile .profile-setup-card > .pv-basic-grid,
@@ -114,9 +138,11 @@
     grid-row: 3 !important;
     min-height: 0 !important;
     max-height: none !important;
+    height: auto !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
     align-content: start !important;
     padding: 14px 14px calc(22px + env(safe-area-inset-bottom, 0px)) !important;
     box-sizing: border-box !important;
@@ -181,6 +207,10 @@
 
   html body .auth-modal--profile .profile-setup-card .setup-tabs button {
     padding: 7px 12px !important;
+    font-size: 12px !important;
+  }
+
+  html body .auth-modal--profile .profile-setup-card .setup-tabs button:nth-child(2)::after {
     font-size: 12px !important;
   }
 }
