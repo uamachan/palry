@@ -331,7 +331,7 @@ function App() {
       const current = firebaseAuth.currentUser;
       if (!current) return showToast('Firebaseログインが必要です');
       if (!current.emailVerified) return showToast('メール認証を完了してください');
-      const idToken = await current.getIdToken();
+      const idToken = await current.getIdToken(true);
       // パスワードは Firebase が保持しており、バックエンドは使用しない。
       // 不要な秘密情報を送らないようプロフィール項目だけ送信する。
       const { password, emailConfirm, ...profileData } = form;
@@ -351,7 +351,7 @@ function App() {
       setUser((u) => ({ ...payload.user, email: payload.user.email || u?.email }));
       setPlan(payload.user.plan || plan);
       setProfileEditorOpen(false);
-      showToast('プロフィールを保存しました');
+      showToast(payload.message ? `プロフィールを保存しました（${payload.message}）` : 'プロフィールを保存しました');
     } catch (error) {
       showToast(error.message || 'プロフィール保存に失敗しました');
     }

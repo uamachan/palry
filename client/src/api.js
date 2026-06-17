@@ -121,6 +121,82 @@ async function fetchPublicProfile(uid) {
   }
 }
 
+let _storagePromise = null;
+async function getStorageMods() {
+  if (!_storagePromise) {
+    _storagePromise = Promise.all([
+      import('firebase/storage'),
+      import('./firebase.js'),
+    ]).then(([st, fb]) => {
+      // バケット未設定だと getStorage が不可解なエラーを投げるので、先に明示的に弾く。
+      if (!fb.firebaseApp?.options?.storageBucket) {
+        throw new Error('Storageバケットが未設定です。VITE_FIREBASE_STORAGE_BUCKET を設定してください。');
+      }
+      return {
+        ref: st.ref,
+        uploadString: st.uploadString,
+        getDownloadURL: st.getDownloadURL,
+        deleteObject: st.deleteObject,
+        storage: st.getStorage(fb.firebaseApp),
+      };
+    }).catch((e) => {
+      // 失敗したPromiseをキャッシュし続けると以降のアップロードが永久に失敗するため破棄。
+      _storagePromise = null;
+      throw e;
+    });
+  }
+  return _storagePromise;
+}
+
+async function uploadDataUrl(uid, type, dataUrl) {
+  const { ref, uploadString, getDownloadURL, storage } = await getStorageMods();
+  // ファイル名を一意にして固定パスの上書きを避ける。書き込みが失敗しても
+  // 既存（参照中）のオブジェクトを壊さず、成功時に旧ファイルを削除する。
+  const path = `profileMedia/${uid}/${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const fileRef = ref(storage, path);
+  await uploadString(fileRef, dataUrl, 'data_url');
+  const url = await getDownloadURL(fileRef);
+  return { url, path };
+}
+
+// 写真と音声を並列アップロードする。任意項目なので、失敗しても登録自体は止めず、
+// 成功した分だけ URL を返し、失敗した項目名を warnings に積む。
+// uploadedPaths には成功した分の Storage パスを記録し、後続の書き込み失敗時に掃除できるようにする。
+async function uploadProfileMedia(uid, profilePhoto, voiceIntro) {
+  const fields = {};
+  const failedLabels = [];
+  const uploadedPaths = [];
+  const jobs = [];
+  if (profilePhoto) {
+    jobs.push(uploadDataUrl(uid, 'profilePhoto', profilePhoto)
+      .then(({ url, path }) => { fields.profilePhotoUrl = url; fields.profilePhotoPath = path; uploadedPaths.push(path); })
+      .catch((e) => { console.error('[palry] profilePhoto upload failed:', e.message); failedLabels.push('写真'); }));
+  }
+  if (voiceIntro) {
+    jobs.push(uploadDataUrl(uid, 'voiceIntro', voiceIntro)
+      .then(({ url, path }) => { fields.voiceIntroUrl = url; fields.voiceIntroPath = path; uploadedPaths.push(path); })
+      .catch((e) => { console.error('[palry] voiceIntro upload failed:', e.message); failedLabels.push('音声自己紹介'); }));
+  }
+  await Promise.all(jobs);
+  const mediaWarning = failedLabels.length
+    ? `${failedLabels.join('・')}の保存に失敗しました。後でプロフィール編集から再設定してください`
+    : null;
+  return { fields, mediaWarning, uploadedPaths };
+}
+
+// アップロード済みオブジェクトをベストエフォートで削除する（孤立防止）。失敗は握りつぶす。
+async function deleteProfileMedia(paths) {
+  if (!paths?.length) return;
+  try {
+    const { ref, deleteObject, storage } = await getStorageMods();
+    await Promise.all(paths.map((path) =>
+      deleteObject(ref(storage, path)).catch((e) =>
+        console.error('[palry] orphan cleanup failed:', path, e.message))));
+  } catch (e) {
+    console.error('[palry] orphan cleanup skipped:', e.message);
+  }
+}
+
 let _funcsPromise = null;
 async function getFunctionsMods() {
   if (!_funcsPromise) {
@@ -136,7 +212,21 @@ async function getFunctionsMods() {
 }
 
 async function writeUserProfile(uid, data) {
-  const { profilePhoto: _ph, voiceIntro: _vi, ...safeData } = data || {};
+  const { profilePhoto, voiceIntro, ...safeData } = data || {};
+  let mediaWarning = null;
+  let uploadedPaths = [];
+  const replacedPaths = [];
+  if (profilePhoto || voiceIntro) {
+    // 差し替え前の旧パス（編集時は既存ドキュメント由来で safeData に入っている）を控える。
+    const prevPhotoPath = safeData.profilePhotoPath;
+    const prevVoicePath = safeData.voiceIntroPath;
+    const result = await uploadProfileMedia(uid, profilePhoto, voiceIntro);
+    Object.assign(safeData, result.fields);
+    mediaWarning = result.mediaWarning;
+    uploadedPaths = result.uploadedPaths;
+    if (result.fields.profilePhotoPath && prevPhotoPath && prevPhotoPath !== result.fields.profilePhotoPath) replacedPaths.push(prevPhotoPath);
+    if (result.fields.voiceIntroPath && prevVoicePath && prevVoicePath !== result.fields.voiceIntroPath) replacedPaths.push(prevVoicePath);
+  }
   const { doc, writeBatch, db } = await getMods();
   try {
     const batch = writeBatch(db);
@@ -151,6 +241,9 @@ async function writeUserProfile(uid, data) {
     await batch.commit();
   } catch (e) {
     console.error('[palry] Firestore write failed:', e.message);
+    // 今回アップロードしたメディアは一意名でまだどこからも参照されていないため、
+    // 書き込み失敗時は常に掃除して孤立を防ぐ（既存メディアには影響しない）。
+    await deleteProfileMedia(uploadedPaths);
     if (e.message?.includes('Database') || e.message?.includes('not-found') || e.code === 'not-found') {
       throw new Error('Firestoreデータベースが見つかりません。Firebase ConsoleでFirestoreを有効化してください。');
     }
@@ -159,7 +252,10 @@ async function writeUserProfile(uid, data) {
     }
     throw e;
   }
-  return fetchUserProfile(uid);
+  // 書き込み成功後に、差し替えられた旧メディアをベストエフォートで掃除する。
+  await deleteProfileMedia(replacedPaths);
+  const user = await fetchUserProfile(uid);
+  return { user, mediaWarning };
 }
 
 async function fallbackProfiles(uid) {
@@ -332,21 +428,21 @@ export const api = {
       createdAt: now(),
       updatedAt: now(),
     };
-    const user = await writeUserProfile(uid, userData);
-    return { user, message: 'アカウントを作成しました' };
+    const { user, mediaWarning } = await writeUserProfile(uid, userData);
+    return { user, message: mediaWarning ? `アカウントを作成しました（${mediaWarning}）` : 'アカウントを作成しました' };
   },
 
   updateProfile: async (body) => {
     const uid = await currentUserOrThrow();
     const { password, emailConfirm, idToken, age, agreed, email, ...rest } = body || {};
     const { deleteField } = await getMods();
-    const user = await writeUserProfile(uid, {
+    const { user, mediaWarning } = await writeUserProfile(uid, {
       ...rest,
       ageRange: age || rest.ageRange || '',
       email: deleteField(),
       updatedAt: now(),
     });
-    return { user };
+    return { user, message: mediaWarning };
   },
 
   profiles: async ({ targetGender = 'all', targetRank = 'all' } = {}) => {
