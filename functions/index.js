@@ -119,6 +119,31 @@ function profileSnapshot(profile, id) {
   };
 }
 
+function participantZeroMap(participants) {
+  return Object.fromEntries(participants.map((participant) => [participant, 0]));
+}
+
+function participantReadAtMap(participants, readAt) {
+  return Object.fromEntries(participants.map((participant) => [participant, readAt]));
+}
+
+async function requireAdmin(uid) {
+  const callerSnap = await db.collection('users').doc(uid).get();
+  if (!callerSnap.exists || callerSnap.data()?.isAdmin !== true) {
+    throw new HttpsError('permission-denied', '権限がありません');
+  }
+  return callerSnap.data() || {};
+}
+
+async function loadProfileSnapshotForBackfill(uid) {
+  const [userSnap, publicSnap] = await Promise.all([
+    db.collection('users').doc(uid).get(),
+    db.collection('publicProfiles').doc(uid).get(),
+  ]);
+  const profile = userSnap.exists ? userSnap.data() : publicSnap.exists ? publicSnap.data() : {};
+  return profileSnapshot(profile, uid);
+}
+
 function candidatePageQuery(cursorId = '') {
   let q = db.collection('publicProfiles').orderBy(FieldPath.documentId());
   if (cursorId) q = q.startAt(cursorId);
@@ -271,6 +296,16 @@ exports.sendDm = onCall({ region: 'asia-northeast1', maxInstances: 40 }, async (
     if (!participants.includes(uid)) throw new HttpsError('permission-denied', 'このDMを操作できません');
 
     const recipientUid = otherParticipant(participants, uid);
+    if (recipientUid) {
+      const [blockByMe, blockByThem] = await Promise.all([
+        tx.get(db.collection('blocks').doc(`${uid}_block_${recipientUid}`)),
+        tx.get(db.collection('blocks').doc(`${recipientUid}_block_${uid}`)),
+      ]);
+      if (blockByMe.exists || blockByThem.exists) {
+        throw new HttpsError('permission-denied', 'このユーザーにDMできません');
+      }
+    }
+
     const update = {
       lastMessage: {
         id: messageRef.id,
@@ -511,10 +546,7 @@ exports.sendReport = onCall({ region: 'asia-northeast1' }, async (request) => {
 
 exports.adminUnhide = onCall({ region: 'asia-northeast1' }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
-  const callerSnap = await db.collection('users').doc(request.auth.uid).get();
-  if (!callerSnap.exists || !callerSnap.data().isAdmin) {
-    throw new HttpsError('permission-denied', '権限がありません');
-  }
+  await requireAdmin(request.auth.uid);
   const { profileId } = request.data || {};
   if (!profileId || typeof profileId !== 'string') {
     throw new HttpsError('invalid-argument', 'profileId が不正です');
@@ -522,6 +554,67 @@ exports.adminUnhide = onCall({ region: 'asia-northeast1' }, async (request) => {
   await db.collection('users').doc(profileId).update({ autoHidden: false });
   await db.collection('publicProfiles').doc(profileId).set({ visible: true }, { merge: true });
   return {};
+});
+
+exports.adminBackfillMatches = onCall({ region: 'asia-northeast1', maxInstances: 5 }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+  await requireAdmin(request.auth.uid);
+
+  const requestedLimit = Number.isFinite(Number(request.data?.limit))
+    ? Math.min(Math.max(Number(request.data.limit), 1), 50)
+    : 50;
+  const cursor = typeof request.data?.cursor === 'string' ? request.data.cursor.trim() : '';
+  let q = db.collection('matches').orderBy(FieldPath.documentId()).limit(requestedLimit);
+  if (cursor) q = q.startAfter(cursor);
+
+  const snap = await q.get();
+  const batch = db.batch();
+  let scanned = 0;
+  let updated = 0;
+  let skipped = 0;
+  const nowStr = new Date().toISOString();
+
+  for (const doc of snap.docs) {
+    scanned += 1;
+    const match = doc.data() || {};
+    const participants = Array.isArray(match.participants)
+      ? match.participants.filter((participant) => typeof participant === 'string' && participant.trim())
+      : [];
+
+    if (participants.length < 2) {
+      skipped += 1;
+      continue;
+    }
+
+    const matchSortAt = match.matchSortAt || match.lastMessageAt || match.updatedAt || match.createdAt || nowStr;
+    const update = {};
+    if (!match.matchSortAt) update.matchSortAt = matchSortAt;
+    if (!match.updatedAt) update.updatedAt = matchSortAt;
+    if (!match.unreadCountBy) update.unreadCountBy = participantZeroMap(participants);
+    if (!match.lastReadAtBy) update.lastReadAtBy = participantReadAtMap(participants, matchSortAt);
+
+    const profileData = { ...(match.profileData || {}) };
+    let profileDataChanged = false;
+    for (const participant of participants) {
+      if (!profileData[participant]) {
+        profileData[participant] = await loadProfileSnapshotForBackfill(participant);
+        profileDataChanged = true;
+      }
+    }
+    if (profileDataChanged) update.profileData = profileData;
+
+    if (Object.keys(update).length === 0) {
+      skipped += 1;
+      continue;
+    }
+
+    batch.set(doc.ref, update, { merge: true });
+    updated += 1;
+  }
+
+  if (updated > 0) await batch.commit();
+  const nextCursor = snap.docs.length === requestedLimit ? snap.docs[snap.docs.length - 1].id : null;
+  return { scanned, updated, skipped, nextCursor };
 });
 
 exports.updateMatchSummaryOnMessage = onDocumentCreated(
