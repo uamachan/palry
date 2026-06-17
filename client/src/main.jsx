@@ -675,9 +675,11 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id');
     if (!sessionId) return;
-    window.history.replaceState({}, '', '/');
     api.purchase({ sessionId })
       .then((payload) => {
+        // 確認成功後にだけ URL から session_id を消す。
+        // 失敗時は残しておき、リロードで再試行できるようにする（purchase はサーバ側で冪等）。
+        window.history.replaceState({}, '', '/');
         const confirmedPlan = payload?.purchase?.plan || 'FREE';
         const paid = confirmedPlan === 'PLUS' || confirmedPlan === 'VIP';
         setPlan(confirmedPlan);
@@ -687,7 +689,7 @@ function App() {
         track('purchase', { kind: 'plan', item: confirmedPlan });
         showToast(`${planLabel(confirmedPlan)} へのアップグレードが完了しました`);
       })
-      .catch((e) => showToast(e.message || '決済確認に失敗しました'));
+      .catch((e) => showToast(e.message || '決済確認に失敗しました。ページを再読み込みしてください'));
   }, [user?.id]);
 
   async function buyPlan(nextPlan) {
