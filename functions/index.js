@@ -29,12 +29,11 @@ const CANDIDATE_RESPONSE_LIMIT = 20;
 const CANDIDATE_QUERY_LIMIT = 60;
 const CANDIDATE_MAX_LIMIT = 30;
 const CANDIDATE_MAX_ATTEMPTS = 2;
+const EXCLUSION_READ_LIMIT = 500;
 const CANDIDATE_SELECT_FIELDS = [
   'name', 'ageRange', 'age', 'gender', 'region',
   'profilePhotoUrl', 'profilePhotoPath',
-  'rank', 'role', 'tags', 'agents', 'bio',
-  'voiceIntroUrl', 'voiceIntroPath',
-  'vc', 'maps', 'favoriteWeapon', 'verified',
+  'rank', 'role', 'tags', 'agents', 'verified',
   'visible', 'autoHidden', 'createdAt', 'updatedAt',
 ];
 const PUBLIC_PROFILE_FIELDS = [
@@ -179,28 +178,24 @@ function candidatePageQuery(cursorId = '') {
   return q.limit(CANDIDATE_QUERY_LIMIT).select(...CANDIDATE_SELECT_FIELDS);
 }
 
-async function removeExcludedCandidates(profiles, uid, targetGender, targetRank) {
-  const selfOnly = new Set([uid]);
-  const prelim = profiles.filter((profile) => candidateMatchesFilters(profile, targetGender, targetRank, selfOnly));
-  if (prelim.length === 0) return [];
+async function buildExcludedUids(uid) {
+  const [likedSnap, blockedByMeSnap, blockedMeSnap] = await Promise.all([
+    db.collection('likes').where('fromUid', '==', uid).limit(EXCLUSION_READ_LIMIT).get(),
+    db.collection('blocks').where('byUid', '==', uid).limit(EXCLUSION_READ_LIMIT).get(),
+    db.collection('blocks').where('targetUid', '==', uid).limit(EXCLUSION_READ_LIMIT).get(),
+  ]);
+  const excluded = new Set([uid]);
+  likedSnap.forEach((doc) => { const to = doc.data().toUid; if (to) excluded.add(to); });
+  blockedByMeSnap.forEach((doc) => { const t = doc.data().targetUid; if (t) excluded.add(t); });
+  blockedMeSnap.forEach((doc) => { const b = doc.data().byUid; if (b) excluded.add(b); });
+  return excluded;
+}
 
-  const refs = [];
-  for (const profile of prelim) {
-    refs.push(db.collection('likes').doc(`${uid}_${profile.id}`));
-    refs.push(db.collection('blocks').doc(`${uid}_block_${profile.id}`));
-    refs.push(db.collection('blocks').doc(`${profile.id}_block_${uid}`));
-  }
-
-  const snaps = await db.getAll(...refs);
+function filterCandidates(profiles, excludedUids, targetGender, targetRank) {
   const allowed = [];
-  for (let i = 0; i < prelim.length; i++) {
-    const base = i * 3;
-    const alreadyLiked = snaps[base]?.exists;
-    const blockedByMe = snaps[base + 1]?.exists;
-    const blockedByThem = snaps[base + 2]?.exists;
-    if (!alreadyLiked && !blockedByMe && !blockedByThem) {
-      allowed.push(sanitizeCandidateCard(prelim[i], prelim[i].id));
-    }
+  for (const profile of profiles) {
+    if (!candidateMatchesFilters(profile, targetGender, targetRank, excludedUids)) continue;
+    allowed.push(sanitizeCandidateCard(profile, profile.id));
   }
   return allowed;
 }
@@ -234,8 +229,12 @@ exports.getCandidateProfiles = onCall({ region: 'asia-northeast1', maxInstances:
 
   const uid = request.auth.uid;
 
-  // planをサーバー側で確認し、FREEユーザーのフィルター使用を禁止する
-  const userSnap = await db.collection('users').doc(uid).get();
+  // planの確認と除外UID一括取得を並行実行（N+1排除）
+  const [userSnap, excludedUids] = await Promise.all([
+    db.collection('users').doc(uid).get(),
+    buildExcludedUids(uid),
+  ]);
+
   const plan = userSnap.exists ? (userSnap.data()?.plan || 'FREE') : 'FREE';
   const isPaidUser = plan === 'PLUS' || plan === 'VIP';
 
@@ -253,24 +252,22 @@ exports.getCandidateProfiles = onCall({ region: 'asia-northeast1', maxInstances:
   const seen = new Set();
   const candidates = [];
 
-  async function collectFromQuery(query) {
-    const snap = await query.get();
+  function collectFromSnap(snap) {
     const page = [];
     snap.forEach((doc) => {
       if (seen.has(doc.id)) return;
       seen.add(doc.id);
       page.push({ id: doc.id, ...(doc.data() || {}) });
     });
-    const allowed = await removeExcludedCandidates(page, uid, targetGender, targetRank);
-    candidates.push(...allowed);
+    candidates.push(...filterCandidates(page, excludedUids, targetGender, targetRank));
   }
 
   for (let attempt = 0; attempt < CANDIDATE_MAX_ATTEMPTS && candidates.length < requestedLimit; attempt++) {
-    await collectFromQuery(candidatePageQuery(randomCursorId()));
+    collectFromSnap(await candidatePageQuery(randomCursorId()).get());
   }
 
   if (candidates.length < requestedLimit) {
-    await collectFromQuery(candidatePageQuery());
+    collectFromSnap(await candidatePageQuery().get());
   }
 
   return { profiles: shuffleInPlace(candidates).slice(0, requestedLimit) };
