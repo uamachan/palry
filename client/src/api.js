@@ -162,7 +162,7 @@ async function writeUserProfile(uid, data) {
   return fetchUserProfile(uid);
 }
 
-async function fallbackProfiles(uid, targetGender, targetRank) {
+async function fallbackProfiles(uid) {
   const { collection, query, where, getDocs, limit, db } = await getMods();
   const [blocksSnap, blockedBySnap, likesSnap] = await Promise.all([
     getDocs(query(collection(db, 'blocks'), where('byUid', '==', uid), limit(PROFILE_FALLBACK_READ_LIMIT))),
@@ -180,7 +180,7 @@ async function fallbackProfiles(uid, targetGender, targetRank) {
   const snap = await getDocs(query(collection(db, 'publicProfiles'), limit(PROFILE_FALLBACK_READ_LIMIT)));
   const candidates = snap.docs
     .map((d) => ({ ...d.data(), id: d.id }))
-    .filter((p) => candidateAllowed(p, excludedUids, targetGender, targetRank));
+    .filter((p) => candidateAllowed(p, excludedUids, 'all', 'all'));
 
   return { profiles: shuffleInPlace(candidates).slice(0, PROFILE_RESULT_LIMIT) };
 }
@@ -361,8 +361,9 @@ export const api = {
       });
       return { profiles: Array.isArray(result.data?.profiles) ? result.data.profiles : [] };
     } catch (e) {
-      console.warn('[palry] getCandidateProfiles failed; using limited fallback:', e.code || e.message);
-      return fallbackProfiles(uid, targetGender, targetRank);
+      if (import.meta.env.PROD) throw e;
+      console.warn('[palry] getCandidateProfiles failed; using limited fallback (dev only):', e.code || e.message);
+      return fallbackProfiles(uid);
     }
   },
 
@@ -564,9 +565,7 @@ export const api = {
   },
 
   purchaseItem: async () => {
-    const uid = await getUid();
-    const user = uid ? await fetchUserProfile(uid) : null;
-    return { entitlements: buildEntitlements(user?.plan || 'FREE') };
+    throw apiError('単発課金は現在ご利用いただけません', 503);
   },
 
   subscribeDmThread: (matchId, uid, onUpdate) => {
