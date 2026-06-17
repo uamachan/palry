@@ -125,7 +125,18 @@ service cloud.firestore {
 
     match /publicProfiles/{uid} {
       allow read: if signedIn();
-      allow create, update: if isSelf(uid)
+      allow create: if isSelf(uid)
+        && request.auth.token.email_verified == true
+        && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
+                        'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role', 'tags', 'agents',
+                        'bio', 'voiceIntro', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
+                        'favoriteWeapon', 'verified', 'createdAt', 'updatedAt'])
+        && profileFieldsValid(uid, request.resource.data)
+        && request.resource.data.id == uid
+        && (!('verified' in request.resource.data) ||
+            !exists(/databases/$(database)/documents/users/$(uid)) ||
+            request.resource.data.verified == get(/databases/$(database)/documents/users/$(uid)).data.verified);
+      allow update: if isSelf(uid)
         && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region', 'profilePhoto',
                         'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role', 'tags', 'agents',
                         'bio', 'voiceIntro', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',

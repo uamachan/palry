@@ -34,6 +34,13 @@ const PUBLIC_PROFILE_FIELDS = [
   'vc', 'maps', 'favoriteWeapon', 'verified', 'createdAt', 'updatedAt',
 ];
 
+// 候補一覧カード表示に必要な最低限フィールド
+const CANDIDATE_CARD_FIELDS = [
+  'id', 'name', 'gender', 'ageRange', 'age', 'region',
+  'profilePhotoUrl', 'profilePhotoPath',
+  'rank', 'role', 'tags', 'agents', 'verified',
+];
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -70,6 +77,15 @@ function candidateMatchesFilters(profile, targetGender, targetRank, excludedUids
 
   if (targetRank !== 'all' && rankTier(profile.rank) !== targetRank) return false;
   return true;
+}
+
+function sanitizeCandidateCard(data, id) {
+  const profile = { id };
+  for (const key of CANDIDATE_CARD_FIELDS) {
+    if (key === 'id') continue;
+    if (Object.prototype.hasOwnProperty.call(data, key)) profile[key] = data[key];
+  }
+  return profile;
 }
 
 function sanitizePublicProfile(data, id) {
@@ -170,7 +186,7 @@ async function removeExcludedCandidates(profiles, uid, targetGender, targetRank)
     const blockedByMe = snaps[base + 1]?.exists;
     const blockedByThem = snaps[base + 2]?.exists;
     if (!alreadyLiked && !blockedByMe && !blockedByThem) {
-      allowed.push(sanitizePublicProfile(prelim[i], prelim[i].id));
+      allowed.push(sanitizeCandidateCard(prelim[i], prelim[i].id));
     }
   }
   return allowed;
@@ -204,8 +220,19 @@ exports.getCandidateProfiles = onCall({ region: 'asia-northeast1', maxInstances:
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
 
   const uid = request.auth.uid;
-  const targetGender = typeof request.data?.targetGender === 'string' ? request.data.targetGender : 'all';
-  const targetRank = typeof request.data?.targetRank === 'string' ? request.data.targetRank : 'all';
+
+  // planをサーバー側で確認し、FREEユーザーのフィルター使用を禁止する
+  const userSnap = await db.collection('users').doc(uid).get();
+  const plan = userSnap.exists ? (userSnap.data()?.plan || 'FREE') : 'FREE';
+  const isPaidUser = plan === 'PLUS' || plan === 'VIP';
+
+  const targetGender = isPaidUser && typeof request.data?.targetGender === 'string'
+    ? request.data.targetGender
+    : 'all';
+  const targetRank = isPaidUser && typeof request.data?.targetRank === 'string'
+    ? request.data.targetRank
+    : 'all';
+
   const requestedLimit = Number.isFinite(Number(request.data?.limit))
     ? Math.min(Math.max(Number(request.data.limit), 1), CANDIDATE_MAX_LIMIT)
     : CANDIDATE_RESPONSE_LIMIT;
