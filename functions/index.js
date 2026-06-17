@@ -589,7 +589,7 @@ exports.purchase = onCall({ region: 'asia-northeast1' }, async (request) => {
     throw new HttpsError('failed-precondition', '決済が完了していません');
   }
 
-  if (session.client_reference_id && session.client_reference_id !== uid) {
+  if (session.client_reference_id !== uid) {
     throw new HttpsError('permission-denied', '不正なセッションです');
   }
 

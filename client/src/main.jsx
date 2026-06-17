@@ -689,7 +689,13 @@ function App() {
       showToast('決済リンクが設定されていません');
       return;
     }
-    window.location.href = `${stripeUrl}?client_reference_id=${user.id}`;
+    try {
+      const checkoutUrl = new URL(stripeUrl);
+      checkoutUrl.searchParams.set('client_reference_id', user.id);
+      window.location.href = checkoutUrl.toString();
+    } catch {
+      showToast('決済リンクの形式が不正です');
+    }
   }
 
   async function buyItem(itemName) {

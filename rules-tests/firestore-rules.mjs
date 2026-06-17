@@ -25,7 +25,6 @@ if (rulesTesting && emulatorHost) {
   const {
     assertFails,
     assertSucceeds,
-    clearFirestoreData,
     initializeTestEnvironment,
   } = rulesTesting;
 
@@ -42,7 +41,7 @@ if (rulesTesting && emulatorHost) {
   });
 
   test.beforeEach(async () => {
-    await clearFirestoreData({ projectId });
+    await testEnv.clearFirestore();
   });
 
   function authDb(uid) {
