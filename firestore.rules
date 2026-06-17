@@ -102,18 +102,6 @@ service cloud.firestore {
         && (!('autoHidden' in request.resource.data));
     }
 
-    function validFootprintWrite(footprintId) {
-      return signedIn()
-        && request.resource.data.actorUid == request.auth.uid
-        && request.resource.data.profileId is string
-        && request.resource.data.profileId != request.auth.uid
-        && request.resource.data.day is string
-        && request.resource.data.day.size() == 10
-        && footprintId == request.resource.data.profileId + '_from_' + request.auth.uid + '_' + request.resource.data.day
-        && request.resource.data.action in ['見送り', 'LIKE', '両LIKE', 'プロフィール閲覧']
-        && hasOnlyKeys(['actorUid', 'profileId', 'action', 'day', 'createdAt', 'actorProfileSnapshot']);
-    }
-
     match /users/{uid} {
       allow read: if isSelf(uid);
       allow create: if validProfileCreate(uid);
@@ -196,12 +184,7 @@ service cloud.firestore {
 
     match /footprints/{footprintId} {
       allow read: if signedIn() && resource.data.profileId == request.auth.uid;
-      allow create: if validFootprintWrite(footprintId);
-      allow update: if validFootprintWrite(footprintId)
-        && resource.data.actorUid == request.auth.uid
-        && resource.data.profileId == request.resource.data.profileId
-        && resource.data.day == request.resource.data.day;
-      allow delete: if false;
+      allow create, update, delete: if false;
     }
 
     match /reports/{reportId} {

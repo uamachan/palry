@@ -106,9 +106,9 @@ if (rulesTesting && emulatorHost) {
     }));
   });
 
-  test('footprints.action は許可リストだけ保存でき、日別固定ID以外は拒否される', async () => {
+  test('footprints はクライアントから一切書き込めない（Functions経由のみ）', async () => {
     const db = authDb('alice');
-    await assertSucceeds(setDoc(doc(db, 'footprints', 'bob_from_alice_2026-06-16'), {
+    await assertFails(setDoc(doc(db, 'footprints', 'bob_from_alice_2026-06-16'), {
       actorUid: 'alice',
       profileId: 'bob',
       action: 'プロフィール閲覧',
