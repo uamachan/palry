@@ -219,8 +219,9 @@ function buildEntitlements(plan) {
   };
 }
 
-function buildMatchObject(matchId, otherProfile, createdAt = '') {
+function buildMatchObject(matchId, otherProfile, createdAt = '', sortAt = '') {
   if (!otherProfile) return null;
+  const resolvedCreatedAt = createdAt || now();
   return {
     id: matchId,
     profileId: otherProfile.id,
@@ -241,7 +242,8 @@ function buildMatchObject(matchId, otherProfile, createdAt = '') {
     profileBio: otherProfile.bio || '',
     profileRiotId: otherProfile.riotId || '',
     dmUnlocked: true,
-    createdAt: createdAt || now(),
+    createdAt: resolvedCreatedAt,
+    sortAt: sortAt || resolvedCreatedAt,
     opener: `${otherProfile.name || '相手'}さんとマッチしました！`,
   };
 }
@@ -400,9 +402,9 @@ export const api = {
     const matches = docs.map((d) => {
       const m = { ...d.data(), id: d.id };
       const otherProfile = profileFromMatchData(m, uid);
-      return buildMatchObject(m.id, otherProfile, m.createdAt);
+      return buildMatchObject(m.id, otherProfile, m.createdAt, matchSortTime(m));
     }).filter(Boolean);
-    matches.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    matches.sort((a, b) => (b.sortAt || '').localeCompare(a.sortAt || ''));
     return { matches };
   },
 
@@ -415,13 +417,12 @@ export const api = {
       const otherUid = Array.isArray(match.participants) ? match.participants.find((p) => p !== uid) : null;
       const otherProfile = profileFromMatchData(match, uid);
       return {
-        match: buildMatchObject(match.id, otherProfile, match.createdAt),
+        match: buildMatchObject(match.id, otherProfile, match.createdAt, matchSortTime(match)),
         messages: messageFromMatchSummary(match, uid, otherUid),
         unreadCount: Number(match.unreadCountBy?.[uid] || 0),
-        updatedAt: matchSortTime(match),
       };
     });
-    threads.sort((a, b) => (b.updatedAt || b.match?.createdAt || '').localeCompare(a.updatedAt || a.match?.createdAt || ''));
+    threads.sort((a, b) => (b.match?.sortAt || '').localeCompare(a.match?.sortAt || ''));
     return { threads: threads.filter((t) => t.match) };
   },
 
