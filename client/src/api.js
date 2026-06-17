@@ -552,13 +552,14 @@ export const api = {
     return { entitlements: buildEntitlements(user?.plan || 'FREE') };
   },
 
-  purchase: async ({ plan }) => {
-    const uid = await currentUserOrThrow();
-    const requestedPlan = Object.prototype.hasOwnProperty.call(PLANS_DATA.plans, plan) ? plan : 'FREE';
-    const user = await fetchUserProfile(uid);
+  purchase: async ({ sessionId }) => {
+    if (!sessionId) throw apiError('sessionId が必要です', 400);
+    const { httpsCallable, functions } = await getFunctionsMods();
+    const result = await httpsCallable(functions, 'purchase')({ sessionId });
+    const plan = result.data?.plan || 'FREE';
     return {
-      purchase: { plan: requestedPlan, demo: true },
-      entitlements: buildEntitlements(user?.plan || 'FREE'),
+      purchase: { plan },
+      entitlements: buildEntitlements(plan),
     };
   },
 

@@ -8,6 +8,17 @@ const { getFirestore, FieldValue, FieldPath } = require('firebase-admin/firestor
 initializeApp();
 const db = getFirestore();
 
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? require('stripe')(process.env.STRIPE_SECRET_KEY)
+  : null;
+
+function planFromPriceId(priceId) {
+  if (!priceId) return null;
+  if (process.env.STRIPE_PRICE_ID_PLUS && priceId === process.env.STRIPE_PRICE_ID_PLUS) return 'PLUS';
+  if (process.env.STRIPE_PRICE_ID_VIP  && priceId === process.env.STRIPE_PRICE_ID_VIP)  return 'VIP';
+  return null;
+}
+
 const PLAN_LIMITS = {
   FREE: { dailyLikes: 10, dailyDualLikes: 5 },
   PLUS: { dailyLikes: 40, dailyDualLikes: 10 },
@@ -551,6 +562,48 @@ exports.recordFootprint = onCall({ region: 'asia-northeast1' }, async (request) 
   }, { merge: true });
 
   return {};
+});
+
+exports.purchase = onCall({ region: 'asia-northeast1' }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+  if (!stripe) throw new HttpsError('internal', '決済サービスが設定されていません');
+
+  const uid = request.auth.uid;
+  const { sessionId } = request.data || {};
+
+  if (!sessionId || typeof sessionId !== 'string') {
+    throw new HttpsError('invalid-argument', 'sessionId が不正です');
+  }
+
+  let session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['line_items'],
+    });
+  } catch (e) {
+    console.warn('[palry] Stripe session retrieval failed:', e.message);
+    throw new HttpsError('not-found', 'Stripe セッションが見つかりません');
+  }
+
+  if (session.payment_status !== 'paid' && session.status !== 'complete') {
+    throw new HttpsError('failed-precondition', '決済が完了していません');
+  }
+
+  if (session.client_reference_id && session.client_reference_id !== uid) {
+    throw new HttpsError('permission-denied', '不正なセッションです');
+  }
+
+  const priceId = session.line_items?.data?.[0]?.price?.id;
+  const plan = planFromPriceId(priceId) ?? session.metadata?.plan ?? null;
+
+  if (!plan || !['PLUS', 'VIP'].includes(plan)) {
+    throw new HttpsError('invalid-argument', 'プランを特定できません');
+  }
+
+  const nowStr = new Date().toISOString();
+  await db.collection('users').doc(uid).update({ plan, updatedAt: nowStr });
+
+  return { plan };
 });
 
 const DAILY_REPORT_LIMIT = 5;

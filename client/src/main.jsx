@@ -655,28 +655,41 @@ function App() {
     }
   }
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    if (!sessionId) return;
+    window.history.replaceState({}, '', '/');
+    api.purchase({ sessionId })
+      .then((payload) => {
+        const confirmedPlan = payload?.purchase?.plan || 'FREE';
+        const paid = confirmedPlan === 'PLUS' || confirmedPlan === 'VIP';
+        setPlan(confirmedPlan);
+        setActivePlan(confirmedPlan);
+        setUser((u) => ({ ...u, plan: confirmedPlan }));
+        setEntitlements({ genderFilter: paid, rankFilter: paid, boost: false, spotlight: confirmedPlan === 'VIP' });
+        track('purchase', { kind: 'plan', item: confirmedPlan });
+        showToast(`${planLabel(confirmedPlan)} へのアップグレードが完了しました`);
+      })
+      .catch((e) => showToast(e.message || '決済確認に失敗しました'));
+  }, [user?.id]);
+
   async function buyPlan(nextPlan) {
     if (!isAuthed) {
       showToast('ログインしてください');
       showAuth('login');
       return;
     }
-    try {
-      const payload = await api.purchase({ userId: user.id, plan: nextPlan });
-      const confirmedPlan = payload?.purchase?.plan || payload?.plan || nextPlan;
-      setPlan(confirmedPlan);
-      setUser((u) => ({ ...u, plan: confirmedPlan }));
-      setEntitlements({
-        genderFilter: confirmedPlan === 'PLUS' || confirmedPlan === 'VIP',
-        rankFilter: confirmedPlan === 'PLUS' || confirmedPlan === 'VIP',
-        boost: false,
-        spotlight: confirmedPlan === 'VIP',
-        });
-      track('purchase', { kind: 'plan', item: confirmedPlan });
-      showToast(`${planLabel(confirmedPlan)} に切り替えました（デモ）`);
-    } catch (e) {
-      showToast(e.message || 'プラン変更に失敗しました');
+    if (nextPlan === 'FREE') return;
+    const stripeUrl = (nextPlan === 'VIP'
+      ? String(import.meta.env.VITE_STRIPE_LINK_VIP || '').trim()
+      : String(import.meta.env.VITE_STRIPE_LINK_PLUS || '').trim());
+    if (!stripeUrl) {
+      showToast('決済リンクが設定されていません');
+      return;
     }
+    window.location.href = `${stripeUrl}?client_reference_id=${user.id}`;
   }
 
   async function buyItem(itemName) {
@@ -689,7 +702,7 @@ function App() {
       const payload = await api.purchaseItem({ item: itemName });
       if (payload?.entitlements) setEntitlements(payload.entitlements);
       track('purchase', { kind: 'item', item: itemName });
-      showToast(`「${itemName}」を購入しました（デモ）`);
+      showToast(`「${itemName}」を購入しました`);
     } catch (e) {
       showToast(e.message || '購入に失敗しました');
     }
