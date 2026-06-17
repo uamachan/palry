@@ -370,7 +370,7 @@ exports.sendDm = onCall({ region: 'asia-northeast1', maxInstances: 40 }, async (
   return { message: { id: messageRef.id, sender: 'user', body, createdAt, readAt: null } };
 });
 
-exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
+exports.sendLike = onCall({ region: 'asia-northeast1', maxInstances: 40 }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
 
   const uid = request.auth.uid;
@@ -531,7 +531,7 @@ exports.sendLike = onCall({ region: 'asia-northeast1' }, async (request) => {
   return { match: null, matched: false, pending_sent: true };
 });
 
-exports.recordFootprint = onCall({ region: 'asia-northeast1' }, async (request) => {
+exports.recordFootprint = onCall({ region: 'asia-northeast1', maxInstances: 20 }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
 
   const uid = request.auth.uid;
@@ -561,7 +561,7 @@ exports.recordFootprint = onCall({ region: 'asia-northeast1' }, async (request) 
   return {};
 });
 
-exports.purchase = onCall({ region: 'asia-northeast1' }, async (request) => {
+exports.purchase = onCall({ region: 'asia-northeast1', maxInstances: 10 }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
   if (!stripe) throw new HttpsError('internal', '決済サービスが設定されていません');
 
@@ -605,7 +605,7 @@ exports.purchase = onCall({ region: 'asia-northeast1' }, async (request) => {
 
 const DAILY_REPORT_LIMIT = 5;
 
-exports.sendReport = onCall({ region: 'asia-northeast1' }, async (request) => {
+exports.sendReport = onCall({ region: 'asia-northeast1', maxInstances: 10 }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
 
   const uid = request.auth.uid;

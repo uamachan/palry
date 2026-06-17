@@ -445,13 +445,6 @@ function App() {
 
   useEffect(() => { if (user) refreshProfiles(); }, [user?.id, plan, targetGender, targetRank, entitlements.rankFilter]);
 
-  // 候補カードが尽きたら自動で再取得（新規登録ユーザーをリアルタイムに反映）。
-  const deckEmpty = Boolean(user) && index >= profiles.length;
-  useEffect(() => {
-    if (!deckEmpty) return;
-    const id = setTimeout(() => refreshProfiles(), 4000);
-    return () => clearTimeout(id);
-  }, [deckEmpty]);
   useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); refreshFootprints(); } }, [user?.id]);
   useEffect(() => {
     if (!user) return;
@@ -521,7 +514,6 @@ function App() {
     const directionLabel = type === 'pass' ? '見送り' : type === 'dual' ? '両LIKE' : 'LIKE';
     if (type === 'pass') {
       setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: '見送り', time: '今' }, ...f].slice(0, 50));
-      api.recordFootprint({ profileId: current.id, action: '見送り' }).catch(() => null);
       nextCard();
       return;
     }
@@ -567,6 +559,8 @@ function App() {
 
   async function markDmRead(matchId) {
     if (!matchId) return;
+    const thread = dmThreads.find((t) => t.match.id === matchId);
+    if (!thread || (thread.unreadCount || 0) <= 0) return;
     try {
       await api.markDmRead({ matchId });
       setDmThreads((threads) => threads.map((thread) => thread.match.id === matchId ? {
