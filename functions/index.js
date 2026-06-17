@@ -33,7 +33,7 @@ const EXCLUSION_READ_LIMIT = 500;
 const CANDIDATE_SELECT_FIELDS = [
   'name', 'ageRange', 'age', 'gender', 'region',
   'profilePhotoUrl', 'profilePhotoThumbUrl', 'profilePhotoPath',
-  'rank', 'role', 'tags', 'agents', 'verified',
+  'rank', 'role', 'tags', 'agents', 'verified', 'bio', 'voiceIntroUrl',
   'visible', 'autoHidden', 'createdAt', 'updatedAt',
 ];
 const PUBLIC_PROFILE_FIELDS = [
@@ -95,6 +95,10 @@ function sanitizeCandidateCard(data, id) {
     if (key === 'id') continue;
     if (Object.prototype.hasOwnProperty.call(data, key)) profile[key] = data[key];
   }
+  // 表示側（カード/詳細）は profilePhoto / voiceIntro / bio を参照するため正規化する。
+  profile.profilePhoto = data.profilePhotoThumbUrl || data.profilePhotoUrl || '';
+  profile.voiceIntro = data.voiceIntroUrl || '';
+  profile.bio = data.bio || '';
   return profile;
 }
 

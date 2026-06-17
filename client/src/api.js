@@ -68,6 +68,11 @@ function pickVoiceIntro(profile) {
   return profile?.voiceIntroUrl || profile?.voiceIntro || '';
 }
 
+// 新規アップロード対象（data URL）かどうか。既存のhttps URLは再アップロードしない。
+function isDataUrl(value) {
+  return typeof value === 'string' && value.startsWith('data:');
+}
+
 function shuffleInPlace(items) {
   for (let i = items.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -101,7 +106,11 @@ async function fetchUserProfile(uid) {
     const { doc, getDoc, db } = await getMods();
     const snap = await getDoc(doc(db, 'users', uid));
     if (!snap.exists()) return null;
-    return { ...snap.data(), id: snap.id };
+    const profile = { ...snap.data(), id: snap.id };
+    // 表示側は profilePhoto / voiceIntro を参照するため、保存済みURLから正規化する。
+    profile.profilePhoto = pickProfilePhoto(profile);
+    profile.voiceIntro = pickVoiceIntro(profile);
+    return profile;
   } catch (e) {
     console.warn('[pairly] Firestore read failed:', e.message);
     return null;
@@ -167,12 +176,12 @@ async function uploadProfileMedia(uid, profilePhoto, voiceIntro) {
   const failedLabels = [];
   const uploadedPaths = [];
   const jobs = [];
-  if (profilePhoto) {
+  if (isDataUrl(profilePhoto)) {
     jobs.push(uploadDataUrl(uid, 'profilePhoto', profilePhoto)
       .then(({ url, path }) => { fields.profilePhotoUrl = url; fields.profilePhotoPath = path; uploadedPaths.push(path); })
       .catch((e) => { console.error('[palry] profilePhoto upload failed:', e.message); failedLabels.push('写真'); }));
   }
-  if (voiceIntro) {
+  if (isDataUrl(voiceIntro)) {
     jobs.push(uploadDataUrl(uid, 'voiceIntro', voiceIntro)
       .then(({ url, path }) => { fields.voiceIntroUrl = url; fields.voiceIntroPath = path; uploadedPaths.push(path); })
       .catch((e) => { console.error('[palry] voiceIntro upload failed:', e.message); failedLabels.push('音声自己紹介'); }));
@@ -216,7 +225,7 @@ async function writeUserProfile(uid, data) {
   let mediaWarning = null;
   let uploadedPaths = [];
   const replacedPaths = [];
-  if (profilePhoto || voiceIntro) {
+  if (isDataUrl(profilePhoto) || isDataUrl(voiceIntro)) {
     // 差し替え前の旧パス（編集時は既存ドキュメント由来で safeData に入っている）を控える。
     const prevPhotoPath = safeData.profilePhotoPath;
     const prevVoicePath = safeData.voiceIntroPath;
