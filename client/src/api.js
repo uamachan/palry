@@ -14,6 +14,8 @@ async function getMods() {
       addDoc: fs.addDoc,
       writeBatch: fs.writeBatch,
       deleteField: fs.deleteField,
+      increment: fs.increment,
+      getCountFromServer: fs.getCountFromServer,
       query: fs.query,
       where: fs.where,
       orderBy: fs.orderBy,
@@ -119,20 +121,6 @@ async function fetchPublicProfile(uid) {
     console.warn('[palry] publicProfiles read failed:', e.message);
     return null;
   }
-}
-
-let _funcsPromise = null;
-async function getFunctionsMods() {
-  if (!_funcsPromise) {
-    _funcsPromise = Promise.all([
-      import('firebase/functions'),
-      import('./firebase.js'),
-    ]).then(([fnModule, fb]) => ({
-      httpsCallable: fnModule.httpsCallable,
-      functions: fnModule.getFunctions(fb.firebaseApp, 'asia-northeast1'),
-    }));
-  }
-  return _funcsPromise;
 }
 
 async function writeUserProfile(uid, data) {
@@ -352,37 +340,123 @@ export const api = {
   profiles: async ({ targetGender = 'all', targetRank = 'all' } = {}) => {
     const uid = await getUid();
     if (!uid) return { profiles: [] };
-    try {
-      const { httpsCallable, functions } = await getFunctionsMods();
-      const result = await httpsCallable(functions, 'getCandidateProfiles')({
-        targetGender,
-        targetRank,
-        limit: PROFILE_RESULT_LIMIT,
-      });
-      return { profiles: Array.isArray(result.data?.profiles) ? result.data.profiles : [] };
-    } catch (e) {
-      if (import.meta.env.PROD) throw e;
-      console.warn('[palry] getCandidateProfiles failed; using limited fallback (dev only):', e.code || e.message);
-      return fallbackProfiles(uid);
-    }
+    return fallbackProfiles(uid);
   },
 
   like: async ({ profileId, type = 'like' }) => {
     const uid = await currentUserOrThrow();
-    if (!profileId) throw apiError('対象プロフィールが必要です', 400);
-    const { httpsCallable, functions } = await getFunctionsMods();
-    const sendLike = httpsCallable(functions, 'sendLike');
-    try {
-      const result = await sendLike({ profileId, type });
+    if (!profileId || typeof profileId !== 'string') throw apiError('対象プロフィールが必要です', 400);
+    if (profileId === uid) throw apiError('自分自身にLIKEできません', 400);
+    if (!['like', 'dual'].includes(type)) throw apiError('type が不正です', 400);
+
+    const { doc, getDoc, setDoc, writeBatch, db } = await getMods();
+    const likeId = `${uid}_${profileId}`;
+
+    const [existingLike, blockByMe, blockByThem, theirSnap] = await Promise.all([
+      getDoc(doc(db, 'likes', likeId)),
+      getDoc(doc(db, 'blocks', `${uid}_block_${profileId}`)),
+      getDoc(doc(db, 'blocks', `${profileId}_block_${uid}`)),
+      getDoc(doc(db, 'users', profileId)),
+    ]);
+
+    if (existingLike.exists()) throw apiError('すでにLIKE済みです', 409);
+    if (blockByMe.exists() || blockByThem.exists()) throw apiError('このユーザーにLIKEできません', 403);
+    if (!theirSnap.exists() || theirSnap.data().autoHidden) throw apiError('相手が見つかりません', 404);
+
+    const receivedLikeId = `${profileId}_from_${uid}`;
+    const reverseLikeId = `${profileId}_${uid}`;
+    const reverseRlId = `${uid}_from_${profileId}`;
+    const createdAt = now();
+
+    const [reverseSnap, reverseRlSnap, mySnap] = await Promise.all([
+      getDoc(doc(db, 'likes', reverseLikeId)),
+      getDoc(doc(db, 'receivedLikes', reverseRlId)),
+      getDoc(doc(db, 'users', uid)),
+    ]);
+
+    const isMatch = reverseSnap.exists();
+    const batch = writeBatch(db);
+
+    batch.set(doc(db, 'likes', likeId), {
+      fromUid: uid,
+      toUid: profileId,
+      type,
+      createdAt,
+    });
+
+    batch.set(doc(db, 'receivedLikes', receivedLikeId), {
+      forUid: profileId,
+      fromUid: uid,
+      type,
+      status: isMatch ? 'accepted' : 'pending',
+      createdAt,
+    });
+
+    if (isMatch) {
+      if (reverseRlSnap.exists()) {
+        batch.update(doc(db, 'receivedLikes', reverseRlId), { status: 'accepted' });
+      }
+
+      const matchId = [uid, profileId].sort().join('_');
+      const myProfile = mySnap.data() || {};
+      const theirProfile = theirSnap.data() || {};
+
+      batch.set(doc(db, 'matches', matchId), {
+        participants: [uid, profileId],
+        createdAt,
+        matchSortAt: createdAt,
+        updatedAt: createdAt,
+        unreadCountBy: { [uid]: 0, [profileId]: 0 },
+        profileData: {
+          [uid]: {
+            name: myProfile.name || '',
+            profilePhotoUrl: myProfile.profilePhotoUrl || '',
+            rank: myProfile.rank || '',
+            role: myProfile.role || '',
+            gender: myProfile.gender || '',
+            ageRange: myProfile.ageRange || myProfile.age || '',
+            region: myProfile.region || '',
+            tags: myProfile.tags || [],
+            agents: myProfile.agents || [],
+            xHandle: myProfile.xHandle || '',
+            vc: myProfile.vc || '',
+            maps: myProfile.maps || [],
+            favoriteWeapon: myProfile.favoriteWeapon || '',
+            voiceIntroUrl: myProfile.voiceIntroUrl || '',
+            bio: myProfile.bio || '',
+            riotId: myProfile.riotId || '',
+          },
+          [profileId]: {
+            name: theirProfile.name || '',
+            profilePhotoUrl: theirProfile.profilePhotoUrl || '',
+            rank: theirProfile.rank || '',
+            role: theirProfile.role || '',
+            gender: theirProfile.gender || '',
+            ageRange: theirProfile.ageRange || theirProfile.age || '',
+            region: theirProfile.region || '',
+            tags: theirProfile.tags || [],
+            agents: theirProfile.agents || [],
+            xHandle: theirProfile.xHandle || '',
+            vc: theirProfile.vc || '',
+            maps: theirProfile.maps || [],
+            favoriteWeapon: theirProfile.favoriteWeapon || '',
+            voiceIntroUrl: theirProfile.voiceIntroUrl || '',
+            bio: theirProfile.bio || '',
+            riotId: theirProfile.riotId || '',
+          },
+        },
+      });
+
+      await batch.commit();
+
+      const matchObj = buildMatchObject(matchId, { id: profileId, ...theirProfile }, createdAt);
       const user = await fetchUserProfile(uid);
-      return { ...result.data, entitlements: buildEntitlements(user?.plan || 'FREE') };
-    } catch (e) {
-      if (e.code === 'functions/resource-exhausted') throw apiError(e.message || '本日のLIKE上限に達しました', 429);
-      if (e.code === 'functions/not-found') throw apiError('相手が見つかりません', 404);
-      if (e.code === 'functions/permission-denied') throw apiError('このユーザーにLIKEできません', 403);
-      if (e.code === 'functions/already-exists') throw apiError('すでにLIKE済みです', 409);
-      throw e;
+      return { matched: true, match: matchObj, entitlements: buildEntitlements(user?.plan || 'FREE') };
     }
+
+    await batch.commit();
+    const user = await fetchUserProfile(uid);
+    return { matched: false, entitlements: buildEntitlements(user?.plan || 'FREE') };
   },
 
   matches: async () => {
@@ -418,19 +492,57 @@ export const api = {
 
   markDmRead: async ({ matchId }) => {
     if (!matchId) return {};
-    const { httpsCallable, functions } = await getFunctionsMods();
-    await httpsCallable(functions, 'markDmRead')({ matchId });
+    const uid = await getUid();
+    if (!uid) return {};
+    const { doc, getDoc, writeBatch, updateDoc, increment, db } = await getMods();
+    const matchSnap = await getDoc(doc(db, 'matches', matchId));
+    if (!matchSnap.exists()) return {};
+    const matchData = matchSnap.data();
+    if (!Array.isArray(matchData.participants) || !matchData.participants.includes(uid)) return {};
+
+    const unread = Number(matchData.unreadCountBy?.[uid] || 0);
+    if (unread === 0) return {};
+
+    await updateDoc(doc(db, 'matches', matchId), {
+      [`unreadCountBy.${uid}`]: 0,
+      [`lastReadAtBy.${uid}`]: now(),
+    });
     return {};
   },
 
   sendDm: async ({ matchId, body }) => {
-    await currentUserOrThrow();
+    const uid = await currentUserOrThrow();
     const text = String(body || '').trim();
     if (!matchId || !text) throw apiError('送信内容が不正です', 400);
     if (text.length > 500) throw apiError('DMは500文字以内です', 400);
-    const { httpsCallable, functions } = await getFunctionsMods();
-    const result = await httpsCallable(functions, 'sendDm')({ matchId, body: text });
-    return { message: result.data?.message };
+
+    const { doc, getDoc, addDoc, updateDoc, increment, collection, db } = await getMods();
+    const matchSnap = await getDoc(doc(db, 'matches', matchId));
+    if (!matchSnap.exists()) throw apiError('スレッドが見つかりません', 404);
+    const matchData = matchSnap.data();
+    if (!Array.isArray(matchData.participants) || !matchData.participants.includes(uid)) {
+      throw apiError('参加していないスレッドです', 403);
+    }
+    const otherUid = matchData.participants.find((p) => p !== uid);
+
+    const createdAt = now();
+    const msgRef = await addDoc(collection(db, 'messages'), {
+      matchId,
+      senderUid: uid,
+      body: text,
+      createdAt,
+      readAt: null,
+    });
+
+    await updateDoc(doc(db, 'matches', matchId), {
+      lastMessageAt: createdAt,
+      matchSortAt: createdAt,
+      updatedAt: createdAt,
+      [`unreadCountBy.${otherUid}`]: increment(1),
+      lastMessage: { id: msgRef.id, senderUid: uid, body: text, createdAt },
+    });
+
+    return { message: { id: msgRef.id, sender: 'user', body: text, createdAt, readAt: null } };
   },
 
   receivedLikes: async () => {
@@ -468,17 +580,12 @@ export const api = {
     const { doc, getDoc, db } = await getMods();
     const rlSnap = await getDoc(doc(db, 'receivedLikes', receivedLikeId));
     if (!rlSnap.exists()) throw apiError('いいねが見つかりません', 404);
-    const fromUid = rlSnap.data().fromUid;
-    const { httpsCallable, functions } = await getFunctionsMods();
-    const sendLike = httpsCallable(functions, 'sendLike');
-    try {
-      const result = await sendLike({ profileId: fromUid, type: 'like', acceptingLikeId: receivedLikeId });
-      return { match: result.data.match, matched: true };
-    } catch (e) {
-      if (e.code === 'functions/not-found') throw apiError('相手が見つかりません', 404);
-      if (e.code === 'functions/permission-denied') throw apiError('このユーザーにLIKEできません', 403);
-      throw e;
-    }
+    const rl = rlSnap.data();
+    if (rl.forUid !== uid) throw apiError('権限がありません', 403);
+    const fromUid = rl.fromUid;
+
+    const result = await api.like({ profileId: fromUid, type: 'like', _acceptingLikeId: receivedLikeId });
+    return { match: result.match, matched: result.matched };
   },
 
   footprints: async () => {
@@ -514,8 +621,15 @@ export const api = {
     const allowedActions = ['見送り', 'LIKE', '両LIKE', 'プロフィール閲覧'];
     if (!allowedActions.includes(action)) return {};
     try {
-      const { httpsCallable, functions } = await getFunctionsMods();
-      await httpsCallable(functions, 'recordFootprint')({ profileId, action });
+      const { doc, setDoc, db } = await getMods();
+      const footprintId = `${uid}_${profileId}_${dayKey()}`;
+      await setDoc(doc(db, 'footprints', footprintId), {
+        actorUid: uid,
+        profileId,
+        action,
+        createdAt: now(),
+        day: dayKey(),
+      }, { merge: true });
     } catch (e) {
       console.warn('[palry] recordFootprint failed:', e.code || e.message);
     }
@@ -523,18 +637,21 @@ export const api = {
   },
 
   report: async ({ profileId, reason = '' }) => {
-    await currentUserOrThrow();
+    const uid = await currentUserOrThrow();
     if (!profileId) throw apiError('不正なリクエストです', 400);
-    const { httpsCallable, functions } = await getFunctionsMods();
-    try {
-      await httpsCallable(functions, 'sendReport')({ profileId, reason });
-    } catch (e) {
-      if (e.code === 'functions/already-exists') throw apiError('すでにこのユーザーを通報済みです', 409);
-      if (e.code === 'functions/not-found') throw apiError('対象ユーザーが見つかりません', 404);
-      if (e.code === 'functions/resource-exhausted') throw apiError('本日の通報上限に達しました', 429);
-      if (e.code === 'functions/invalid-argument') throw apiError(e.message, 400);
-      throw e;
-    }
+    if (profileId === uid) throw apiError('自分自身を通報できません', 400);
+    const { doc, getDoc, setDoc, db } = await getMods();
+    const reportId = `${uid}_${profileId}`;
+    const existing = await getDoc(doc(db, 'reports', reportId));
+    if (existing.exists()) throw apiError('すでにこのユーザーを通報済みです', 409);
+    const targetSnap = await getDoc(doc(db, 'users', profileId));
+    if (!targetSnap.exists()) throw apiError('対象ユーザーが見つかりません', 404);
+    await setDoc(doc(db, 'reports', reportId), {
+      reporterUid: uid,
+      profileId,
+      reason: String(reason || '').slice(0, 500),
+      createdAt: now(),
+    });
     return {};
   },
 
@@ -553,15 +670,8 @@ export const api = {
     return { entitlements: buildEntitlements(user?.plan || 'FREE') };
   },
 
-  purchase: async ({ sessionId }) => {
-    if (!sessionId) throw apiError('sessionId が必要です', 400);
-    const { httpsCallable, functions } = await getFunctionsMods();
-    const result = await httpsCallable(functions, 'purchase')({ sessionId });
-    const plan = result.data?.plan || 'FREE';
-    return {
-      purchase: { plan },
-      entitlements: buildEntitlements(plan),
-    };
+  purchase: async () => {
+    throw apiError('プラン購入はサポートされていません。管理者にお問い合わせください。', 503);
   },
 
   purchaseItem: async () => {
@@ -611,15 +721,15 @@ export const api = {
   },
 
   adminUnhide: async ({ profileId }) => {
-    await currentUserOrThrow();
+    const uid = await currentUserOrThrow();
     if (!profileId) throw apiError('対象ユーザーが必要です', 400);
-    const { httpsCallable, functions } = await getFunctionsMods();
-    try {
-      await httpsCallable(functions, 'adminUnhide')({ profileId });
-    } catch (e) {
-      if (e.code === 'functions/permission-denied') throw apiError('権限がありません', 403);
-      throw e;
-    }
+    const me = await fetchUserProfile(uid);
+    if (!me?.isAdmin) throw apiError('権限がありません', 403);
+    const { doc, writeBatch, db } = await getMods();
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'users', profileId), { autoHidden: false, visible: true, updatedAt: now() });
+    batch.update(doc(db, 'publicProfiles', profileId), { autoHidden: false, visible: true, updatedAt: now() });
+    await batch.commit();
     return {};
   },
 
@@ -629,9 +739,26 @@ export const api = {
     const uid = await getUid();
     if (!uid) return { unreadDmCount: 0, receivedLikeCount: 0, footprintCount: 0 };
     try {
-      const { httpsCallable, functions } = await getFunctionsMods();
-      const result = await httpsCallable(functions, 'getNotificationCounts')({});
-      return result.data || { unreadDmCount: 0, receivedLikeCount: 0, footprintCount: 0 };
+      const { collection, query, where, getCountFromServer, db } = await getMods();
+      const [rlCount, fpCount] = await Promise.all([
+        getCountFromServer(query(
+          collection(db, 'receivedLikes'),
+          where('forUid', '==', uid),
+          where('status', '==', 'pending')
+        )),
+        getCountFromServer(query(
+          collection(db, 'footprints'),
+          where('profileId', '==', uid)
+        )),
+      ]);
+      const matchDocs = await fetchMatchDocs(uid);
+      let unreadDmCount = 0;
+      matchDocs.forEach((d) => { unreadDmCount += Number(d.data()?.unreadCountBy?.[uid] || 0); });
+      return {
+        unreadDmCount,
+        receivedLikeCount: rlCount.data().count,
+        footprintCount: fpCount.data().count,
+      };
     } catch (e) {
       console.warn('[palry] getNotificationCounts failed:', e.code || e.message);
       return { unreadDmCount: 0, receivedLikeCount: 0, footprintCount: 0 };
