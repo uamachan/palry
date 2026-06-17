@@ -9,7 +9,6 @@ async function getMods() {
       doc: fs.doc,
       getDoc: fs.getDoc,
       getDocs: fs.getDocs,
-      getCountFromServer: fs.getCountFromServer,
       setDoc: fs.setDoc,
       updateDoc: fs.updateDoc,
       addDoc: fs.addDoc,
@@ -288,32 +287,32 @@ async function profileFromMatchData(match, uid) {
 }
 
 async function fetchMatchDocs(uid) {
-  const { collection, query, where, orderBy, getDocs, getCountFromServer, limit, db } = await getMods();
+  const { collection, query, where, orderBy, getDocs, limit, db } = await getMods();
   const byId = new Map();
-
-  // Base query shared by ordered + count variants
-  const allMatchesQ = query(collection(db, 'matches'), where('participants', 'array-contains', uid));
-  let needsFallback = false;
+  let orderedFailed = false;
 
   try {
-    // Run ordered query and cheap count aggregation in parallel.
-    // Count reveals unindexed matches (missing matchSortAt) without reading docs.
-    const [ordered, countSnap] = await Promise.all([
-      getDocs(query(allMatchesQ, orderBy('matchSortAt', 'desc'), limit(MATCH_THREAD_LIMIT))),
-      getCountFromServer(allMatchesQ).catch(() => null),
-    ]);
+    const ordered = await getDocs(query(
+      collection(db, 'matches'),
+      where('participants', 'array-contains', uid),
+      orderBy('matchSortAt', 'desc'),
+      limit(MATCH_THREAD_LIMIT)
+    ));
     ordered.docs.forEach((d) => byId.set(d.id, d));
-    const orderedCount = ordered.docs.length;
-    const totalCount = countSnap?.data().count ?? orderedCount;
-    // Fall back when ordered returned nothing, or count reveals unindexed docs
-    needsFallback = orderedCount === 0 || totalCount > orderedCount;
   } catch (error) {
-    needsFallback = true;
+    orderedFailed = true;
     console.warn('[palry] ordered matches query failed; using fallback:', error.code || error.message);
   }
 
-  if (needsFallback) {
-    const fallback = await getDocs(query(allMatchesQ, limit(MATCH_THREAD_LIMIT)));
+  // 軽量fallback: orderBy が失敗した場合と結果ゼロの場合のみ二重読み。
+  // 古い matches（matchSortAt 欠落）は adminBackfillMatches で補完し、
+  // orderBy クエリ側で拾えるようにする（通常時の二重読みは増やさない）。
+  if (orderedFailed || byId.size === 0) {
+    const fallback = await getDocs(query(
+      collection(db, 'matches'),
+      where('participants', 'array-contains', uid),
+      limit(MATCH_THREAD_LIMIT)
+    ));
     fallback.docs.forEach((d) => byId.set(d.id, d));
   }
 

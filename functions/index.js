@@ -592,7 +592,7 @@ exports.adminBackfillMatches = onCall({ region: 'asia-northeast1' }, async (requ
   if (!callerSnap.exists || !callerSnap.data().isAdmin) {
     throw new HttpsError('permission-denied', '権限がありません');
   }
-  const batchSize = Math.min(Math.max(Number(request.data?.limit) || 50, 1), 200);
+  const batchSize = Math.min(Math.max(Number(request.data?.limit) || 50, 1), 50);
 
   // 候補を多めに取得してフィルタリング（batchSize * 4 で過剰取得を抑制）
   const snap = await db.collection('matches').limit(batchSize * 4).get();
