@@ -624,4 +624,17 @@ export const api = {
   },
 
   adminAudit: async () => ({ audit: [] }),
+
+  getNotificationCounts: async () => {
+    const uid = await getUid();
+    if (!uid) return { unreadDmCount: 0, receivedLikeCount: 0, footprintCount: 0 };
+    try {
+      const { httpsCallable, functions } = await getFunctionsMods();
+      const result = await httpsCallable(functions, 'getNotificationCounts')({});
+      return result.data || { unreadDmCount: 0, receivedLikeCount: 0, footprintCount: 0 };
+    } catch (e) {
+      console.warn('[palry] getNotificationCounts failed:', e.code || e.message);
+      return { unreadDmCount: 0, receivedLikeCount: 0, footprintCount: 0 };
+    }
+  },
 };

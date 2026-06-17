@@ -115,10 +115,12 @@ function App() {
   const [authReady, setAuthReady] = useState(false);
   const [pendingScrollId, setPendingScrollId] = useState(null);
   const [askConsent, setAskConsent] = useState(false);
+  const [notifCounts, setNotifCounts] = useState(null);
   // ルーティング未導入のため、ルート('/')以外の URL は存在しないページとして 404 を出す。
   const [isUnknownRoute] = useState(() => typeof window !== 'undefined' && window.location.pathname !== '/');
 
   const toastTimerRef = useRef(null);
+  const isRefreshingCountsRef = useRef(false);
 
   function showToast(message) {
     setToast(message);
@@ -381,6 +383,7 @@ function App() {
     setAuditLog([]);
     setProfileEditorOpen(false);
     setPendingFirebaseUser(null);
+    setNotifCounts(null);
     setEntitlements({ genderFilter: false, rankFilter: false, boost: false, spotlight: false, });
     showToast('ログアウトしました');
   }
@@ -402,7 +405,11 @@ function App() {
     if (!user) return;
     try {
       const payload = await api.profiles({ plan, targetGender, targetRank, userId: user.id });
-      setProfiles(payload.profiles || []);
+      const profiles = (payload.profiles || []).map((p) => ({
+        ...p,
+        profilePhotoUrl: p.profilePhotoThumbUrl || p.profilePhotoUrl || '',
+      }));
+      setProfiles(profiles);
       setIndex(0);
     } catch (error) {
       showToast(error.message || 'プロフィール取得に失敗しました');
@@ -443,20 +450,27 @@ function App() {
     });
   }
 
+  async function refreshNotificationCounts() {
+    if (isRefreshingCountsRef.current || document.hidden) return;
+    isRefreshingCountsRef.current = true;
+    try {
+      const counts = await api.getNotificationCounts().catch(() => null);
+      if (counts) setNotifCounts(counts);
+    } finally {
+      isRefreshingCountsRef.current = false;
+    }
+  }
+
   useEffect(() => { if (user) refreshProfiles(); }, [user?.id, plan, targetGender, targetRank, entitlements.rankFilter]);
 
   useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); refreshFootprints(); } }, [user?.id]);
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    const refreshNotifications = () => {
-      if (cancelled || document.hidden) return;
-      refreshReceivedLikes();
-      refreshDmThreads();
-    };
-    const intervalId = window.setInterval(refreshNotifications, 60000);
-    const handleFocus = () => refreshNotifications();
-    const handleVisibility = () => { if (!document.hidden) refreshNotifications(); };
+    const tick = () => { if (!cancelled) refreshNotificationCounts(); };
+    const intervalId = window.setInterval(tick, 60000);
+    const handleFocus = () => tick();
+    const handleVisibility = () => { if (!document.hidden) tick(); };
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibility);
     return () => {
@@ -487,6 +501,11 @@ function App() {
       api.adminAudit().then((p) => setAuditLog(p.audit || [])).catch(() => null);
     }
   }, [activeTab, user?.id, user?.isAdmin]);
+  useEffect(() => {
+    if (!user) return;
+    if (activeTab === 'likes') refreshReceivedLikes();
+    else if (activeTab === 'dm') refreshDmThreads();
+  }, [activeTab, user?.id]);
 
   async function unhideUser(profileId) {
     if (!user?.isAdmin || !profileId) return;
@@ -504,7 +523,9 @@ function App() {
   const current = profiles[index] || null;
   const stats = useMemo(() => ({ likes: receivedLikes.length, matches: matches.length, footprints: footprints.length }), [receivedLikes.length, matches.length, footprints.length]);
   const unreadDmCount = useMemo(() => dmThreads.reduce((sum, thread) => sum + Number(thread.unreadCount || 0), 0), [dmThreads]);
-  const notificationCount = receivedLikes.length + unreadDmCount;
+  const notificationCount = notifCounts
+    ? notifCounts.receivedLikeCount + notifCounts.unreadDmCount
+    : receivedLikes.length + unreadDmCount;
   const isAuthed = Boolean(user);
 
   function nextCard() { setIndex((i) => Math.min(i + 1, profiles.length)); }

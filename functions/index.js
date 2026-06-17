@@ -32,7 +32,7 @@ const CANDIDATE_MAX_ATTEMPTS = 2;
 const EXCLUSION_READ_LIMIT = 500;
 const CANDIDATE_SELECT_FIELDS = [
   'name', 'ageRange', 'age', 'gender', 'region',
-  'profilePhotoUrl', 'profilePhotoPath',
+  'profilePhotoUrl', 'profilePhotoThumbUrl', 'profilePhotoPath',
   'rank', 'role', 'tags', 'agents', 'verified',
   'visible', 'autoHidden', 'createdAt', 'updatedAt',
 ];
@@ -47,7 +47,7 @@ const PUBLIC_PROFILE_FIELDS = [
 // 候補一覧カード表示に必要な最低限フィールド
 const CANDIDATE_CARD_FIELDS = [
   'id', 'name', 'gender', 'ageRange', 'age', 'region',
-  'profilePhotoUrl', 'profilePhotoPath',
+  'profilePhotoUrl', 'profilePhotoThumbUrl', 'profilePhotoPath',
   'rank', 'role', 'tags', 'agents', 'verified',
 ];
 
@@ -789,3 +789,36 @@ exports.autoHideOnReport = onDocumentCreated(
     await batch.commit();
   }
 );
+
+exports.getNotificationCounts = onCall({ region: 'asia-northeast1', maxInstances: 20 }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', '認証が必要です');
+  const uid = request.auth.uid;
+
+  const [rlCountSnap, matchesSnap, fpCountSnap] = await Promise.all([
+    db.collection('receivedLikes')
+      .where('forUid', '==', uid)
+      .where('status', '==', 'pending')
+      .count()
+      .get(),
+    db.collection('matches')
+      .where('participants', 'array-contains', uid)
+      .select('unreadCountBy')
+      .limit(100)
+      .get(),
+    db.collection('footprints')
+      .where('profileId', '==', uid)
+      .count()
+      .get(),
+  ]);
+
+  let unreadDmCount = 0;
+  matchesSnap.forEach((doc) => {
+    unreadDmCount += Number(doc.data()?.unreadCountBy?.[uid] || 0);
+  });
+
+  return {
+    unreadDmCount,
+    receivedLikeCount: rlCountSnap.data().count,
+    footprintCount: fpCountSnap.data().count,
+  };
+});
