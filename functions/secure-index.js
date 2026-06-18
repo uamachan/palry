@@ -21,12 +21,15 @@ function replaceOnce(haystack, needle, replacement, label) {
   return haystack.replace(needle, replacement);
 }
 
-// Require Firebase App Check for every callable function. This blocks direct SDK
-// abuse from unsigned clients once App Check enforcement is configured.
-source = source.replace(
-  /onCall\(\{ region: 'asia-northeast1'(?![^}]*enforceAppCheck)/g,
-  "onCall({ region: 'asia-northeast1', enforceAppCheck: true"
-);
+// App Check enforcement は一旦無効化。クライアント側で reCAPTCHA v3 (VITE_RECAPTCHA_SITE_KEY)
+// と Firebase コンソールの App Check 登録が揃ってから再度有効化すること。
+// 有効化していない状態で enforceAppCheck:true にすると、トークンを送れないクライアントの
+// 全 Callable が 401 で拒否され、アプリのサーバー機能が全滅する。
+// 再有効化する場合は以下の置換を復活させる:
+// source = source.replace(
+//   /onCall\(\{ region: 'asia-northeast1'(?![^}]*enforceAppCheck)/g,
+//   "onCall({ region: 'asia-northeast1', enforceAppCheck: true"
+// );
 
 source = replaceOnce(
   source,
