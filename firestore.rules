@@ -196,6 +196,12 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // 多数の通報が集まった対象の「重要」アラート。Functions(Admin SDK)のみが書き込み、運営のみ閲覧。
+    match /adminAlerts/{profileId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

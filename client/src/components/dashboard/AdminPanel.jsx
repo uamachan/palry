@@ -6,17 +6,17 @@ const AUDIT_LABELS = {
   demo_purchase_plan: 'デモプラン購入', demo_purchase_item: 'デモ単品購入',
 };
 
-export default function AdminPanel({ reports, flaggedUsers = [], unhideUser, auditLog = [] }) {
+export default function AdminPanel({ reports, alerts = [], auditLog = [] }) {
   return (
     <div className="list-panel">
-      <h3>自動非表示ユーザー</h3>
-      {flaggedUsers.length ? flaggedUsers.map((u) => (
-        <div className="list-row" key={u.id}>
-          <b>{u.name || '(名前なし)'}</b>
-          <p>通報者 {u.reporters}人 / {u.autoHiddenAt ? new Date(u.autoHiddenAt).toLocaleString('ja-JP') : '-'}</p>
-          <button type="button" className="secondary" onClick={() => unhideUser?.(u.id)}>解除</button>
+      <h3>重要通知（多数の通報）</h3>
+      {alerts.length ? alerts.map((a) => (
+        <div className="list-row" key={a.id}>
+          <b>⚠️ {a.profileName || '(名前なし)'}</b>
+          <p>通報 {a.reportCount}件 / {a.updatedAt ? new Date(a.updatedAt).toLocaleString('ja-JP') : '-'}</p>
+          <span>要確認</span>
         </div>
-      )) : <p className="empty-text">自動非表示中のユーザーはいません。</p>}
+      )) : <p className="empty-text">重要通知はありません。</p>}
       <h3>通報管理</h3>
       {reports.length ? reports.map((r) => (
         <div className="list-row" key={r.id}>

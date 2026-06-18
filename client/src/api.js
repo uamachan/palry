@@ -713,17 +713,17 @@ export const api = {
 
   reports: async () => {
     const uid = await getUid();
-    if (!uid) return { reports: [], flaggedUsers: [] };
+    if (!uid) return { reports: [], alerts: [] };
     const me = await fetchUserProfile(uid);
-    if (!me?.isAdmin) return { reports: [], flaggedUsers: [] };
+    if (!me?.isAdmin) return { reports: [], alerts: [] };
     const { collection, query, orderBy, getDocs, limit, db } = await getMods();
-    const snap = await getDocs(query(
-      collection(db, 'reports'),
-      orderBy('createdAt', 'desc'),
-      limit(ADMIN_REPORT_LIMIT)
-    ));
-    const reports = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
-    return { reports, flaggedUsers: [] };
+    const [reportSnap, alertSnap] = await Promise.all([
+      getDocs(query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(ADMIN_REPORT_LIMIT))),
+      getDocs(query(collection(db, 'adminAlerts'), orderBy('reportCount', 'desc'), limit(ADMIN_REPORT_LIMIT))),
+    ]);
+    const reports = reportSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
+    const alerts = alertSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
+    return { reports, alerts };
   },
 
   adminUnhide: async ({ profileId }) => {

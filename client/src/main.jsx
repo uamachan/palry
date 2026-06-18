@@ -96,7 +96,7 @@ function App() {
   const [dmSending, setDmSending] = useState(false);
   const [footprints, setFootprints] = useState([]);
   const [reports, setReports] = useState([]);
-  const [flaggedUsers, setFlaggedUsers] = useState([]);
+  const [alerts, setAlerts] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
   const [profilesLoading] = useState(false);
   const [dmLoading, setDmLoading] = useState(false);
@@ -379,7 +379,7 @@ function App() {
     setIndex(0);
     setFootprints([]);
     setReports([]);
-    setFlaggedUsers([]);
+    setAlerts([]);
     setAuditLog([]);
     setProfileEditorOpen(false);
     setPendingFirebaseUser(null);
@@ -496,7 +496,7 @@ function App() {
     if (activeTab === 'admin' && user?.isAdmin) {
       api.reports().then((p) => {
         setReports(p.reports || []);
-        setFlaggedUsers(p.flaggedUsers || []);
+        setAlerts(p.alerts || []);
       }).catch(() => null);
       api.adminAudit().then((p) => setAuditLog(p.audit || [])).catch(() => null);
     }
@@ -506,19 +506,6 @@ function App() {
     if (activeTab === 'likes') refreshReceivedLikes();
     else if (activeTab === 'dm') refreshDmThreads();
   }, [activeTab, user?.id]);
-
-  async function unhideUser(profileId) {
-    if (!user?.isAdmin || !profileId) return;
-    try {
-      await api.adminUnhide({ profileId });
-      const p = await api.reports();
-      setReports(p.reports || []);
-      setFlaggedUsers(p.flaggedUsers || []);
-      showToast('自動非表示を解除しました');
-    } catch (error) {
-      showToast(error.message || '解除に失敗しました');
-    }
-  }
 
   const current = profiles[index] || null;
   const stats = useMemo(() => ({ likes: receivedLikes.length, matches: matches.length, footprints: footprints.length }), [receivedLikes.length, matches.length, footprints.length]);
@@ -737,7 +724,7 @@ function App() {
   // 認証フォームの表示条件
   const showAuthForms = (isAuthed && profileEditorOpen) || (!isAuthed && Boolean(authMode));
 
-  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, targetRank, setTargetRank, filterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, flaggedUsers, unhideUser, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form, setForm, openApp, openProfileEditor, logout, refreshProfiles }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, targetRank, filterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, flaggedUsers, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form]);
+  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, targetRank, setTargetRank, filterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, alerts, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form, setForm, openApp, openProfileEditor, logout, refreshProfiles }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, targetRank, filterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, alerts, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form]);
 
   if (isUnknownRoute) return <NotFound />;
 

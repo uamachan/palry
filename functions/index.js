@@ -768,29 +768,35 @@ exports.updateMatchSummaryOnMessage = onDocumentCreated(
   }
 );
 
-exports.autoHideOnReport = onDocumentCreated(
+const REPORT_ALERT_THRESHOLD = 10;
+
+// 通報自体が運営への通知（管理画面の通報一覧に表示される）。自動非表示は行わない。
+// 1人のユーザーへの通報が REPORT_ALERT_THRESHOLD 件に達したら、運営が優先確認できるよう
+// adminAlerts に「重要」アラートを積む。reports のドキュメントIDは reporterUid_profileId で
+// 通報者ごとに一意なので、件数＝実通報者数として扱える。
+exports.escalateReportsToAdmin = onDocumentCreated(
   { document: 'reports/{reportId}', region: 'asia-northeast1' },
   async (event) => {
     const data = event.data?.data();
     if (!data?.profileId) return;
     const { profileId } = data;
 
-    const [reportsSnap, userSnap] = await Promise.all([
-      db.collection('reports')
-        .where('profileId', '==', profileId)
-        .where('status', '==', 'open')
-        .limit(3)
-        .get(),
+    const [countSnap, userSnap] = await Promise.all([
+      db.collection('reports').where('profileId', '==', profileId).count().get(),
       db.collection('users').doc(profileId).get(),
     ]);
 
-    if (reportsSnap.size < 3) return;
-    if (!userSnap.exists) return;
+    const reportCount = countSnap.data().count;
+    if (reportCount < REPORT_ALERT_THRESHOLD) return;
 
-    const batch = db.batch();
-    batch.update(db.collection('users').doc(profileId), { autoHidden: true });
-    batch.set(db.collection('publicProfiles').doc(profileId), { visible: false }, { merge: true });
-    await batch.commit();
+    const nowStr = new Date().toISOString();
+    await db.collection('adminAlerts').doc(profileId).set({
+      profileId,
+      profileName: userSnap.exists ? (userSnap.data()?.name || '') : '',
+      level: 'important',
+      reportCount,
+      updatedAt: nowStr,
+    }, { merge: true });
   }
 );
 
