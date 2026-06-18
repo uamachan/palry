@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { browserSessionPersistence, connectAuthEmulator, getAuth, setPersistence } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 
@@ -33,6 +34,7 @@ function firebaseConfigError() {
 
 let app = null;
 let auth = null;
+let appCheck = null;
 
 if (missingConfigKeys.length) {
   console.warn('[firebase] Missing Firebase config:', missingConfigKeys.join(', '));
@@ -50,9 +52,26 @@ if (!auth) {
   throw firebaseConfigError();
 }
 
+const appCheckSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+if (app && appCheckSiteKey) {
+  try {
+    const debugToken = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN;
+    if (debugToken && typeof globalThis !== 'undefined') {
+      globalThis.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken === 'true' ? true : debugToken;
+    }
+    appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (error) {
+    console.warn('[firebase] Failed to initialize App Check:', error);
+  }
+}
+
 export const firebaseApp = app;
 export const firebaseAuth = auth;
 export const firebaseDb = app ? getFirestore(app) : null;
+export const firebaseAppCheck = appCheck;
 
 if (import.meta.env.VITE_USE_EMULATOR === 'true' && app) {
   connectAuthEmulator(firebaseAuth, 'http://127.0.0.1:9099', { disableWarnings: true });
