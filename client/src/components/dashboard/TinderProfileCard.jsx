@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { cx, rankIconFor } from '../../constants.jsx';
 import VoiceIntroPlayer from './VoiceIntroPlayer.jsx';
 
 export default function TinderProfileCard({ profile, onReport, onBlock, swipeDir, onOpenProfile }) {
+  const [photoError, setPhotoError] = useState(false);
   const tags = (Array.isArray(profile.tags) ? profile.tags : []).filter((t) => typeof t === 'string');
   const roleTone = profile.role === 'デュエリスト' ? 'duelist'
     : profile.role === 'イニシエーター' ? 'initiator'
@@ -12,8 +13,8 @@ export default function TinderProfileCard({ profile, onReport, onBlock, swipeDir
 
   return (
     <article className={cx('mp-card', swipeDir && `mp-swipe-${swipeDir}`)}>
-      {profile.profilePhoto
-        ? <img className="mp-photo" src={profile.profilePhoto} alt={profile.name} loading="lazy" decoding="async" />
+      {profile.profilePhoto && !photoError
+        ? <img className="mp-photo" src={profile.profilePhoto} alt={profile.name} loading="lazy" decoding="async" onError={() => setPhotoError(true)} />
         : (
           <div className={cx('mp-photo-placeholder', `role-${roleTone}`)}>
             <div className="mp-placeholder-frame">

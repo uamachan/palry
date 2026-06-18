@@ -39,6 +39,7 @@ function ProfileChips({ items, empty = '未設定' }) {
 }
 
 function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
+  const [photoError, setPhotoError] = useState(false);
   if (!profile) return null;
   const xLabel = profile.xHandle ? `@${profile.xHandle.replace(/^@/, '')}` : '未設定';
   return (
@@ -46,7 +47,7 @@ function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
       <div className="dm-profile-cover"></div>
       <div className="dm-profile-main">
         <div className="dm-profile-avatar">
-          {profile.profilePhoto ? <img src={profile.profilePhoto} alt="" loading="lazy" decoding="async" /> : profile.name?.slice(0, 1) || 'P'}
+          {profile.profilePhoto && !photoError ? <img src={profile.profilePhoto} alt="" loading="lazy" decoding="async" onError={() => setPhotoError(true)} /> : profile.name?.slice(0, 1) || 'P'}
         </div>
         <h3>{profile.name}</h3>
         <p className="dm-profile-riot">{profile.riotId || 'Riot ID 未設定'}</p>
@@ -122,6 +123,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
   const activeThread = dmThreads.find((t) => t.match.id === activeThreadId) || dmThreads[0];
   const [detailProfile, setDetailProfile] = useState(null);
   const [mobileView, setMobileView] = useState(activeThreadId ? 'chat' : 'list');
+  const [headerAvatarError, setHeaderAvatarError] = useState(false);
   const activeProfile = activeThread ? profileFromMatch(activeThread.match) : null;
 
   const handleSelectThread = (threadId) => {
@@ -137,6 +139,8 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
     lastMarkedRef.current = threadId;
     markDmRead(threadId);
   }, [activeThread?.match?.id, markDmRead]);
+
+  useEffect(() => { setHeaderAvatarError(false); }, [activeThreadId]);
 
   const hasUserMessage = Boolean(activeThread?.messages?.some((m) => m.sender === 'user' && !m.system));
 
@@ -167,8 +171,8 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
             <div className="dm-conversation-head">
               <button type="button" className="dm-back-btn" onClick={() => setMobileView('list')} aria-label="一覧に戻る">←</button>
               <div className="avatar small">
-                {activeThread.match.profilePhoto
-                  ? <img src={activeThread.match.profilePhoto} alt="" loading="lazy" decoding="async" />
+                {activeThread.match.profilePhoto && !headerAvatarError
+                  ? <img src={activeThread.match.profilePhoto} alt="" loading="lazy" decoding="async" onError={() => setHeaderAvatarError(true)} />
                   : activeThread.match.profileName?.slice(0, 1) || 'P'}
               </div>
               <div><h3>{activeThread.match.profileName}</h3><span>{activeProfile?.riotId || 'メッセージ解放済み'}</span></div>
