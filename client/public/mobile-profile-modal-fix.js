@@ -154,24 +154,24 @@
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior: contain !important;
     align-content: start !important;
-    padding: 10px 10px calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 10px 10px calc(88px + env(safe-area-inset-bottom, 0px)) !important;
     box-sizing: border-box !important;
   }
 
   html body .auth-modal--profile .profile-setup-card > .pv-rank-section {
     display: flex !important;
     flex-direction: column !important;
-    gap: 10px !important;
+    gap: 8px !important;
   }
 
   html body .auth-modal--profile .pv-field-group {
-    gap: 8px !important;
+    gap: 7px !important;
     margin: 0 !important;
   }
 
   html body .auth-modal--profile .pv-label {
-    font-size: 18px !important;
-    line-height: 1.2 !important;
+    font-size: 17px !important;
+    line-height: 1.18 !important;
   }
 
   html body .auth-modal--profile .pv-req {
@@ -182,19 +182,19 @@
   html body .auth-modal--profile .pv-rank-icon-grid {
     display: grid !important;
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    gap: 6px !important;
+    gap: 5px !important;
   }
 
   html body .auth-modal--profile .pv-rank-icon-btn {
-    min-height: 62px !important;
-    height: 62px !important;
-    padding: 5px 3px !important;
-    border-radius: 16px !important;
+    min-height: 58px !important;
+    height: 58px !important;
+    padding: 4px 3px !important;
+    border-radius: 15px !important;
   }
 
   html body .auth-modal--profile .pv-rank-icon-btn img {
-    width: 27px !important;
-    height: 27px !important;
+    width: 25px !important;
+    height: 25px !important;
     margin: 0 auto 2px !important;
   }
 
@@ -205,51 +205,51 @@
   }
 
   html body .auth-modal--profile .pv-rank-sub-row {
-    gap: 7px !important;
-    margin-top: 8px !important;
+    gap: 6px !important;
+    margin-top: 7px !important;
   }
 
   html body .auth-modal--profile .pv-rank-sub-btn {
-    width: 48px !important;
-    height: 48px !important;
-    min-height: 48px !important;
+    width: 46px !important;
+    height: 46px !important;
+    min-height: 46px !important;
     border-radius: 15px !important;
-    font-size: 18px !important;
+    font-size: 17px !important;
   }
 
   html body .auth-modal--profile .pv-role-grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
+    gap: 7px !important;
   }
 
   html body .auth-modal--profile .pv-role-card {
-    min-height: 54px !important;
-    height: 54px !important;
-    padding: 8px 10px !important;
-    border-radius: 18px !important;
+    min-height: 46px !important;
+    height: 46px !important;
+    padding: 6px 9px !important;
+    border-radius: 16px !important;
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 7px !important;
+    gap: 6px !important;
   }
 
   html body .auth-modal--profile .pv-role-icon {
-    width: 30px !important;
-    height: 30px !important;
-    min-width: 30px !important;
-    border-radius: 12px !important;
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    border-radius: 10px !important;
   }
 
   html body .auth-modal--profile .pv-role-icon img {
-    width: 20px !important;
-    height: 20px !important;
+    width: 18px !important;
+    height: 18px !important;
   }
 
   html body .auth-modal--profile .pv-role-name {
-    font-size: 15px !important;
-    line-height: 1.1 !important;
+    font-size: 14px !important;
+    line-height: 1.08 !important;
     white-space: nowrap !important;
   }
 
@@ -265,7 +265,7 @@
     flex-direction: row !important;
     gap: 8px !important;
     margin: 0 !important;
-    padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 7px 0 calc(7px + env(safe-area-inset-bottom, 0px)) !important;
     background: var(--paper, #fffdf9) !important;
     box-shadow: 0 -10px 22px rgba(31, 25, 20, .08) !important;
   }
@@ -275,8 +275,8 @@
     flex: 1 1 0 !important;
     min-width: 0 !important;
     width: auto !important;
-    min-height: 46px !important;
-    padding: 10px 12px !important;
+    min-height: 44px !important;
+    padding: 9px 12px !important;
   }
 }
 
@@ -295,17 +295,22 @@
   }
 
   html body .auth-modal--profile .pv-rank-icon-btn {
-    height: 58px !important;
-    min-height: 58px !important;
+    height: 54px !important;
+    min-height: 54px !important;
   }
 
   html body .auth-modal--profile .pv-rank-icon-btn img {
-    width: 24px !important;
-    height: 24px !important;
+    width: 23px !important;
+    height: 23px !important;
+  }
+
+  html body .auth-modal--profile .pv-role-card {
+    height: 44px !important;
+    min-height: 44px !important;
   }
 
   html body .auth-modal--profile .pv-role-name {
-    font-size: 14px !important;
+    font-size: 13px !important;
   }
 }
 `;
