@@ -10,12 +10,17 @@ service firebase.storage {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function allowedProfileMediaType() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp)')
+        || request.resource.contentType.matches('audio/(mpeg|mp4|webm|wav)');
+    }
+
     match /profileMedia/{uid}/{fileName} {
       allow read: if signedIn();
       allow write: if isSelf(uid)
         && request.resource != null
         && request.resource.size <= 5242880
-        && (request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('audio/.*'));
+        && allowedProfileMediaType();
     }
 
     match /{allPaths=**} {
