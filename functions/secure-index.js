@@ -1,7 +1,7 @@
 'use strict';
 
 // Security bootstrap for Firebase Functions.
-// It compiles the existing index.js with narrowly-scoped hardening patches so the
+// It compiles the existing index.js with narrowly scoped hardening patches so the
 // large feature file can stay readable while every deployed callable receives the
 // same safeguards.
 const { readFileSync } = require('node:fs');
@@ -27,14 +27,17 @@ source = source.replace(
 
 source = replaceOnce(
   source,
-  "  return { matchRef, match, participants, otherUid };\n}\n\nexports.getCandidateProfiles",
+  `  return { matchRef, match, participants, otherUid };
+}
+
+exports.getCandidateProfiles`,
   `  return { matchRef, match, participants, otherUid };
 }
 
 const DM_RATE_LIMIT_PER_MINUTE = 10;
 async function enforceDmRateLimit(uid) {
   const minuteKey = new Date().toISOString().slice(0, 16);
-  const quotaRef = db.collection('dmQuota').doc(\`${'${uid}'}_${'${minuteKey}'}\`);
+  const quotaRef = db.collection('dmQuota').doc(uid + '_' + minuteKey);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(quotaRef);
     const current = snap.exists ? Number(snap.data()?.count || 0) : 0;
@@ -56,21 +59,29 @@ exports.getCandidateProfiles`,
 
 source = replaceOnce(
   source,
-  "  if (body.length > 500) throw new HttpsError('invalid-argument', 'DMは500文字以内です');\n\n  const { matchRef } = await assertDmAllowed(matchId, uid);",
-  "  if (body.length > 500) throw new HttpsError('invalid-argument', 'DMは500文字以内です');\n  await enforceDmRateLimit(uid);\n\n  const { matchRef } = await assertDmAllowed(matchId, uid);",
+  `  if (body.length > 500) throw new HttpsError('invalid-argument', 'DMは500文字以内です');
+
+  const { matchRef } = await assertDmAllowed(matchId, uid);`,
+  `  if (body.length > 500) throw new HttpsError('invalid-argument', 'DMは500文字以内です');
+  await enforceDmRateLimit(uid);
+
+  const { matchRef } = await assertDmAllowed(matchId, uid);`,
   'apply DM rate limiter'
 );
 
 source = replaceOnce(
   source,
-  "  if (!profileId || typeof profileId !== 'string' || profileId === uid) return {};\n  if (!allowedActions.includes(action)) return {};\n\n  const actorSnap = await db.collection('users').doc(uid).get();",
+  `  if (!profileId || typeof profileId !== 'string' || profileId === uid) return {};
+  if (!allowedActions.includes(action)) return {};
+
+  const actorSnap = await db.collection('users').doc(uid).get();`,
   `  if (!profileId || typeof profileId !== 'string' || profileId === uid) return {};
   if (!allowedActions.includes(action)) return {};
 
   const [targetProfileSnap, blockByMe, blockByThem] = await Promise.all([
     db.collection('publicProfiles').doc(profileId).get(),
-    db.collection('blocks').doc(\`${'${uid}'}_block_${'${profileId}'}\`).get(),
-    db.collection('blocks').doc(\`${'${profileId}'}_block_${'${uid}'}\`).get(),
+    db.collection('blocks').doc(uid + '_block_' + profileId).get(),
+    db.collection('blocks').doc(profileId + '_block_' + uid).get(),
   ]);
   if (!targetProfileSnap.exists || blockByMe.exists || blockByThem.exists) return {};
 
