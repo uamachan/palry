@@ -159,19 +159,23 @@ async function getStorageMods() {
 
 async function uploadDataUrl(uid, type, dataUrl) {
   const { ref, uploadString, getDownloadURL, storage } = await getStorageMods();
+  const { auth } = await getMods();
+  // トークンをアップロード前にリフレッシュ。Storage の write ルールも verifiedUser()
+  // を要求するため、古いトークン（email_verified=false）のままだと uploadString 自体が
+  // permission-denied で弾かれる。
+  await auth.currentUser?.getIdToken(true);
   // ファイル名を一意にして固定パスの上書きを避ける。書き込みが失敗しても
   // 既存（参照中）のオブジェクトを壊さず、成功時に旧ファイルを削除する。
   const path = `profileMedia/${uid}/${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const fileRef = ref(storage, path);
   await uploadString(fileRef, dataUrl, 'data_url');
-  const { auth } = await getMods();
-  await auth.currentUser?.getIdToken(true);
   try {
     const url = await getDownloadURL(fileRef);
     return { url, path };
   } catch (e) {
-    e.storagePath = path;
-    throw e;
+    // FirebaseError を直接書き換えず、新しい Error に必要なフィールドをコピーして投げる。
+    // storagePath を付けることで呼び出し元が孤立オブジェクトを掃除できる。
+    throw Object.assign(new Error(e.message), { code: e.code, storagePath: path });
   }
 }
 

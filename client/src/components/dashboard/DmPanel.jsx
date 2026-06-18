@@ -140,7 +140,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
     markDmRead(threadId);
   }, [activeThread?.match?.id, markDmRead]);
 
-  useEffect(() => { setHeaderAvatarError(false); }, [activeThreadId]);
+  useEffect(() => { setHeaderAvatarError(false); }, [activeThreadId, activeThread?.match?.profilePhoto]);
 
   const hasUserMessage = Boolean(activeThread?.messages?.some((m) => m.sender === 'user' && !m.system));
 
@@ -211,6 +211,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
 
       {activeThread && activeProfile && (
         <DmProfileSidebar
+          key={activeProfile.id}
           profile={activeProfile}
           onOpenDetail={() => setDetailProfile(activeProfile)}
           onReport={() => reportProfile(activeThread.match.profileId, activeThread.match.profileName)}
