@@ -6,6 +6,10 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function verifiedUser() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
     function isSelf(uid) {
       return signedIn() && request.auth.uid == uid;
     }
@@ -16,7 +20,7 @@ service firebase.storage {
     }
 
     match /profileMedia/{uid}/{fileName} {
-      allow read: if signedIn();
+      allow read: if verifiedUser();
       allow write: if isSelf(uid)
         && request.resource != null
         && request.resource.size <= 5242880
