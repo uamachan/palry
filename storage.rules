@@ -11,7 +11,7 @@ service firebase.storage {
     }
 
     function isSelf(uid) {
-      return signedIn() && request.auth.uid == uid;
+      return verifiedUser() && request.auth.uid == uid;
     }
 
     function allowedProfileMediaType() {
