@@ -164,6 +164,8 @@ async function uploadDataUrl(uid, type, dataUrl) {
   const path = `profileMedia/${uid}/${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const fileRef = ref(storage, path);
   await uploadString(fileRef, dataUrl, 'data_url');
+  const { auth } = await getMods();
+  await auth.currentUser?.getIdToken(true);
   const url = await getDownloadURL(fileRef);
   return { url, path };
 }
