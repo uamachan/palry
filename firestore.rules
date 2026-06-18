@@ -6,6 +6,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function verifiedUser() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
     function isSelf(uid) {
       return signedIn() && request.auth.uid == uid;
     }
@@ -82,7 +86,7 @@ service cloud.firestore {
         && request.resource.data.id == uid
         && request.auth.token.email_verified == true
         && (!('plan' in request.resource.data) || request.resource.data.plan == 'FREE')
-        && (!('verified' in request.resource.data) || request.resource.data.verified == true)
+        && (!('verified' in request.resource.data) || request.resource.data.verified == false)
         && (!('autoHidden' in request.resource.data));
     }
 
@@ -110,7 +114,7 @@ service cloud.firestore {
     }
 
     match /publicProfiles/{uid} {
-      allow read: if signedIn();
+      allow read: if verifiedUser();
       allow create: if isSelf(uid)
         && request.auth.token.email_verified == true
         && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region',
