@@ -98,36 +98,31 @@
     display: flex !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
-    gap: 6px !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
+    justify-content: space-between !important;
+    gap: 5px !important;
+    overflow: visible !important;
     white-space: nowrap !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
     margin: 0 !important;
-    padding: 0 1px 4px !important;
+    padding: 0 0 4px !important;
     border-bottom: 1px solid var(--line, #e7e0d8) !important;
     box-sizing: border-box !important;
   }
 
-  html body .auth-modal--profile .profile-setup-card .setup-tabs::-webkit-scrollbar {
-    display: none !important;
-  }
-
   html body .auth-modal--profile .profile-setup-card .setup-tabs button {
-    flex: 0 0 auto !important;
+    flex: 1 1 0 !important;
     width: auto !important;
     max-width: none !important;
-    min-width: max-content !important;
+    min-width: 0 !important;
     height: 35px !important;
     min-height: 35px !important;
-    padding: 7px 12px !important;
-    font-size: 12px !important;
+    padding: 7px 2px !important;
+    font-size: 11px !important;
     line-height: 1 !important;
-    letter-spacing: .02em !important;
+    letter-spacing: 0 !important;
     white-space: nowrap !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     text-overflow: clip !important;
+    text-align: center !important;
   }
 
   html body .auth-modal--profile .profile-setup-card .setup-tabs button::before,
@@ -279,9 +274,13 @@
     font-size: 22px !important;
   }
 
+  html body .auth-modal--profile .profile-setup-card .setup-tabs {
+    gap: 4px !important;
+  }
+
   html body .auth-modal--profile .profile-setup-card .setup-tabs button {
-    padding: 7px 10px !important;
-    font-size: 11px !important;
+    padding: 7px 1px !important;
+    font-size: 10px !important;
   }
 
   html body .auth-modal--profile .pv-rank-icon-btn {
