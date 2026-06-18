@@ -27,7 +27,7 @@ export default function VoiceIntroPlayer({ src, compact = false }) {
           <span className="voice-chip-text">{!src ? '声がない' : playing ? '再生中' : '声を聞く'}</span>
           <i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i>
         </button>
-        {src && <audio ref={audioRef} src={src} onEnded={() => setPlaying(false)} onPause={() => setPlaying(false)} />}
+        {src && <audio ref={audioRef} src={src} onEnded={() => setPlaying(false)} onPause={() => setPlaying(false)} onError={() => setPlaying(false)} />}
       </div>
     );
   }

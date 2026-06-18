@@ -166,8 +166,13 @@ async function uploadDataUrl(uid, type, dataUrl) {
   await uploadString(fileRef, dataUrl, 'data_url');
   const { auth } = await getMods();
   await auth.currentUser?.getIdToken(true);
-  const url = await getDownloadURL(fileRef);
-  return { url, path };
+  try {
+    const url = await getDownloadURL(fileRef);
+    return { url, path };
+  } catch (e) {
+    e.storagePath = path;
+    throw e;
+  }
 }
 
 // 写真と音声を並列アップロードする。任意項目なので、失敗しても登録自体は止めず、
@@ -181,12 +186,12 @@ async function uploadProfileMedia(uid, profilePhoto, voiceIntro) {
   if (isDataUrl(profilePhoto)) {
     jobs.push(uploadDataUrl(uid, 'profilePhoto', profilePhoto)
       .then(({ url, path }) => { fields.profilePhotoUrl = url; fields.profilePhotoPath = path; uploadedPaths.push(path); })
-      .catch((e) => { console.error('[palry] profilePhoto upload failed:', e.message); failedLabels.push('写真'); }));
+      .catch((e) => { if (e.storagePath) uploadedPaths.push(e.storagePath); console.error('[palry] profilePhoto upload failed:', e.message); failedLabels.push('写真'); }));
   }
   if (isDataUrl(voiceIntro)) {
     jobs.push(uploadDataUrl(uid, 'voiceIntro', voiceIntro)
       .then(({ url, path }) => { fields.voiceIntroUrl = url; fields.voiceIntroPath = path; uploadedPaths.push(path); })
-      .catch((e) => { console.error('[palry] voiceIntro upload failed:', e.message); failedLabels.push('音声自己紹介'); }));
+      .catch((e) => { if (e.storagePath) uploadedPaths.push(e.storagePath); console.error('[palry] voiceIntro upload failed:', e.message); failedLabels.push('音声自己紹介'); }));
   }
   await Promise.all(jobs);
   const mediaWarning = failedLabels.length
