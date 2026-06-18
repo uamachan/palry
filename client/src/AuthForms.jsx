@@ -303,7 +303,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
     catch { return alert('マイクの許可が必要です。ブラウザの権限を確認してください。'); }
     const chunks = [];
-    const recorder = new MediaRecorder(stream);
+    const recorder = new MediaRecorder(stream, { audioBitsPerSecond: 24000 });
     recorderRef.current = recorder;
     streamRef.current = stream;
     recorder.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data); };
