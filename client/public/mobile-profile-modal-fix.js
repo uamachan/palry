@@ -1,6 +1,6 @@
 (() => {
   const STYLE_ID = 'pairly-mobile-profile-runtime-fix';
-  const labels = ['1. 基本', '2. ロール', '3. プレイスタイル', '4. 追加', '5. 自己紹介', '6. 規約'];
+  const labels = ['基本', 'ロール', 'プレイ', '追加', '紹介', '規約'];
 
   const css = `
 @media (max-width: 820px) {
@@ -13,14 +13,26 @@
 
   html body .auth-modal--profile .auth-modal-panel,
   html body .auth-modal--profile .auth-modal-panel--profile {
-    width: 100vw !important;
+    width: min(100vw, 430px) !important;
     max-width: 100vw !important;
     height: 100dvh !important;
     min-height: 100dvh !important;
     max-height: 100dvh !important;
     border-radius: 0 !important;
-    padding: 10px !important;
+    padding: 8px !important;
     overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  html body .auth-modal--profile .auth-close {
+    position: absolute !important;
+    top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+    right: 10px !important;
+    z-index: 70 !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    font-size: 21px !important;
   }
 
   html body .auth-modal--profile .profile-setup-panel,
@@ -31,25 +43,27 @@
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
-    padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 0 !important;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 6px 0 !important;
+    box-sizing: border-box !important;
   }
 
   html body .auth-modal--profile .profile-setup-heading {
     flex: 0 0 auto !important;
-    margin: 0 0 8px !important;
-    padding-right: 54px !important;
+    margin: 0 0 6px !important;
+    padding-right: 44px !important;
   }
 
   html body .auth-modal--profile .profile-setup-heading h2 {
-    margin: 0 0 3px !important;
-    font-size: clamp(24px, 7vw, 32px) !important;
-    line-height: 1.08 !important;
+    margin: 0 0 2px !important;
+    font-size: clamp(22px, 6.4vw, 30px) !important;
+    line-height: 1.05 !important;
+    letter-spacing: -.04em !important;
   }
 
   html body .auth-modal--profile .profile-setup-heading p {
     margin: 0 !important;
-    font-size: 13px !important;
-    line-height: 1.25 !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
   }
 
   html body .auth-modal--profile .email-signup-form.profile-setup-card,
@@ -59,24 +73,28 @@
     height: auto !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 7px !important;
+    gap: 6px !important;
     overflow: hidden !important;
     padding: 0 !important;
+    border: 0 !important;
     box-shadow: none !important;
+    background: transparent !important;
   }
 
   html body .auth-modal--profile .profile-setup-card .setup-progress {
     flex: 0 0 auto !important;
+    height: 6px !important;
+    min-height: 6px !important;
     margin: 0 !important;
   }
 
   html body .auth-modal--profile .profile-setup-card .setup-tabs {
-    flex: 0 0 44px !important;
+    flex: 0 0 42px !important;
     width: 100% !important;
     max-width: 100% !important;
-    height: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
     display: flex !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
@@ -101,15 +119,21 @@
     width: auto !important;
     max-width: none !important;
     min-width: max-content !important;
-    height: 36px !important;
-    min-height: 36px !important;
+    height: 35px !important;
+    min-height: 35px !important;
     padding: 7px 12px !important;
     font-size: 12px !important;
     line-height: 1 !important;
-    letter-spacing: .03em !important;
+    letter-spacing: .02em !important;
     white-space: nowrap !important;
     overflow: visible !important;
     text-overflow: clip !important;
+  }
+
+  html body .auth-modal--profile .profile-setup-card .setup-tabs button::before,
+  html body .auth-modal--profile .profile-setup-card .setup-tabs button::after {
+    content: none !important;
+    display: none !important;
   }
 
   html body .auth-modal--profile .profile-setup-card > .pv-basic-grid,
@@ -124,82 +148,120 @@
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior: contain !important;
     align-content: start !important;
-    padding: 12px 12px 128px !important;
+    padding: 10px 10px calc(76px + env(safe-area-inset-bottom, 0px)) !important;
     box-sizing: border-box !important;
   }
 
   html body .auth-modal--profile .profile-setup-card > .pv-rank-section {
-    gap: 12px !important;
-  }
-
-  html body .auth-modal--profile .pv-rank-icon-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    gap: 8px !important;
-  }
-
-  html body .auth-modal--profile .pv-rank-icon-btn {
-    min-height: 76px !important;
-    padding: 7px 4px !important;
-  }
-
-  html body .auth-modal--profile .pv-rank-icon-btn img {
-    width: 32px !important;
-    height: 32px !important;
-  }
-
-  html body .auth-modal--profile .pv-rank-icon-label {
-    font-size: 11px !important;
-    max-width: 100% !important;
-  }
-
-  html body .auth-modal--profile .pv-rank-sub-row {
-    gap: 8px !important;
-    margin-top: 10px !important;
-  }
-
-  html body .auth-modal--profile .pv-rank-sub-btn {
-    width: 54px !important;
-    height: 54px !important;
-    min-height: 54px !important;
-  }
-
-  html body .auth-modal--profile .pv-role-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 10px !important;
   }
 
+  html body .auth-modal--profile .pv-field-group {
+    gap: 8px !important;
+    margin: 0 !important;
+  }
+
+  html body .auth-modal--profile .pv-label {
+    font-size: 18px !important;
+    line-height: 1.2 !important;
+  }
+
+  html body .auth-modal--profile .pv-req {
+    font-size: 11px !important;
+    padding: 3px 7px !important;
+  }
+
+  html body .auth-modal--profile .pv-rank-icon-grid {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  html body .auth-modal--profile .pv-rank-icon-btn {
+    min-height: 62px !important;
+    height: 62px !important;
+    padding: 5px 3px !important;
+    border-radius: 16px !important;
+  }
+
+  html body .auth-modal--profile .pv-rank-icon-btn img {
+    width: 27px !important;
+    height: 27px !important;
+    margin: 0 auto 2px !important;
+  }
+
+  html body .auth-modal--profile .pv-rank-icon-label {
+    max-width: 100% !important;
+    font-size: 10px !important;
+    line-height: 1.05 !important;
+  }
+
+  html body .auth-modal--profile .pv-rank-sub-row {
+    gap: 7px !important;
+    margin-top: 8px !important;
+  }
+
+  html body .auth-modal--profile .pv-rank-sub-btn {
+    width: 48px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    border-radius: 15px !important;
+    font-size: 18px !important;
+  }
+
+  html body .auth-modal--profile .pv-role-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
   html body .auth-modal--profile .pv-role-card {
-    min-height: 106px !important;
-    padding: 10px 8px !important;
+    min-height: 54px !important;
+    height: 54px !important;
+    padding: 8px 10px !important;
+    border-radius: 18px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 7px !important;
   }
 
   html body .auth-modal--profile .pv-role-icon {
-    width: 48px !important;
-    height: 48px !important;
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    border-radius: 12px !important;
+  }
+
+  html body .auth-modal--profile .pv-role-icon img {
+    width: 20px !important;
+    height: 20px !important;
   }
 
   html body .auth-modal--profile .pv-role-name {
-    font-size: 18px !important;
-    line-height: 1.15 !important;
+    font-size: 15px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
   }
 
   html body .auth-modal--profile .pv-role-desc {
-    font-size: 12px !important;
-    line-height: 1.35 !important;
+    display: none !important;
   }
 
   html body .auth-modal--profile .profile-setup-actions {
     flex: 0 0 auto !important;
-    position: sticky !important;
-    bottom: 0 !important;
-    z-index: 40 !important;
+    position: relative !important;
+    z-index: 50 !important;
     display: flex !important;
     flex-direction: row !important;
-    gap: 10px !important;
+    gap: 8px !important;
     margin: 0 !important;
-    padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px)) !important;
     background: var(--paper, #fffdf9) !important;
-    box-shadow: 0 -12px 24px rgba(31, 25, 20, .08) !important;
+    box-shadow: 0 -10px 22px rgba(31, 25, 20, .08) !important;
   }
 
   html body .auth-modal--profile .profile-setup-actions .secondary,
@@ -207,22 +269,33 @@
     flex: 1 1 0 !important;
     min-width: 0 !important;
     width: auto !important;
-    min-height: 48px !important;
+    min-height: 46px !important;
+    padding: 10px 12px !important;
   }
 }
 
 @media (max-width: 380px) {
+  html body .auth-modal--profile .profile-setup-heading h2 {
+    font-size: 22px !important;
+  }
+
   html body .auth-modal--profile .profile-setup-card .setup-tabs button {
     padding: 7px 10px !important;
     font-size: 11px !important;
   }
 
   html body .auth-modal--profile .pv-rank-icon-btn {
-    min-height: 70px !important;
+    height: 58px !important;
+    min-height: 58px !important;
   }
 
-  html body .auth-modal--profile .pv-role-card {
-    min-height: 100px !important;
+  html body .auth-modal--profile .pv-rank-icon-btn img {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  html body .auth-modal--profile .pv-role-name {
+    font-size: 14px !important;
   }
 }
 `;
@@ -240,7 +313,9 @@
     document.querySelectorAll('.auth-modal--profile .setup-tabs').forEach((tabs) => {
       [...tabs.querySelectorAll('button')].forEach((button, index) => {
         const label = labels[index];
-        if (label && button.textContent.trim() !== label) button.textContent = label;
+        if (!label) return;
+        if (button.textContent.trim() !== label) button.textContent = label;
+        button.setAttribute('aria-label', label);
       });
     });
   }
@@ -256,8 +331,8 @@
     raf = requestAnimationFrame(run);
   });
 
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
   document.addEventListener('DOMContentLoaded', run);
   window.addEventListener('load', run);
-  [0, 250, 750, 1500, 3000].forEach((delay) => setTimeout(run, delay));
+  [0, 100, 250, 600, 1200, 2500].forEach((delay) => setTimeout(run, delay));
 })();
