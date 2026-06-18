@@ -9,7 +9,10 @@ const { join } = require('node:path');
 const Module = require('node:module');
 
 const originalPath = join(__dirname, 'index.js');
-let source = readFileSync(originalPath, 'utf8');
+// JSのテンプレートリテラル（下のパッチ検索文字列）は仕様上 改行が LF に正規化される。
+// 一方 readFileSync は生バイトを返すため、index.js が CRLF だとパッチが一致しない。
+// LF に正規化してから照合することで、行末コードに依存せず安定して適用できる。
+let source = readFileSync(originalPath, 'utf8').replace(/\r\n/g, '\n');
 
 function replaceOnce(haystack, needle, replacement, label) {
   if (!haystack.includes(needle)) {
