@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { initializeAppCheck, CustomProvider } from 'firebase/app-check';
 import { browserSessionPersistence, connectAuthEmulator, getAuth, setPersistence } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 
@@ -52,15 +52,70 @@ if (!auth) {
   throw firebaseConfigError();
 }
 
-const appCheckSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
-if (app && appCheckSiteKey) {
+// App Check は Cloudflare Turnstile をカスタムプロバイダとして使う。
+// クライアントで Turnstile トークンを取得 → exchangeTurnstileToken で検証＆App Checkトークン発行。
+const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+const appCheckExchangeUrl = import.meta.env.VITE_APPCHECK_EXCHANGE_URL
+  || 'https://asia-northeast1-ren12-9388b.cloudfunctions.net/exchangeTurnstileToken';
+
+let _turnstileScriptPromise = null;
+function loadTurnstile() {
+  if (_turnstileScriptPromise) return _turnstileScriptPromise;
+  _turnstileScriptPromise = new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && window.turnstile) return resolve(window.turnstile);
+    const s = document.createElement('script');
+    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    s.async = true;
+    s.defer = true;
+    s.onload = () => resolve(window.turnstile);
+    s.onerror = () => { _turnstileScriptPromise = null; reject(new Error('Turnstile script load failed')); };
+    document.head.appendChild(s);
+  });
+  return _turnstileScriptPromise;
+}
+
+// 使い捨ての非表示ウィジェットを描画して Turnstile トークンを1つ取得する。
+function getTurnstileToken(siteKey) {
+  return new Promise((resolve, reject) => {
+    loadTurnstile().then((turnstile) => {
+      const container = document.createElement('div');
+      // display:none だと実行されないことがあるため画面外に逃がす。
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      document.body.appendChild(container);
+      const cleanup = (widgetId) => {
+        try { turnstile.remove(widgetId); } catch { /* noop */ }
+        container.remove();
+      };
+      let widgetId;
+      widgetId = turnstile.render(container, {
+        sitekey: siteKey,
+        callback: (token) => { resolve(token); cleanup(widgetId); },
+        'error-callback': () => { reject(new Error('Turnstile error')); cleanup(widgetId); },
+        'timeout-callback': () => { reject(new Error('Turnstile timeout')); cleanup(widgetId); },
+      });
+    }).catch(reject);
+  });
+}
+
+if (app && turnstileSiteKey) {
   try {
-    const debugToken = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN;
-    if (debugToken && typeof globalThis !== 'undefined') {
-      globalThis.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken === 'true' ? true : debugToken;
-    }
     appCheck = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(appCheckSiteKey),
+      provider: new CustomProvider({
+        getToken: async () => {
+          const turnstileToken = await getTurnstileToken(turnstileSiteKey);
+          const resp = await fetch(appCheckExchangeUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ turnstileToken }),
+          });
+          if (!resp.ok) throw new Error('App Check exchange failed: ' + resp.status);
+          const data = await resp.json();
+          if (!data?.token) throw new Error('App Check exchange returned no token');
+          return { token: data.token, expireTimeMillis: Date.now() + Number(data.ttlMillis || 0) };
+        },
+      }),
       isTokenAutoRefreshEnabled: true,
     });
   } catch (error) {

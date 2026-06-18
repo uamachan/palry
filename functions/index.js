@@ -1,12 +1,20 @@
 'use strict';
 
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { defineSecret } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue, FieldPath } = require('firebase-admin/firestore');
+const { getAppCheck } = require('firebase-admin/app-check');
 
 initializeApp();
 const db = getFirestore();
+
+// Cloudflare Turnstile を App Check カスタムプロバイダの裏付けに使う。
+// Secret は `firebase functions:secrets:set TURNSTILE_SECRET` で設定。
+const turnstileSecret = defineSecret('TURNSTILE_SECRET');
+// App Check トークン発行先のWeb App ID（公開情報。秘密ではない）。
+const APP_CHECK_APP_ID = '1:30141729313:web:29a4f35bbbf2a7a634b160';
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? require('stripe')(process.env.STRIPE_SECRET_KEY)
@@ -832,3 +840,54 @@ exports.getNotificationCounts = onCall({ region: 'asia-northeast1', maxInstances
     footprintCount: fpCountSnap.data().count,
   };
 });
+
+// App Check カスタムプロバイダ用のトークン発行口。
+// クライアントが取得した Cloudflare Turnstile トークンを検証し、正規ならば
+// Firebase App Check トークンを発行して返す。これ自体は App Check 非強制（ブートストラップのため）。
+// onRequest なので secure-index.js の onCall 向け enforceAppCheck 注入の対象外。
+exports.exchangeTurnstileToken = onRequest(
+  { region: 'asia-northeast1', cors: true, secrets: [turnstileSecret], maxInstances: 20 },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'method-not-allowed' });
+      return;
+    }
+    const turnstileToken = req.body?.turnstileToken || req.body?.token;
+    if (!turnstileToken || typeof turnstileToken !== 'string') {
+      res.status(400).json({ error: 'missing-turnstile-token' });
+      return;
+    }
+
+    // 1) Cloudflare で Turnstile トークンを検証
+    let verify;
+    try {
+      const form = new URLSearchParams();
+      form.append('secret', turnstileSecret.value());
+      form.append('response', turnstileToken);
+      const remoteIp = req.headers['cf-connecting-ip'] || req.ip;
+      if (remoteIp) form.append('remoteip', String(remoteIp));
+      const vr = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        body: form,
+      });
+      verify = await vr.json();
+    } catch (e) {
+      console.error('[palry] turnstile verify failed:', e.message);
+      res.status(502).json({ error: 'verify-failed' });
+      return;
+    }
+    if (!verify.success) {
+      res.status(403).json({ error: 'turnstile-rejected', codes: verify['error-codes'] || [] });
+      return;
+    }
+
+    // 2) 検証OKなら App Check トークンを発行
+    try {
+      const appCheckToken = await getAppCheck().createToken(APP_CHECK_APP_ID);
+      res.status(200).json({ token: appCheckToken.token, ttlMillis: appCheckToken.ttlMillis });
+    } catch (e) {
+      console.error('[palry] App Check createToken failed:', e.message);
+      res.status(500).json({ error: 'mint-failed' });
+    }
+  }
+);
