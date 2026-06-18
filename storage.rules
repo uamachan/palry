@@ -15,8 +15,10 @@ service firebase.storage {
     }
 
     function allowedProfileMediaType() {
-      return request.resource.contentType.matches('image/(jpeg|png|webp)')
-        || request.resource.contentType.matches('audio/(mpeg|mp4|webm|wav)');
+      // contentType には codecs 等のパラメータが付くことがある（例: audio/webm;codecs=opus）。
+      // 末尾の ;... を許容しないと Chrome の録音(webm/opus)アップロードが弾かれる。
+      return request.resource.contentType.matches('image/(jpeg|png|webp)(;.*)?')
+        || request.resource.contentType.matches('audio/(mpeg|mp4|webm|wav)(;.*)?');
     }
 
     match /profileMedia/{uid}/{fileName} {
