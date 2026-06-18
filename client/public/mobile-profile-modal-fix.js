@@ -98,9 +98,9 @@
     display: flex !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
-    justify-content: space-between !important;
-    gap: 5px !important;
-    overflow: visible !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    overflow: hidden !important;
     white-space: nowrap !important;
     margin: 0 !important;
     padding: 0 0 4px !important;
@@ -109,20 +109,31 @@
   }
 
   html body .auth-modal--profile .profile-setup-card .setup-tabs button {
+    display: none !important;
     flex: 1 1 0 !important;
     width: auto !important;
-    max-width: none !important;
+    max-width: 150px !important;
     min-width: 0 !important;
     height: 35px !important;
     min-height: 35px !important;
-    padding: 7px 2px !important;
-    font-size: 11px !important;
+    padding: 7px 8px !important;
+    font-size: 12px !important;
     line-height: 1 !important;
     letter-spacing: 0 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: clip !important;
     text-align: center !important;
+  }
+
+  html body .auth-modal--profile .profile-setup-card .setup-tabs button.pairly-tab-visible {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  html body .auth-modal--profile .profile-setup-card .setup-tabs button.active.pairly-tab-visible {
+    flex: 1.15 1 0 !important;
   }
 
   html body .auth-modal--profile .profile-setup-card .setup-tabs button::before,
@@ -275,12 +286,12 @@
   }
 
   html body .auth-modal--profile .profile-setup-card .setup-tabs {
-    gap: 4px !important;
+    gap: 6px !important;
   }
 
   html body .auth-modal--profile .profile-setup-card .setup-tabs button {
-    padding: 7px 1px !important;
-    font-size: 10px !important;
+    padding: 7px 6px !important;
+    font-size: 11px !important;
   }
 
   html body .auth-modal--profile .pv-rank-icon-btn {
@@ -308,13 +319,33 @@
     document.head.appendChild(style);
   }
 
+  function visibleIndexes(activeIndex, total) {
+    if (total <= 3) return new Set(Array.from({ length: total }, (_, index) => index));
+    if (activeIndex <= 0) return new Set([0, 1, 2]);
+    if (activeIndex >= total - 1) return new Set([total - 3, total - 2, total - 1]);
+    return new Set([activeIndex - 1, activeIndex, activeIndex + 1]);
+  }
+
   function fixTabs() {
     document.querySelectorAll('.auth-modal--profile .setup-tabs').forEach((tabs) => {
-      [...tabs.querySelectorAll('button')].forEach((button, index) => {
+      const buttons = [...tabs.querySelectorAll('button')];
+      const activeIndex = Math.max(0, buttons.findIndex((button) => button.classList.contains('active')));
+      const shown = visibleIndexes(activeIndex, buttons.length);
+
+      buttons.forEach((button, index) => {
         const label = labels[index];
-        if (!label) return;
-        if (button.textContent.trim() !== label) button.textContent = label;
-        button.setAttribute('aria-label', label);
+        if (label && button.textContent.trim() !== label) button.textContent = label;
+        button.setAttribute('aria-label', label || button.textContent.trim());
+        const visible = shown.has(index);
+        button.classList.toggle('pairly-tab-visible', visible);
+        button.classList.toggle('pairly-tab-hidden', !visible);
+        if (visible) {
+          button.removeAttribute('aria-hidden');
+          button.removeAttribute('tabindex');
+        } else {
+          button.setAttribute('aria-hidden', 'true');
+          button.setAttribute('tabindex', '-1');
+        }
       });
     });
   }
@@ -330,7 +361,7 @@
     raf = requestAnimationFrame(run);
   });
 
-  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class'] });
   document.addEventListener('DOMContentLoaded', run);
   window.addEventListener('load', run);
   [0, 100, 250, 600, 1200, 2500].forEach((delay) => setTimeout(run, delay));
