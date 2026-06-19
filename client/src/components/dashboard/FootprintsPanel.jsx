@@ -18,10 +18,7 @@ export default function FootprintsPanel({ footprints, plan }) {
     <section className="footprints-panel" aria-label="足あと">
       <div className="footprints-card">
         <div className="footprints-head">
-          <div>
-            <span className="footprints-eyebrow">Activity</span>
-            <h3>足あと</h3>
-          </div>
+          <h3>足あと</h3>
           {isFree && <span className="footprints-lock-pill">PLUS/VIPで解放</span>}
         </div>
 
