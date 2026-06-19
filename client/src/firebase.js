@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAppCheck, CustomProvider } from 'firebase/app-check';
-import { browserSessionPersistence, connectAuthEmulator, getAuth, setPersistence } from 'firebase/auth';
+import { browserLocalPersistence, connectAuthEmulator, getAuth, setPersistence } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -133,7 +133,7 @@ if (import.meta.env.VITE_USE_EMULATOR === 'true' && app) {
   if (firebaseDb) connectFirestoreEmulator(firebaseDb, '127.0.0.1', 8080);
 }
 
-export const firebaseReady = setPersistence(firebaseAuth, browserSessionPersistence)
+export const firebaseReady = setPersistence(firebaseAuth, browserLocalPersistence)
   .then(() => true)
   .catch((error) => {
     console.warn('[firebase] Failed to set auth persistence:', error);
