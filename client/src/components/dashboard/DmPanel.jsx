@@ -8,6 +8,10 @@ function safeArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
 }
 
+function initialOf(name) {
+  return String(name || 'P').trim().slice(0, 2) || 'P';
+}
+
 function profileFromMatch(match) {
   return {
     id: match.profileId,
@@ -36,6 +40,20 @@ function ProfileChips({ items, empty = '未設定' }) {
   const list = safeArray(items);
   if (!list.length) return <span className="dm-profile-empty">{empty}</span>;
   return <div className="dm-profile-chips">{list.map((item) => <span key={item}>{item}</span>)}</div>;
+}
+
+function ThreadAvatar({ thread, active, onSelect }) {
+  const [failed, setFailed] = useState(false);
+  const profile = profileFromMatch(thread.match);
+  return (
+    <button type="button" className={cx('dm-contact-avatar', active && 'active', thread.unreadCount > 0 && 'unread')} onClick={() => onSelect(thread.match.id)}>
+      <span className="dm-contact-avatar-img">
+        {profile.profilePhoto && !failed ? <img src={profile.profilePhoto} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} /> : initialOf(profile.name)}
+        {thread.unreadCount > 0 && <em>{thread.unreadCount}</em>}
+      </span>
+      <small>{profile.name || '相手'}</small>
+    </button>
+  );
 }
 
 function DmProfileSidebar({ profile, onOpenDetail, onReport, onBlock }) {
@@ -146,6 +164,21 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
 
   return (
     <div className="dm-panel dm-panel-with-profile" data-mobile-view={mobileView}>
+      <div className="dm-contact-strip" aria-label="DM相手一覧">
+        <button type="button" className="dm-contact-avatar dm-contact-avatar--new" disabled>
+          <span className="dm-contact-avatar-img">＋</span>
+          <small>新しいDM</small>
+        </button>
+        {dmThreads.map((thread) => (
+          <ThreadAvatar
+            key={thread.match.id}
+            thread={thread}
+            active={activeThread?.match.id === thread.match.id}
+            onSelect={handleSelectThread}
+          />
+        ))}
+      </div>
+
       <aside className="dm-thread-list">
         <div className="dm-head"><h3>ダイレクトメッセージ</h3><span>{dmThreads.length}件</span></div>
         {dmThreads.length ? dmThreads.map((thread) => {
@@ -175,9 +208,11 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
                   ? <img src={activeThread.match.profilePhoto} alt="" loading="lazy" decoding="async" onError={() => setHeaderAvatarError(true)} />
                   : activeThread.match.profileName?.slice(0, 1) || 'P'}
               </div>
-              <div><h3>{activeThread.match.profileName}</h3><span>{activeProfile?.riotId || 'メッセージ解放済み'}</span></div>
+              <div className="dm-conversation-title"><h3>{activeThread.match.profileName}</h3><span>{activeProfile?.rank || '未設定'}・{activeProfile?.role || 'ロール未設定'}</span></div>
               <div className="dm-head-actions dm-head-actions-compact">
-                <button type="button" onClick={() => setDetailProfile(activeProfile)}>プロフィール</button>
+                <button type="button" className="dm-head-profile-btn" onClick={() => setDetailProfile(activeProfile)}>プロフィール</button>
+                <button type="button" onClick={() => reportProfile(activeThread.match.profileId, activeThread.match.profileName)}>通報</button>
+                <button type="button" className="danger" onClick={() => blockProfile(activeThread.match.profileId, activeThread.match.profileName)}>ブロック</button>
               </div>
             </div>
             <div className="dm-messages" data-copyable>
@@ -199,8 +234,8 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
               </div>
             )}
             <form className="dm-form" onSubmit={sendDm} data-sending={dmSending ? 'true' : 'false'}>
-              <input value={dmDraft} maxLength="500" onChange={(e) => setDmDraft(e.target.value)} placeholder={`${activeThread.match.profileName}へメッセージを送信`} />
-              <button className="primary" type="submit" disabled={dmSending || !dmDraft.trim()}>{dmSending ? '送信中' : '送信'}</button>
+              <input value={dmDraft} maxLength="500" onChange={(e) => setDmDraft(e.target.value)} placeholder="メッセージを入力..." />
+              <button className="primary" type="submit" aria-label="送信" disabled={dmSending || !dmDraft.trim()}>{dmSending ? '送信中' : '送信'}</button>
             </form>
             {detailProfile && <ProfileDetailModal profile={detailProfile} onClose={() => setDetailProfile(null)} />}
           </>
