@@ -220,37 +220,49 @@
   html body .auth-modal--profile .pv-role-grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 7px !important;
+    gap: 8px !important;
   }
 
   html body .auth-modal--profile .pv-role-card {
-    min-height: 46px !important;
-    height: 46px !important;
-    padding: 6px 9px !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    height: 48px !important;
+    padding: 6px 8px !important;
     border-radius: 16px !important;
-    display: flex !important;
-    flex-direction: row !important;
+    display: grid !important;
+    grid-template-columns: 28px minmax(0, 1fr) !important;
     align-items: center !important;
-    justify-content: center !important;
-    gap: 6px !important;
+    justify-items: start !important;
+    justify-content: stretch !important;
+    gap: 7px !important;
+    overflow: hidden !important;
+    text-align: left !important;
   }
 
   html body .auth-modal--profile .pv-role-icon {
-    width: 26px !important;
-    height: 26px !important;
-    min-width: 26px !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
     border-radius: 10px !important;
   }
 
   html body .auth-modal--profile .pv-role-icon img {
-    width: 18px !important;
-    height: 18px !important;
+    width: 19px !important;
+    height: 19px !important;
   }
 
   html body .auth-modal--profile .pv-role-name {
-    font-size: 14px !important;
-    line-height: 1.08 !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: block !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
     white-space: nowrap !important;
+    color: var(--pv-ink, #181614) !important;
+    font-size: clamp(11px, 3.1vw, 12.5px) !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.08em !important;
+    font-weight: 900 !important;
   }
 
   html body .auth-modal--profile .pv-role-desc {
@@ -305,12 +317,27 @@
   }
 
   html body .auth-modal--profile .pv-role-card {
-    height: 44px !important;
-    min-height: 44px !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    grid-template-columns: 26px minmax(0, 1fr) !important;
+    gap: 6px !important;
+    padding: 6px 7px !important;
+  }
+
+  html body .auth-modal--profile .pv-role-icon {
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+  }
+
+  html body .auth-modal--profile .pv-role-icon img {
+    width: 18px !important;
+    height: 18px !important;
   }
 
   html body .auth-modal--profile .pv-role-name {
-    font-size: 13px !important;
+    font-size: 11px !important;
+    letter-spacing: -0.09em !important;
   }
 }
 `;
