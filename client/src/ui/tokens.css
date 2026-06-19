@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
 /* ── デザイントークン（唯一の真実） ──────────────────────────────
    色・余白・角丸・影・z-index をここに集約する。
    既存スタイルを壊さないよう、現行の配色に合わせた値を変数化している。
@@ -29,7 +31,7 @@
   --space-6: 32px;
 
   /* タイポグラフィ */
-  --font-sans: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   /* 影 */
   --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.06);
@@ -39,6 +41,108 @@
   --z-header: 100;
   --z-modal: 1000;
   --z-toast: 1100;
+}
+
+/* styles.css 側の古い :root より強い詳細度でブランドピンクを統一する。 */
+html:root {
+  --pink: #EE4374;
+  --pink2: #D93666;
+  --pairly-pink: #EE4374;
+  --pairly-pink-strong: #D93666;
+  --pairly-pink-soft: #FFF1F6;
+  --pairly-pink-tint: #FFF7FA;
+  --pairly-pink-border: #FFC1D3;
+  --pairly-pink-ring: rgba(238, 67, 116, 0.14);
+  --pairly-pink-shadow: rgba(238, 67, 116, 0.18);
+}
+
+html body,
+html body button,
+html body input,
+html body select,
+html body textarea {
+  font-family: var(--font-sans) !important;
+}
+
+html body .plan-pill,
+html body .eyebrow,
+html body .section-head span,
+html body .avatar,
+html body .price-card h3,
+html body .price,
+html body .single-card b,
+html body .setup-tabs button,
+html body .setup-error::before {
+  font-family: var(--font-sans) !important;
+}
+
+/* ブランドピンク整理: ウォームトーンは維持し、強調色だけ #EE4374 に寄せる。 */
+html body .eyebrow,
+html body .section-head span,
+html body .pv-photo-btn,
+html body .pv-chip:hover,
+html body .setup-tabs button:hover,
+html body .profile-panel-head span,
+html body .pv-char-count--warn {
+  color: var(--pairly-pink) !important;
+}
+
+html body .pv-req,
+html body .setup-error::before,
+html body .dm-thread em {
+  background: var(--pairly-pink) !important;
+}
+
+html body .price-card.featured,
+html body .pv-photo-card:hover,
+html body .pv-field input:focus,
+html body .pv-field select:focus,
+html body .pv-field textarea:focus,
+html body .pv-field input[aria-invalid="true"],
+html body .pv-field select[aria-invalid="true"],
+html body .pv-chip:hover,
+html body .setup-tabs button:hover,
+html body .dm-thread.active,
+html body .setup-tabs .active {
+  border-color: var(--pairly-pink) !important;
+}
+
+html body .pv-field input:focus,
+html body .pv-field select:focus,
+html body .pv-field textarea:focus,
+html body .dm-thread.active {
+  box-shadow: 0 0 0 4px var(--pairly-pink-ring) !important;
+}
+
+html body .pv-photo-card:hover {
+  box-shadow: 0 6px 24px var(--pairly-pink-shadow) !important;
+}
+
+html body .price-card.featured,
+html body .pv-chip--on {
+  box-shadow: 0 18px 40px rgba(238, 67, 116, 0.12) !important;
+}
+
+html body .setup-tabs .active,
+html body .pv-photo-btn,
+html body .pv-chip:hover,
+html body .mp-empty::before {
+  background: var(--pairly-pink-soft) !important;
+}
+
+html body .pv-photo-btn,
+html body .mp-empty::before {
+  border-color: var(--pairly-pink-border) !important;
+}
+
+html body .setup-error {
+  border-color: var(--pairly-pink-border) !important;
+  background: var(--pairly-pink-soft) !important;
+  color: #B92855 !important;
+}
+
+html body .pv-chip--on {
+  background: linear-gradient(135deg, var(--pairly-pink), #22c4a0) !important;
 }
 
 /* ── 再利用 UI プリミティブの共通スタイル ───────────────────── */
