@@ -1,0 +1,726 @@
+/* DM / 通知 / 下部ナビのビジュアル調整。
+   上部タブ（SiteHeader / .site-nav）は変更しない。 */
+
+/* ── Bottom nav ───────────────────────────────────────────── */
+html body #root .appv2-bottom-nav {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+  padding: 8px 18px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 4px !important;
+  border-top: 1px solid rgba(232, 224, 214, .95) !important;
+  background: rgba(255, 253, 249, .94) !important;
+  backdrop-filter: blur(18px) saturate(1.15) !important;
+  box-shadow: 0 -10px 30px rgba(31, 25, 20, .045) !important;
+  border-radius: 0 !important;
+}
+
+html body #root .appv2-nav-btn {
+  min-width: 0 !important;
+  height: 100% !important;
+  padding: 6px 4px !important;
+  display: grid !important;
+  place-items: center !important;
+  align-content: center !important;
+  gap: 3px !important;
+  border: 0 !important;
+  border-radius: 18px !important;
+  background: transparent !important;
+  color: #8a847d !important;
+  font-weight: 800 !important;
+}
+
+html body #root .appv2-nav-btn.active {
+  color: var(--pairly-pink, #EE4374) !important;
+  background: transparent !important;
+}
+
+html body #root .appv2-nav-icon {
+  position: relative !important;
+  width: 30px !important;
+  height: 30px !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+html body #root .appv2-nav-icon svg {
+  width: 25px !important;
+  height: 25px !important;
+  stroke-width: 2.25 !important;
+}
+
+html body #root .appv2-nav-label {
+  font-size: 11px !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+}
+
+html body #root .appv2-nav-badge {
+  position: absolute !important;
+  top: -5px !important;
+  right: -8px !important;
+  min-width: 17px !important;
+  height: 17px !important;
+  padding: 0 5px !important;
+  border-radius: 999px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: var(--pairly-pink, #EE4374) !important;
+  color: #fff !important;
+  font-size: 10px !important;
+  font-style: normal !important;
+  font-weight: 900 !important;
+  box-shadow: 0 0 0 2px #fffdf9 !important;
+}
+
+/* ── DM panel ─────────────────────────────────────────────── */
+html body #root .appv2-content--dm {
+  background: linear-gradient(180deg, #fffdf9 0%, #faf6f0 100%) !important;
+}
+
+html body #root .dm-panel.dm-panel-with-profile {
+  width: min(100%, 1180px) !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-columns: minmax(230px, 270px) minmax(0, 1fr) minmax(250px, 310px) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  gap: 12px !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+html body #root .dm-contact-strip {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 8px 2px 10px;
+  border-bottom: 1px solid rgba(232, 224, 214, .82);
+}
+html body #root .dm-contact-strip::-webkit-scrollbar { display: none; }
+
+html body #root .dm-contact-avatar {
+  flex: 0 0 auto;
+  width: 72px;
+  border: 0;
+  background: transparent;
+  color: #7d7468;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 0;
+  font-weight: 800;
+}
+
+html body #root .dm-contact-avatar-img {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--pairly-pink, #EE4374), #7a35e8);
+  color: #fff;
+  border: 2px solid #fff;
+  box-shadow: 0 8px 20px rgba(31, 25, 20, .09), 0 0 0 1px rgba(232, 224, 214, .9);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+html body #root .dm-contact-avatar-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+html body #root .dm-contact-avatar.active .dm-contact-avatar-img {
+  box-shadow: 0 8px 20px rgba(31, 25, 20, .09), 0 0 0 3px #fff, 0 0 0 5px var(--pairly-pink, #EE4374);
+}
+
+html body #root .dm-contact-avatar-img em {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--pairly-pink, #EE4374);
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 10px;
+  font-style: normal;
+}
+
+html body #root .dm-contact-avatar small {
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+html body #root .dm-contact-avatar--new .dm-contact-avatar-img {
+  background: #fff8fb;
+  color: var(--pairly-pink, #EE4374);
+  border-color: #ffc1d3;
+  box-shadow: 0 0 0 1px #ffc1d3 inset;
+}
+
+html body #root .dm-thread-list,
+html body #root .dm-conversation,
+html body #root .dm-profile-sidebar {
+  border: 1px solid rgba(232, 224, 214, .95) !important;
+  border-radius: 28px !important;
+  background: rgba(255, 253, 249, .86) !important;
+  box-shadow: 0 18px 48px rgba(31, 25, 20, .06) !important;
+}
+
+html body #root .dm-thread-list {
+  padding: 14px !important;
+  overflow: auto !important;
+}
+
+html body #root .dm-thread {
+  border: 1px solid #ece3da !important;
+  border-radius: 20px !important;
+  padding: 14px !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+html body #root .dm-thread.active {
+  border-color: var(--pairly-pink, #EE4374) !important;
+  background: #fff7fa !important;
+  box-shadow: 0 0 0 4px var(--pairly-pink-ring, rgba(238,67,116,.14)) !important;
+}
+
+html body #root .dm-conversation {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto auto !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+html body #root .dm-conversation-head {
+  display: grid !important;
+  grid-template-columns: auto auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 18px 20px !important;
+  border-bottom: 1px solid rgba(232, 224, 214, .95) !important;
+  background: rgba(255, 253, 249, .9) !important;
+}
+
+html body #root .dm-conversation-head .avatar.small {
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 18px !important;
+  background: linear-gradient(135deg, var(--pairly-pink, #EE4374), #7a35e8) !important;
+  box-shadow: 0 8px 18px rgba(31, 25, 20, .11) !important;
+}
+
+html body #root .dm-conversation-title {
+  min-width: 0;
+}
+
+html body #root .dm-conversation-title h3,
+html body #root .dm-conversation-head h3 {
+  margin: 0 !important;
+  font-size: 21px !important;
+  line-height: 1.1 !important;
+  letter-spacing: -.03em !important;
+}
+
+html body #root .dm-conversation-title span,
+html body #root .dm-conversation-head span {
+  margin-top: 4px;
+  color: #7d7468 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+html body #root .dm-head-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+html body #root .dm-head-actions button {
+  min-height: 40px !important;
+  padding: 0 16px !important;
+  border-radius: 999px !important;
+  border: 1px solid #e8ded5 !important;
+  background: #fff !important;
+  color: #7d7468 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+html body #root .dm-head-actions button.danger {
+  border-color: #ffc1d3 !important;
+  color: var(--pairly-pink, #EE4374) !important;
+  background: #fff7fa !important;
+}
+
+html body #root .dm-back-btn {
+  display: none;
+}
+
+html body #root .dm-messages {
+  padding: 22px 24px !important;
+  gap: 14px !important;
+  background:
+    radial-gradient(circle at 12% 5%, rgba(238, 67, 116, .055), transparent 28%),
+    linear-gradient(180deg, #fffdf9, #fffaf5) !important;
+}
+
+html body #root .dm-bubble {
+  max-width: min(72%, 560px) !important;
+  border: 1px solid #e8ded5 !important;
+  border-radius: 22px 22px 22px 8px !important;
+  background: #fff !important;
+  color: #171514 !important;
+  padding: 15px 17px !important;
+  box-shadow: 0 12px 26px rgba(31, 25, 20, .055) !important;
+}
+
+html body #root .dm-bubble.mine {
+  border-color: #171514 !important;
+  border-radius: 22px 22px 8px 22px !important;
+  background: #171514 !important;
+  color: #fff !important;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, .18) !important;
+}
+
+html body #root .dm-bubble p {
+  font-size: 15px !important;
+  line-height: 1.75 !important;
+}
+
+html body #root .dm-message-meta {
+  justify-content: flex-start !important;
+  margin-top: 8px !important;
+  gap: 9px !important;
+}
+
+html body #root .dm-bubble.mine .dm-message-meta {
+  justify-content: flex-end !important;
+}
+
+html body #root .dm-read-state.read {
+  color: var(--pairly-pink, #EE4374) !important;
+}
+
+html body #root .dm-starters {
+  padding: 0 18px 10px !important;
+  display: flex !important;
+  gap: 8px !important;
+  overflow-x: auto !important;
+}
+
+html body #root .dm-starters button {
+  border: 1px solid #e8ded5 !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  color: #7d7468 !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+}
+
+html body #root .dm-form {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 54px !important;
+  gap: 12px !important;
+  padding: 14px 18px 18px !important;
+  border-top: 1px solid rgba(232, 224, 214, .95) !important;
+  background: rgba(255, 253, 249, .92) !important;
+}
+
+html body #root .dm-form input {
+  min-height: 54px !important;
+  border: 1px solid #e8ded5 !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  padding: 0 20px !important;
+  font-size: 15px !important;
+}
+
+html body #root .dm-form input:focus {
+  border-color: var(--pairly-pink, #EE4374) !important;
+  box-shadow: 0 0 0 4px var(--pairly-pink-ring, rgba(238,67,116,.14)) !important;
+}
+
+html body #root .dm-form .primary {
+  width: 54px !important;
+  height: 54px !important;
+  min-height: 54px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: var(--pairly-pink, #EE4374) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 24px rgba(238, 67, 116, .24) !important;
+  font-size: 0 !important;
+}
+
+html body #root .dm-form .primary::before {
+  content: "➤";
+  display: block;
+  transform: translateX(1px) rotate(-8deg);
+  font-size: 24px;
+  line-height: 1;
+}
+
+html body #root .dm-form .primary:disabled {
+  opacity: .45 !important;
+  box-shadow: none !important;
+}
+
+/* ── Notifications ────────────────────────────────────────── */
+html body #root .notifications-panel.list-panel {
+  width: min(100%, 880px) !important;
+  min-height: 0 !important;
+  padding: clamp(16px, 2vw, 22px) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+html body #root .notifications-head {
+  margin-bottom: 14px !important;
+}
+
+html body #root .notifications-head h3 {
+  margin: 0 !important;
+  font-size: clamp(23px, 3vw, 32px) !important;
+  letter-spacing: -.04em !important;
+}
+
+html body #root .notifications-head > b {
+  border-radius: 999px !important;
+  background: #171514 !important;
+  color: #fff !important;
+  padding: 8px 12px !important;
+}
+
+html body #root .notification-filters {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 18px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+html body #root .notification-filters::-webkit-scrollbar { display: none; }
+
+html body #root .notification-filters button {
+  min-height: 46px;
+  padding: 0 24px;
+  border: 1px solid #e8ded5;
+  border-radius: 999px;
+  background: #fffdf9;
+  color: #7d7468;
+  font-weight: 900;
+  font-size: 14px;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(31, 25, 20, .035);
+}
+
+html body #root .notification-filters button.active {
+  background: #171514;
+  color: #fff;
+  border-color: #171514;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, .16);
+}
+
+html body #root .notification-list {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+html body #root .notification-card {
+  min-height: 104px !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 18px !important;
+  border: 1px solid #eadfd6 !important;
+  border-radius: 24px !important;
+  background: rgba(255, 253, 249, .92) !important;
+  box-shadow: 0 12px 26px rgba(31, 25, 20, .045) !important;
+}
+
+html body #root .notification-card--highlight,
+html body #root .notification-card.important {
+  border-color: #ffc1d3 !important;
+  background: linear-gradient(90deg, rgba(238, 67, 116, .075), rgba(255, 253, 249, .96)) !important;
+}
+
+html body #root .notification-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 20px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 24px;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(31, 25, 20, .11);
+  background: linear-gradient(135deg, var(--pairly-pink, #EE4374), #7a35e8);
+}
+
+html body #root .notification-avatar--gold { background: linear-gradient(135deg, #d97800, #9c4d00); }
+html body #root .notification-avatar--teal { background: linear-gradient(135deg, #11a9bd, #087d8d); }
+html body #root .notification-avatar--pink { background: linear-gradient(135deg, var(--pairly-pink, #EE4374), #b80f58); }
+
+html body #root .notification-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+html body #root .notification-card-body {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+html body #root .notification-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+html body #root .notification-card-title-row b {
+  font-size: 17px !important;
+  line-height: 1.15 !important;
+  color: #171514 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html body #root .notification-chip {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 900;
+}
+html body #root .notification-chip--like { color: #b86e00; background: #fff0c7; }
+html body #root .notification-chip--match { color: var(--pairly-pink, #EE4374); background: #fff1f6; }
+html body #root .notification-chip--dm { color: #0f8796; background: #e7fbfd; }
+
+html body #root .notification-card-body p {
+  margin: 0 !important;
+  color: #6f6861 !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  font-weight: 800 !important;
+}
+
+html body #root .notification-card-body small {
+  color: #9c948c !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+html body #root .notification-card-side {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
+html body #root .notification-card-side time {
+  color: #aaa29a;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+html body #root .notification-card-side button {
+  min-height: 40px;
+  padding: 0 17px;
+  border: 1px solid #e2d7cf;
+  border-radius: 999px;
+  background: #fff;
+  color: #171514;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 8px 16px rgba(31, 25, 20, .04);
+}
+
+/* ── Mobile tune ──────────────────────────────────────────── */
+@media (max-width: 760px) {
+  html body #root .appv2-content--dm,
+  html body #root .appv2-content--scroll {
+    padding: 0 0 calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .dm-panel.dm-panel-with-profile {
+    width: 100% !important;
+    height: 100% !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    gap: 0 !important;
+  }
+
+  html body #root .dm-contact-strip {
+    padding: 12px 16px 14px !important;
+    background: #fffdf9;
+  }
+
+  html body #root .dm-thread-list,
+  html body #root .dm-profile-sidebar {
+    display: none !important;
+  }
+
+  html body #root .dm-conversation {
+    grid-column: 1 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  html body #root .dm-conversation-head {
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    padding: 14px 16px !important;
+    gap: 12px !important;
+  }
+
+  html body #root .dm-back-btn {
+    display: none !important;
+  }
+
+  html body #root .dm-conversation-head .avatar.small {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  html body #root .dm-conversation-title h3,
+  html body #root .dm-conversation-head h3 {
+    font-size: 18px !important;
+  }
+
+  html body #root .dm-head-profile-btn {
+    display: none !important;
+  }
+
+  html body #root .dm-head-actions {
+    gap: 7px !important;
+  }
+
+  html body #root .dm-head-actions button {
+    min-height: 38px !important;
+    padding: 0 13px !important;
+    font-size: 12px !important;
+  }
+
+  html body #root .dm-messages {
+    padding: 18px 16px !important;
+  }
+
+  html body #root .dm-bubble {
+    max-width: 76% !important;
+    padding: 13px 15px !important;
+    border-radius: 20px 20px 20px 7px !important;
+  }
+
+  html body #root .dm-bubble.mine {
+    border-radius: 20px 20px 7px 20px !important;
+  }
+
+  html body #root .dm-bubble p {
+    font-size: 14.5px !important;
+  }
+
+  html body #root .dm-form {
+    grid-template-columns: minmax(0, 1fr) 52px !important;
+    padding: 12px 14px 14px !important;
+  }
+
+  html body #root .dm-form input,
+  html body #root .dm-form .primary {
+    min-height: 52px !important;
+    height: 52px !important;
+  }
+
+  html body #root .notifications-panel.list-panel {
+    padding: 16px 14px calc(94px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .notifications-head {
+    display: none !important;
+  }
+
+  html body #root .notification-filters {
+    margin: 2px 0 14px !important;
+  }
+
+  html body #root .notification-filters button {
+    min-height: 42px !important;
+    padding: 0 22px !important;
+  }
+
+  html body #root .notification-card {
+    min-height: 104px !important;
+    grid-template-columns: 54px minmax(0, 1fr) auto !important;
+    padding: 16px !important;
+    border-radius: 22px !important;
+    gap: 12px !important;
+  }
+
+  html body #root .notification-avatar {
+    width: 54px !important;
+    height: 54px !important;
+    border-radius: 18px !important;
+    font-size: 22px !important;
+  }
+
+  html body #root .notification-card-side {
+    gap: 9px !important;
+  }
+
+  html body #root .notification-card-side button {
+    min-height: 38px !important;
+    padding: 0 14px !important;
+    font-size: 13px !important;
+  }
+
+  html body #root .notification-card-body small {
+    display: none !important;
+  }
+}
+
+@media (max-width: 390px) {
+  html body #root .dm-head-actions button {
+    padding: 0 10px !important;
+  }
+
+  html body #root .notification-card {
+    grid-template-columns: 50px minmax(0, 1fr) !important;
+  }
+
+  html body #root .notification-card-side {
+    grid-column: 2;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    justify-items: start;
+  }
+}
