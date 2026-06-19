@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+@import '../dm-notification-polish.css';
 
 /* ── デザイントークン（唯一の真実） ──────────────────────────────
    色・余白・角丸・影・z-index をここに集約する。
