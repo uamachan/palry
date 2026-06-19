@@ -1,0 +1,222 @@
+@media (max-width: 760px) {
+  html body #root .appv2-content--footprints,
+  html body #root .appv2-content--scroll:has(.footprints-panel) {
+    background: #fffdf9 !important;
+    padding: 14px 12px calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .footprints-panel {
+    width: 100% !important;
+    min-height: calc(100dvh - 230px) !important;
+    display: block !important;
+    padding: 0 !important;
+  }
+
+  html body #root .footprints-card {
+    min-height: 560px !important;
+    border: 1px solid #e8ded5 !important;
+    border-radius: 28px !important;
+    background: rgba(255, 253, 249, .92) !important;
+    box-shadow: 0 18px 42px rgba(31, 25, 20, .08) !important;
+    padding: 28px 22px !important;
+    display: grid !important;
+    grid-template-rows: auto auto minmax(0, 1fr) !important;
+    gap: 22px !important;
+  }
+
+  html body #root .footprints-head {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 14px !important;
+  }
+
+  html body #root .footprints-eyebrow {
+    display: block !important;
+    margin-bottom: 8px !important;
+    color: var(--pairly-pink, #EE4374) !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    letter-spacing: .08em !important;
+    text-transform: uppercase !important;
+  }
+
+  html body #root .footprints-head h3 {
+    margin: 0 !important;
+    color: #171514 !important;
+    font-size: 30px !important;
+    line-height: 1.15 !important;
+    letter-spacing: -.05em !important;
+    font-weight: 900 !important;
+  }
+
+  html body #root .footprints-lock-pill {
+    flex: 0 0 auto !important;
+    min-height: 38px !important;
+    padding: 0 16px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid #eadfd6 !important;
+    border-radius: 999px !important;
+    background: #fff !important;
+    color: #8d857d !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    box-shadow: 0 8px 18px rgba(31, 25, 20, .04) !important;
+  }
+
+  html body #root .footprints-hint {
+    margin: 0 !important;
+    color: #756e67 !important;
+    font-size: 16px !important;
+    line-height: 1.9 !important;
+    font-weight: 700 !important;
+  }
+
+  html body #root .footprints-list {
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 4px 0 2px !important;
+  }
+
+  html body #root .footprint-row {
+    min-height: 82px !important;
+    display: grid !important;
+    grid-template-columns: 52px minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 14px !important;
+    border: 1px solid #e8ded5 !important;
+    border-radius: 22px !important;
+    background: #fff !important;
+    box-shadow: 0 10px 22px rgba(31, 25, 20, .045) !important;
+  }
+
+  html body #root .footprint-avatar {
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 17px !important;
+    display: grid !important;
+    place-items: center !important;
+    background: linear-gradient(135deg, #ee4374, #7a35e8) !important;
+    color: #fff !important;
+    font-size: 20px !important;
+    font-weight: 900 !important;
+    box-shadow: 0 10px 22px rgba(31, 25, 20, .1) !important;
+  }
+
+  html body #root .footprint-main {
+    min-width: 0 !important;
+    display: grid !important;
+    gap: 5px !important;
+  }
+
+  html body #root .footprint-title-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  html body #root .footprint-title-row b {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    color: #171514 !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+  }
+
+  html body #root .footprint-title-row span {
+    flex: 0 0 auto !important;
+    padding: 4px 10px !important;
+    border-radius: 999px !important;
+    background: #fff1f6 !important;
+    color: var(--pairly-pink, #EE4374) !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+  }
+
+  html body #root .footprint-main p {
+    margin: 0 !important;
+    color: #7d7468 !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root .footprint-row time {
+    color: #aaa29a !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root .footprints-empty {
+    min-height: 360px !important;
+    border: 1px solid #e8ded5 !important;
+    border-radius: 26px !important;
+    background: #fff !important;
+    box-shadow: 0 18px 38px rgba(31, 25, 20, .06) !important;
+    display: grid !important;
+    align-content: center !important;
+    justify-items: center !important;
+    gap: 14px !important;
+    padding: 32px 24px !important;
+    text-align: center !important;
+  }
+
+  html body #root .footprints-empty-icon {
+    width: 72px !important;
+    height: 72px !important;
+    border-radius: 24px !important;
+    display: grid !important;
+    place-items: center !important;
+    background: #fff1f6 !important;
+    color: var(--pairly-pink, #EE4374) !important;
+    font-size: 38px !important;
+    font-weight: 900 !important;
+  }
+
+  html body #root .footprints-empty h4 {
+    margin: 0 !important;
+    color: #171514 !important;
+    font-size: 22px !important;
+    line-height: 1.3 !important;
+    font-weight: 900 !important;
+    letter-spacing: -.04em !important;
+  }
+
+  html body #root .footprints-empty p {
+    margin: 0 !important;
+    color: #7d7468 !important;
+    font-size: 14px !important;
+    line-height: 1.7 !important;
+    font-weight: 700 !important;
+  }
+}
+
+@media (max-width: 380px) {
+  html body #root .footprints-card {
+    padding: 24px 18px !important;
+  }
+
+  html body #root .footprint-row {
+    grid-template-columns: 48px minmax(0, 1fr) !important;
+  }
+
+  html body #root .footprint-row time {
+    grid-column: 2 !important;
+    justify-self: start !important;
+  }
+}
