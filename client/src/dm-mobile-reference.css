@@ -1,0 +1,317 @@
+/* Mobile DM: reference-style layout without mock names/content.
+   Uses the real DM thread data and keeps the existing top app tabs unchanged. */
+@media (max-width: 760px) {
+  html body #root .appv2-content--dm {
+    background: #fffdf9 !important;
+    padding: 0 0 calc(86px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .dm-panel.dm-panel-with-profile {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    gap: 0 !important;
+    background: #fffdf9 !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .dm-thread-list,
+  html body #root .dm-profile-sidebar {
+    display: none !important;
+  }
+
+  html body #root .dm-contact-strip {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    gap: 14px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 14px 14px 12px !important;
+    border-bottom: 1px solid #e9e1d9 !important;
+    background: #fffdf9 !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  html body #root .dm-contact-strip::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  html body #root .dm-contact-avatar {
+    width: 72px !important;
+    flex: 0 0 auto !important;
+    border: 0 !important;
+    background: transparent !important;
+    display: grid !important;
+    gap: 6px !important;
+    justify-items: center !important;
+    padding: 0 !important;
+  }
+
+  html body #root .dm-contact-avatar-img {
+    width: 58px !important;
+    height: 58px !important;
+    border-radius: 18px !important;
+    display: grid !important;
+    place-items: center !important;
+    overflow: hidden !important;
+    background: linear-gradient(135deg, #ee4374, #7a35e8) !important;
+    color: #fff !important;
+    font-weight: 900 !important;
+    font-size: 24px !important;
+    border: 2px solid #fff !important;
+    box-shadow: 0 0 0 1px #e8ddd4 inset !important;
+  }
+
+  html body #root .dm-contact-avatar-img img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  html body #root .dm-contact-avatar.active .dm-contact-avatar-img {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #ee4374 !important;
+  }
+
+  html body #root .dm-contact-avatar small {
+    max-width: 72px !important;
+    font-size: 12px !important;
+    color: #746d66 !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  html body #root .dm-contact-avatar--new {
+    display: none !important;
+  }
+
+  html body #root .dm-conversation {
+    grid-column: 1 !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    background: #fffdf9 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .dm-conversation-head {
+    display: grid !important;
+    grid-template-columns: 54px minmax(0, 1fr) auto !important;
+    gap: 12px !important;
+    align-items: center !important;
+    padding: 14px 16px !important;
+    border-top: 1px solid #e9e1d9 !important;
+    border-bottom: 1px solid #e9e1d9 !important;
+    background: #fffdf9 !important;
+  }
+
+  html body #root .dm-back-btn,
+  html body #root .dm-head-profile-btn {
+    display: none !important;
+  }
+
+  html body #root .dm-conversation-head .avatar.small {
+    width: 46px !important;
+    height: 46px !important;
+    min-width: 46px !important;
+    border-radius: 16px !important;
+    background: linear-gradient(135deg, #ee4374, #b71f64) !important;
+    color: #fff !important;
+    display: grid !important;
+    place-items: center !important;
+    font-weight: 900 !important;
+    font-size: 24px !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .dm-conversation-head .avatar.small img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  html body #root .dm-conversation-title {
+    min-width: 0 !important;
+  }
+
+  html body #root .dm-conversation-title h3,
+  html body #root .dm-conversation-head h3 {
+    margin: 0 !important;
+    font-size: 16px !important;
+    line-height: 1.15 !important;
+    color: #181614 !important;
+    font-weight: 900 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root .dm-conversation-title span,
+  html body #root .dm-conversation-head span {
+    display: block !important;
+    margin-top: 4px !important;
+    font-size: 12px !important;
+    color: #8c847c !important;
+    font-weight: 800 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root .dm-head-actions {
+    display: flex !important;
+    gap: 8px !important;
+    align-items: center !important;
+  }
+
+  html body #root .dm-head-actions button {
+    min-height: 38px !important;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    border: 1px solid #eadfd6 !important;
+    background: #fff !important;
+    color: #7d7468 !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    box-shadow: none !important;
+  }
+
+  html body #root .dm-head-actions button.danger {
+    border-color: #f3bfd0 !important;
+    color: #d94b7c !important;
+    background: #fff7fa !important;
+  }
+
+  html body #root .dm-messages {
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 18px 16px 10px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: #fffdf9 !important;
+  }
+
+  html body #root .dm-bubble {
+    max-width: 78% !important;
+    padding: 16px 16px 12px !important;
+    border-radius: 20px !important;
+    border: 1px solid #e7ddd4 !important;
+    background: #fff !important;
+    color: #1b1817 !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,.03) !important;
+    align-self: flex-start !important;
+  }
+
+  html body #root .dm-bubble.mine {
+    align-self: flex-end !important;
+    margin-left: auto !important;
+    border-color: #111 !important;
+    background: #111 !important;
+    color: #fff !important;
+    border-radius: 20px !important;
+    box-shadow: 0 8px 18px rgba(0,0,0,.12) !important;
+  }
+
+  html body #root .dm-bubble p {
+    margin: 0 !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    white-space: pre-wrap !important;
+  }
+
+  html body #root .dm-message-meta {
+    display: flex !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    margin-top: 10px !important;
+    font-size: 11px !important;
+    color: #918980 !important;
+  }
+
+  html body #root .dm-bubble.mine .dm-message-meta {
+    justify-content: flex-start !important;
+    color: rgba(255,255,255,.65) !important;
+  }
+
+  html body #root .dm-read-state {
+    display: none !important;
+  }
+
+  html body #root .dm-starters {
+    display: none !important;
+  }
+
+  html body #root .dm-form {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 58px !important;
+    gap: 12px !important;
+    align-items: center !important;
+    padding: 16px !important;
+    border-top: 1px solid #e9e1d9 !important;
+    background: #fffdf9 !important;
+  }
+
+  html body #root .dm-form input {
+    width: 100% !important;
+    min-height: 52px !important;
+    height: 52px !important;
+    border-radius: 999px !important;
+    border: 1px solid #e2d8cf !important;
+    background: #fff !important;
+    padding: 0 20px !important;
+    font-size: 15px !important;
+    color: #1b1817 !important;
+    box-shadow: none !important;
+  }
+
+  html body #root .dm-form input::placeholder {
+    color: #b2aaa2 !important;
+  }
+
+  html body #root .dm-form input:focus {
+    border-color: #ee4374 !important;
+    box-shadow: 0 0 0 4px rgba(238,67,116,.12) !important;
+  }
+
+  html body #root .dm-form .primary {
+    width: 52px !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    border-radius: 50% !important;
+    border: 0 !important;
+    background: #e25484 !important;
+    color: #fff !important;
+    display: grid !important;
+    place-items: center !important;
+    padding: 0 !important;
+    box-shadow: 0 8px 18px rgba(226,84,132,.28) !important;
+    font-size: 0 !important;
+  }
+
+  html body #root .dm-form .primary::before {
+    content: "➤";
+    font-size: 22px;
+    line-height: 1;
+    transform: translateX(1px) rotate(-12deg);
+  }
+
+  html body #root .dm-form .primary:disabled {
+    opacity: .45 !important;
+    box-shadow: none !important;
+  }
+}
