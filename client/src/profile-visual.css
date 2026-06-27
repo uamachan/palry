@@ -48,6 +48,9 @@
   box-shadow: 0 6px 24px rgba(255, 79, 131, 0.18);
   transform: translateY(-1px);
 }
+.pv-photo-card:active {
+  transform: scale(0.99);
+}
 .pv-photo-input {
   position: absolute;
   inset: 0;
@@ -185,6 +188,7 @@
   color: #b8a8b0;
   text-align: right;
   margin-top: 2px;
+  font-variant-numeric: tabular-nums;
 }
 .pv-char-count--warn {
   color: #e83f70;
@@ -224,7 +228,7 @@
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.12s;
   white-space: nowrap;
   line-height: 1.4;
 }
@@ -232,6 +236,9 @@
   border-color: #ff4f83;
   color: #ff4f83;
   background: #fff5f8;
+}
+.pv-chip:active {
+  transform: scale(0.96);
 }
 .pv-chip--on {
   background: linear-gradient(135deg, #ff6fa0, #22c4a0) !important;
@@ -276,12 +283,15 @@
   font-weight: 800;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.12s;
 }
 .pv-gender-btn:hover {
   border-color: #ff4f83;
   color: #ff4f83;
   background: #fff5f8;
+}
+.pv-gender-btn:active {
+  transform: scale(0.96);
 }
 .pv-gender-btn--on {
   background: linear-gradient(135deg, #ff6fa0, #ff3d7a) !important;
@@ -344,13 +354,16 @@
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.12s;
 }
 .pv-rank-badge:hover {
   border-color: var(--rc, #ff4f83);
   color: var(--rc, #ff4f83);
   background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.pv-rank-badge:active {
+  transform: scale(0.96);
 }
 .pv-rank-badge--on {
   background: var(--rc, #ff4f83) !important;
@@ -378,7 +391,7 @@
   border: 2px solid #e7e0d8;
   background: #fff;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
   text-align: center;
   font-family: inherit;
 }
@@ -387,6 +400,9 @@
   background: #f5fdf9;
   transform: translateY(-2px);
   box-shadow: 0 4px 16px rgba(34, 196, 160, 0.2);
+}
+.pv-role-card:active {
+  transform: translateY(-1px) scale(0.97);
 }
 .pv-role-card--on {
   background: linear-gradient(160deg, #edfaf4, #d8f7ec) !important;
@@ -408,6 +424,7 @@
   font-size: 11px;
   color: #8a8080;
   font-weight: 500;
+  text-wrap: pretty;
 }
 
 /* ── 自己紹介テキストエリア ── */
@@ -485,6 +502,8 @@
   width: 100% !important;
   padding: 26px !important;
   color: var(--pv-ink) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .profile-setup-heading {
@@ -496,6 +515,7 @@
   color: var(--pv-ink) !important;
   letter-spacing: 0 !important;
   font-size: clamp(30px, 3.4vw, 42px) !important;
+  text-wrap: balance;
 }
 
 .profile-setup-heading p {
@@ -552,6 +572,14 @@
 .profile-setup-card .setup-tabs button.locked {
   background: #F2EBE4 !important;
   opacity: .55 !important;
+}
+
+.profile-setup-card .setup-tabs button {
+  transition: background .15s, color .15s, border-color .15s, box-shadow .15s, transform .12s !important;
+}
+
+.profile-setup-card .setup-tabs button:active {
+  transform: scale(0.97) !important;
 }
 
 .pv-basic-grid,
@@ -750,7 +778,11 @@
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: background .1s, color .1s, border-color .1s;
+  transition: background .1s, color .1s, border-color .1s, transform .12s;
+}
+
+.pv-photo-tab:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .pv-photo-tab:disabled {
@@ -1108,7 +1140,11 @@
   cursor: pointer !important;
   width: 100% !important;
   min-width: 0 !important;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s !important;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.12s !important;
+}
+
+.pv-rank-icon-btn:active {
+  transform: scale(0.96) !important;
 }
 
 .pv-rank-icon-btn img {
@@ -1158,7 +1194,11 @@
   font-size: 13px !important;
   font-weight: 800 !important;
   cursor: pointer !important;
-  transition: all 0.15s !important;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.12s !important;
+}
+
+.pv-rank-sub-btn:active {
+  transform: scale(0.96) !important;
 }
 
 .pv-rank-sub-btn--on {
