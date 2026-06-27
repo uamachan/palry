@@ -225,7 +225,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
 
   useEffect(() => {
     if (setupError && !validateStep()) setSetupError('');
-  }, [activeSetupTab, form.name, form.riotId, form.age, form.region, form.gender, form.rank, form.role, form.tags, form.agents, form.agreed]);
+  }, [activeSetupTab, form.name, form.riotId, form.age, form.region, form.gender, form.rank, form.role, form.tags, form.agents, form.bio, form.agreed]);
 
   function notifyRequired(message) {
     const notice = message.startsWith('入力が必要です') ? message : `入力が必要です：${message}`;

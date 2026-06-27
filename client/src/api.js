@@ -102,15 +102,24 @@ function candidateAllowed(profile, excludedUids, targetGender, targetRank) {
 
 async function fetchUserProfile(uid) {
   if (!uid) return null;
+  const { doc, getDoc, db } = await getMods();
+  const snap = await getDoc(doc(db, 'users', uid));
+  // ドキュメントが存在しない（＝未登録）ときだけ null を返す。読み取りエラー
+  // （オフライン・permission-denied 等）は握りつぶさず伝播させ、呼び出し元が
+  // 「プロフィール無し(404)」と「一時障害」を区別できるようにする。
+  if (!snap.exists()) return null;
+  const profile = { ...snap.data(), id: snap.id };
+  // 表示側は profilePhoto / voiceIntro を参照するため、保存済みURLから正規化する。
+  profile.profilePhoto = pickProfilePhoto(profile);
+  profile.voiceIntro = pickVoiceIntro(profile);
+  return profile;
+}
+
+// 書き込み直後の読み戻しなど「失敗してもフロー全体を止めたくない」箇所用。
+// 読み取り失敗を null に丸めるので、呼び出し元は欠損を許容できる場合だけ使う。
+async function fetchUserProfileQuiet(uid) {
   try {
-    const { doc, getDoc, db } = await getMods();
-    const snap = await getDoc(doc(db, 'users', uid));
-    if (!snap.exists()) return null;
-    const profile = { ...snap.data(), id: snap.id };
-    // 表示側は profilePhoto / voiceIntro を参照するため、保存済みURLから正規化する。
-    profile.profilePhoto = pickProfilePhoto(profile);
-    profile.voiceIntro = pickVoiceIntro(profile);
-    return profile;
+    return await fetchUserProfile(uid);
   } catch (e) {
     console.warn('[pairly] Firestore read failed:', e.message);
     return null;
@@ -274,7 +283,8 @@ async function writeUserProfile(uid, data) {
   }
   // 書き込み成功後に、差し替えられた旧メディアをベストエフォートで掃除する。
   await deleteProfileMedia(replacedPaths);
-  const user = await fetchUserProfile(uid);
+  // 書き込みは成功しているので、読み戻し失敗で全体を失敗扱いにしない。
+  const user = await fetchUserProfileQuiet(uid);
   return { user, mediaWarning };
 }
 
@@ -490,7 +500,8 @@ export const api = {
     const sendLike = httpsCallable(functions, 'sendLike');
     try {
       const result = await sendLike({ profileId, type });
-      const user = await fetchUserProfile(uid);
+      // LIKE 自体は成功済み。プラン再取得が失敗しても FREE 既定で続行する。
+      const user = await fetchUserProfileQuiet(uid);
       return { ...result.data, entitlements: buildEntitlements(user?.plan || 'FREE') };
     } catch (e) {
       if (e.code === 'functions/resource-exhausted') throw apiError(e.message || '本日のLIKE上限に達しました', 429);
@@ -657,6 +668,9 @@ export const api = {
   block: async ({ profileId }) => {
     const uid = await currentUserOrThrow();
     if (!profileId) throw apiError('不正なリクエストです', 400);
+    // 自己ブロックは禁止（Firestore ルールでも拒否されるが、ここで弾いて
+    // 分かりにくい permission-denied エラーを避ける）。
+    if (profileId === uid) throw apiError('自分自身はブロックできません', 400);
     const { doc, setDoc, db } = await getMods();
     await setDoc(doc(db, 'blocks', `${uid}_block_${profileId}`), { byUid: uid, targetUid: profileId, createdAt: now() });
     return {};

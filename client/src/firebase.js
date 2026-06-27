@@ -113,7 +113,10 @@ if (app && turnstileSiteKey) {
           if (!resp.ok) throw new Error('App Check exchange failed: ' + resp.status);
           const data = await resp.json();
           if (!data?.token) throw new Error('App Check exchange returned no token');
-          return { token: data.token, expireTimeMillis: Date.now() + Number(data.ttlMillis || 0) };
+          // ttlMillis が欠落/0/NaN のときに 0 を採用すると発行直後に失効扱いとなり、
+          // 毎リクエストで Turnstile 再チャレンジが走るため、安全な既定値にフォールバックする。
+          const ttlMillis = Number(data.ttlMillis) > 0 ? Number(data.ttlMillis) : 30 * 60 * 1000;
+          return { token: data.token, expireTimeMillis: Date.now() + ttlMillis };
         },
       }),
       isTokenAutoRefreshEnabled: true,

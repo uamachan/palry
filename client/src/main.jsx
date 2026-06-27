@@ -136,7 +136,10 @@ function App() {
           setAuthReady(true);
           if (!fbUser) return;
           if (!fbUser.emailVerified) {
+            // 再訪問時もメール認証の導線（再送・認証完了）を出す。これがないと
+            // 未認証ユーザーがランディングだけ見せられ、次の操作が分からず詰まる。
             setPendingFirebaseUser({ uid: fbUser.uid, email: fbUser.email, emailVerified: false });
+            setAuthMode('emailVerification');
             return;
           }
           try {
@@ -147,6 +150,11 @@ function App() {
             if (error?.httpStatus === 404) {
               setPendingFirebaseUser({ uid: fbUser.uid, email: fbUser.email, emailVerified: true });
               setProfileSetupPrompt(true);
+            } else {
+              // 404 以外（Firestore 一時障害・通信エラー等）は「プロフィール無し」と
+              // 区別される。無言で握りつぶさず、再読み込みを促す。
+              console.warn('[pairly] session restore failed:', error?.message);
+              showToast('ログイン状態の復元に失敗しました。通信環境を確認して再読み込みしてください');
             }
           }
         });
@@ -258,9 +266,13 @@ function App() {
 
   async function loginWithFirebase(e) {
     e.preventDefault();
+    // 404 catch で参照するため、サインイン成功時のユーザーを控えておく。
+    // firebaseAuth.currentUser は別タブのログアウト等で null になり得る。
+    let signedInUser = null;
     try {
       const { signInWithEmailAndPassword, firebaseAuth } = await getFirebaseMods();
       const credential = await signInWithEmailAndPassword(firebaseAuth, form.email.trim(), form.password);
+      signedInUser = credential.user;
       if (!credential.user.emailVerified) {
         setPendingFirebaseUser({ uid: credential.user.uid, email: credential.user.email, emailVerified: false });
         setAuthMode('emailVerification');
@@ -271,13 +283,14 @@ function App() {
       completeAuth(payload.user, 'ログインしました');
     } catch (error) {
       if (error?.httpStatus === 404) {
-        const { firebaseAuth } = await getFirebaseMods();
-        const current = firebaseAuth.currentUser;
-        setPendingFirebaseUser({ uid: current.uid, email: current.email, emailVerified: true });
-        setForm((f) => ({ ...initialForm(), email: current.email || f.email, emailConfirm: current.email || f.emailConfirm }));
-        setProfileSetupPrompt(false);
-        setAuthMode('profileSetup');
-        return showToast('プロフィールを作成してください');
+        const current = signedInUser || (await getFirebaseMods()).firebaseAuth.currentUser;
+        if (current) {
+          setPendingFirebaseUser({ uid: current.uid, email: current.email, emailVerified: true });
+          setForm((f) => ({ ...initialForm(), email: current.email || f.email, emailConfirm: current.email || f.emailConfirm }));
+          setProfileSetupPrompt(false);
+          setAuthMode('profileSetup');
+          return showToast('プロフィールを作成してください');
+        }
       }
       showToast(firebaseErrorMessage(error));
     }
@@ -300,7 +313,8 @@ function App() {
           setForm((f) => ({ ...initialForm(), email: credential.user.email || f.email, emailConfirm: credential.user.email || f.emailConfirm }));
           setAuthMode('profileSetup');
         } else {
-          showToast(error.message || 'ログインに失敗しました。しばらくしてからお試しください');
+          // email ログインと同じく日本語化・サニタイズした文言を出す（生の英語SDKエラーを見せない）。
+          showToast(firebaseErrorMessage(error));
         }
       }
     } catch (error) {
@@ -349,7 +363,10 @@ function App() {
       const payload = await api.updateProfile(editForm);
       // 公開プロフィールに email は無いので、表示用に保持していたメールを引き継ぐ。
       setUser((u) => ({ ...payload.user, email: payload.user.email || u?.email }));
-      setPlan(payload.user.plan || plan);
+      // plan と activePlan は常に同値で扱う。一方だけ更新すると料金UIと機能制御がずれる。
+      const nextPlan = payload.user.plan || plan;
+      setPlan(nextPlan);
+      setActivePlan(nextPlan);
       setProfileEditorOpen(false);
       showToast(payload.message ? `プロフィールを保存しました（${payload.message}）` : 'プロフィールを保存しました');
     } catch (error) {
