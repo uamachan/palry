@@ -70,8 +70,18 @@ export default function PublicPricing({ plansData, pricingTab = 'monthly', setPr
               <h3>{item.name}</h3>
               <b>¥{item.price}</b>
               <p>{item.detail}</p>
-              <button type="button" className="primary" onClick={() => STRIPE_LINK_DEMO_URL ? window.open(STRIPE_LINK_DEMO_URL, '_blank', 'noopener,noreferrer') : (onSignup?.())}>
-                {STRIPE_LINK_DEMO_URL || buyItem ? 'Stripe Linkデモ' : '無料登録して購入'}
+              <button
+                type="button"
+                className="primary"
+                onClick={
+                  buyItem
+                    ? () => buyItem(item.name)
+                    : (STRIPE_LINK_DEMO_URL
+                        ? () => window.open(STRIPE_LINK_DEMO_URL, '_blank', 'noopener,noreferrer')
+                        : onSignup)
+                }
+              >
+                {buyItem ? '購入する' : (STRIPE_LINK_DEMO_URL ? 'Stripe Linkデモ' : '無料登録して購入')}
               </button>
             </article>
           )) : <p className="empty-text">単発課金メニューを読み込み中です。</p>}
