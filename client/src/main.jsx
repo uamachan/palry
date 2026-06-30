@@ -147,6 +147,11 @@ function App() {
             if (error?.httpStatus === 404) {
               setPendingFirebaseUser({ uid: fbUser.uid, email: fbUser.email, emailVerified: true });
               setProfileSetupPrompt(true);
+            } else {
+              // 404以外（ネットワーク/権限など）は握りつぶすと認証済みなのに無反応になる。
+              // ユーザーに再試行を促す。
+              console.warn('[palry] session restore failed:', error?.code || error?.httpStatus || error?.message);
+              showToast('ログイン状態の復元に失敗しました。通信環境を確認して再度お試しください');
             }
           }
         });
@@ -300,7 +305,9 @@ function App() {
           setForm((f) => ({ ...initialForm(), email: credential.user.email || f.email, emailConfirm: credential.user.email || f.emailConfirm }));
           setAuthMode('profileSetup');
         } else {
-          showToast(error.message || 'ログインに失敗しました。しばらくしてからお試しください');
+          // 内部のFirestore/権限エラーの生メッセージは出さず中立文言にする（情報漏えい防止）。
+          console.warn('[palry] Google login post-auth failed:', error?.code || error?.message);
+          showToast('ログインに失敗しました。しばらくしてからお試しください');
         }
       }
     } catch (error) {

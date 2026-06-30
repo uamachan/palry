@@ -27,7 +27,7 @@ const missingConfigKeys = Object.entries(requiredConfig)
 function firebaseConfigError() {
   return new Error(
     missingConfigKeys.length
-      ? `Firebase設定が不足しています: ${missingConfigKeys.join(', ')}。RenderのEnvironmentにFirebase Web Appの値を設定して再デプロイしてください。`
+      ? `Firebase設定が不足しています: ${missingConfigKeys.join(', ')}。デプロイ環境の環境変数にFirebase Web Appの値（VITE_FIREBASE_*）を設定して再デプロイしてください。`
       : 'Firebaseの初期化に失敗しました。Firebase設定を確認してください。'
   );
 }

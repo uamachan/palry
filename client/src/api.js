@@ -367,12 +367,18 @@ function messageFromDoc(docSnap, uid) {
 function messageFromMatchSummary(match, uid, otherUid) {
   const last = match?.lastMessage;
   if (!last?.body) return [];
+  const createdAt = last.createdAt || match.lastMessageAt || match.updatedAt || match.createdAt;
+  // 「既読」は相手の最終既読時刻がこのメッセージ作成時刻以降のときだけ。
+  // 過去に別メッセージを既読にしただけで新着が既読扱いにならないよう createdAt と比較する
+  // （ISO-8601 文字列は辞書順比較で時系列順になる）。
+  const otherReadAt = match.lastReadAtBy?.[otherUid] || '';
+  const readByOther = last.senderUid === uid && otherReadAt && createdAt && otherReadAt >= createdAt;
   return [{
     id: last.id || `${match.id}_last`,
     sender: last.senderUid === uid ? 'user' : 'other',
     body: last.body,
-    createdAt: last.createdAt || match.lastMessageAt || match.updatedAt || match.createdAt,
-    readAt: last.senderUid === uid ? (match.lastReadAtBy?.[otherUid] || null) : null,
+    createdAt,
+    readAt: readByOther ? otherReadAt : null,
     summary: true,
   }];
 }
