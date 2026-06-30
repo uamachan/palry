@@ -70,7 +70,7 @@ export default function ProfileDetailModal({ profile, onClose }) {
               <h2 id="profile-detail-title">{profile.name}</h2>
               <p>{profile.gender}{profile.ageRange ? ` / ${profile.ageRange}` : ''}{profile.region ? ` / ${profile.region}` : ''}</p>
             </div>
-            <span>相性 {profile.matchScore}%</span>
+            <span>相性 {Number.isFinite(profile.matchScore) ? profile.matchScore : 75}%</span>
           </div>
           <div className="profile-detail-kpis">
             {detailItems.map(([label, value]) => (

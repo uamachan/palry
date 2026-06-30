@@ -27,7 +27,7 @@ export default function TinderProfileCard({ profile, onReport, onBlock, swipeDir
       {swipeDir === 'right' && <div className="mp-stamp mp-stamp-like">LIKE</div>}
       {swipeDir === 'left'  && <div className="mp-stamp mp-stamp-nope">NOPE</div>}
       <div className="mp-badges-top">
-        <span className="mp-badge mp-badge-score">相性 {profile.matchScore}%</span>
+        <span className="mp-badge mp-badge-score">相性 {Number.isFinite(profile.matchScore) ? profile.matchScore : 75}%</span>
       </div>
       <div className="mp-card-info">
         <div className="mp-active-row"><span className="mp-active-dot" /><span>最近アクティブ</span></div>

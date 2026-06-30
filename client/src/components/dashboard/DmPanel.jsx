@@ -223,7 +223,7 @@ export default function DmPanel({ dmThreads, activeThreadId, selectDmThread, mar
                     {message.sender === 'user' && (
                       <span className={cx('dm-read-state', message.readAt && 'read')}>{message.readAt ? '既読' : '送信済み'}</span>
                     )}
-                    <time>{new Date(message.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</time>
+                    <time>{message.createdAt ? new Date(message.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</time>
                   </div>
                 </div>
               ))}

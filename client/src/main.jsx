@@ -66,6 +66,29 @@ function publicUserToForm(user) {
   };
 }
 
+// 候補プロフィールの相性スコアをクライアントで簡易算出する。
+// サーバー（getCandidateProfiles）はスコアを返さないため、共通点（目的タグ/エージェント/
+// ランク帯/ロール/地域）から決定的に 60〜99% を組み立てる。再レンダーで値が揺れないよう
+// 乱数は使わない。ログインユーザー情報が無い場合は中立値を返す。
+function rankTierOf(rank) {
+  return String(rank || '').split(' ')[0];
+}
+function overlapCount(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || !a.length || !b.length) return 0;
+  const setB = new Set(b);
+  return a.reduce((n, item) => (setB.has(item) ? n + 1 : n), 0);
+}
+function computeMatchScore(user, candidate) {
+  if (!user || !candidate) return 75;
+  let score = 60;
+  score += Math.min(overlapCount(user.tags, candidate.tags), 3) * 6;      // 目的タグの一致
+  score += Math.min(overlapCount(user.agents, candidate.agents), 3) * 3;  // よく使うエージェント
+  if (candidate.role && user.role && candidate.role === user.role) score += 6;
+  if (candidate.rank && user.rank && rankTierOf(candidate.rank) === rankTierOf(user.rank)) score += 8;
+  if (candidate.region && user.region && candidate.region === user.region) score += 5;
+  return Math.max(60, Math.min(99, score));
+}
+
 function firebaseErrorMessage(error) {
   const code = error?.code || '';
   if (code.includes('email-already-in-use')) return 'このメールアドレスは登録済みです';
@@ -415,6 +438,7 @@ function App() {
       const profiles = (payload.profiles || []).map((p) => ({
         ...p,
         profilePhotoUrl: p.profilePhotoThumbUrl || p.profilePhotoUrl || '',
+        matchScore: Number.isFinite(p.matchScore) ? p.matchScore : computeMatchScore(user, p),
       }));
       setProfiles(profiles);
       setIndex(0);
@@ -449,7 +473,20 @@ function App() {
     const payload = await api.dmThreads(user.id).catch(() => ({ threads: [] }));
     setDmLoading(false);
     const nextThreads = payload.threads || [];
-    setDmThreads(nextThreads);
+    // dmThreads API はサマリ（最後の1件）しか返さないため、subscribeDmThread で
+    // ライブ取得済みの全メッセージを上書きしないようマージする。ライブ購読は
+    // activeThreadId が変わらないと再発火しないので、上書きすると次の新着まで
+    // 履歴が1件に縮んでしまう。unreadCount/match などサーバー値は新しい方を採用する。
+    setDmThreads((prev) => {
+      const prevById = new Map(prev.map((t) => [t.match.id, t]));
+      return nextThreads.map((t) => {
+        const existing = prevById.get(t.match.id);
+        if (existing && existing.messages.length > t.messages.length) {
+          return { ...t, messages: existing.messages };
+        }
+        return t;
+      });
+    });
     setActiveThreadId((currentId) => {
       const desired = preferredThreadId || currentId;
       if (desired && nextThreads.some((thread) => thread.match.id === desired)) return desired;
@@ -512,6 +549,7 @@ function App() {
     if (!user) return;
     if (activeTab === 'likes') refreshReceivedLikes();
     else if (activeTab === 'dm') refreshDmThreads();
+    else if (activeTab === 'footprints') refreshFootprints();
   }, [activeTab, user?.id]);
 
   const current = profiles[index] || null;
@@ -528,7 +566,6 @@ function App() {
     if (!current || !user) return;
     const directionLabel = type === 'pass' ? '見送り' : type === 'dual' ? '両LIKE' : 'LIKE';
     if (type === 'pass') {
-      setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: '見送り', time: '今' }, ...f].slice(0, 50));
       nextCard();
       return;
     }
@@ -546,7 +583,9 @@ function App() {
       } else {
         showToast(`${directionLabel} しました`);
       }
-      setFootprints((f) => [{ id: `local_${Date.now()}`, name: current.name, rank: current.rank, gender: current.gender, action: directionLabel, time: '今' }, ...f].slice(0, 50));
+      // 足あとは「相手が自分にした行動」を表す（footprints は profileId==自分 で検索）。
+      // 自分の LIKE はサーバーに記録すると相手側の足あとに乗る。自分の足あと一覧へは
+      // 載らないため、ローカルへの即時追加（偽の受信表示になる）は行わない。
       api.recordFootprint({ profileId: current.id, action: directionLabel }).catch(() => null);
       nextCard();
     } catch (error) {
