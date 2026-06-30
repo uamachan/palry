@@ -441,7 +441,7 @@ export const api = {
 
   register: async (body) => {
     const uid = await currentUserOrThrow();
-    const { password, emailConfirm, idToken, agreed, age, email, ...rest } = body || {};
+    const { password, emailConfirm, agreed, age, email, ...rest } = body || {};
     const { deleteField } = await getMods();
     const userData = {
       ...rest,
@@ -463,7 +463,7 @@ export const api = {
 
   updateProfile: async (body) => {
     const uid = await currentUserOrThrow();
-    const { password, emailConfirm, idToken, age, agreed, email, ...rest } = body || {};
+    const { password, emailConfirm, age, agreed, email, ...rest } = body || {};
     const { deleteField } = await getMods();
     const { user, mediaWarning } = await writeUserProfile(uid, {
       ...rest,

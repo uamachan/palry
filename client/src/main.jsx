@@ -140,8 +140,7 @@ function App() {
             return;
           }
           try {
-            const idToken = await fbUser.getIdToken();
-            const payload = await api.login({ idToken });
+            const payload = await api.login();
             completeAuth(payload.user, '保存済みプロフィールでログインしました');
           } catch (error) {
             if (error?.httpStatus === 404) {
@@ -271,8 +270,7 @@ function App() {
         setAuthMode('emailVerification');
         return showToast('メール認証を完了してください');
       }
-      const idToken = await credential.user.getIdToken();
-      const payload = await api.login({ idToken });
+      const payload = await api.login();
       completeAuth(payload.user, 'ログインしました');
     } catch (error) {
       if (error?.httpStatus === 404) {
@@ -293,9 +291,8 @@ function App() {
       const { signInWithPopup, GoogleAuthProvider, firebaseAuth } = await getFirebaseMods();
       const provider = new GoogleAuthProvider();
       const credential = await signInWithPopup(firebaseAuth, provider);
-      const idToken = await credential.user.getIdToken();
       try {
-        const payload = await api.login({ idToken });
+        const payload = await api.login();
         completeAuth(payload.user, 'Googleでログインしました');
       } catch (error) {
         // 404（Pairlyプロフィール未作成）の時だけプロフィール設定へ進む。
@@ -338,11 +335,14 @@ function App() {
       const current = firebaseAuth.currentUser;
       if (!current) return showToast('Firebaseログインが必要です');
       if (!current.emailVerified) return showToast('メール認証を完了してください');
-      const idToken = await current.getIdToken(true);
+      // メール認証直後はキャッシュ済みトークンの email_verified が古いことがあるため、
+      // Firestore 書き込み（ルールが token.email_verified を要求）の前に強制リフレッシュする。
+      // 戻り値のトークンはサーバに送らない（Firestore操作は SDK の認証状態で行うため不要）。
+      await current.getIdToken(true);
       // パスワードは Firebase が保持しており、バックエンドは使用しない。
       // 不要な秘密情報を送らないようプロフィール項目だけ送信する。
       const { password, emailConfirm, ...profileData } = form;
-      const payload = await api.register({ ...profileData, idToken, email: current.email });
+      const payload = await api.register({ ...profileData, email: current.email });
       track('sign_up', { method: 'email' });
       completeAuth(payload.user, payload.message || 'アカウントを作成しました');
     } catch (error) {
