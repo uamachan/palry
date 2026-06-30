@@ -443,7 +443,10 @@ export const api = {
       ageRange: age || rest.ageRange || '',
       email: deleteField(),
       plan: 'FREE',
-      verified: true,
+      // verified はクライアントから true にできない（firestore.rules の validProfileCreate が
+      // 作成時に verified == false / 欠如を要求し、spoofing を防いでいる）。
+      // 認証バッジを立てる場合は信頼できる Functions(Admin SDK) 側で更新する。
+      verified: false,
       agreedAt: now(),
       createdAt: now(),
       updatedAt: now(),

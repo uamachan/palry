@@ -179,4 +179,19 @@ if (rulesTesting && emulatorHost) {
       profilePhotoPath: 'profileMedia/bob/a.png',
     }));
   });
+
+  test('users 作成は verified:true をクライアントから立てられない（spoofing防止）', async () => {
+    const db = authDb('alice');
+    const baseUserCreate = {
+      id: 'alice',
+      name: 'Alice',
+      plan: 'FREE',
+      createdAt: '2026-06-16T00:00:00.000Z',
+      updatedAt: '2026-06-16T00:00:00.000Z',
+    };
+    // verified:true は拒否（信頼できる Functions/Admin SDK だけが立てられる）
+    await assertFails(setDoc(doc(db, 'users', 'alice'), { ...baseUserCreate, verified: true }));
+    // verified:false なら作成できる（register() が書き込む値）
+    await assertSucceeds(setDoc(doc(db, 'users', 'alice'), { ...baseUserCreate, verified: false }));
+  });
 }
