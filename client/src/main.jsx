@@ -91,6 +91,10 @@ function App() {
   const [index, setIndex] = useState(0);
   const [matches, setMatches] = useState([]);
   const [receivedLikes, setReceivedLikes] = useState([]);
+  // refreshProfiles が state 更新を待たずに最新のいいね一覧を参照するための鏡。
+  const receivedLikesRef = useRef([]);
+  // 初回ロードの一括共有用（uid が変わったら取り直す）。
+  const receivedLikesLoadRef = useRef(null);
   const [dmThreads, setDmThreads] = useState([]);
   const [activeThreadId, setActiveThreadId] = useState(null);
   const [dmDraft, setDmDraft] = useState('');
@@ -381,6 +385,8 @@ function App() {
     setActiveTab('match');
     setMatches([]);
     setReceivedLikes([]);
+    receivedLikesRef.current = [];
+    receivedLikesLoadRef.current = null;
     setDmThreads([]);
     setActiveThreadId(null);
     setProfiles([]);
@@ -412,9 +418,14 @@ function App() {
   async function refreshProfiles() {
     if (!user) return;
     try {
-      const payload = await api.profiles({ plan, targetGender, targetRank, userId: user.id });
       // 互恵性ブースト: 自分に pending のいいねを送っている相手を優遇する。
-      const likedMeIds = new Set(receivedLikes.map((rl) => rl.fromProfileId).filter(Boolean));
+      // いいね一覧の取得完了を待ってから計算する（並行フェッチ任せだと初回は
+      // 空の receivedLikes で計算されてしまい、ブーストが一度も効かない）。
+      const [payload] = await Promise.all([
+        api.profiles({ plan, targetGender, targetRank, userId: user.id }),
+        loadReceivedLikes(),
+      ]);
+      const likedMeIds = new Set(receivedLikesRef.current.map((rl) => rl.fromProfileId).filter(Boolean));
       const profiles = (payload.profiles || []).map((p) => {
         const { score, reasons } = computeMatch(user, p, { likedMeIds });
         return {
@@ -439,12 +450,28 @@ function App() {
     setMatches(payload.matches || []);
   }
 
+  // いいね一覧を1回だけ取得して共有する。refreshProfiles と初回マウントの
+  // 両方から呼ばれても Firestore クエリは uid ごとに1回で済む。
+  function loadReceivedLikes() {
+    if (!user) return Promise.resolve([]);
+    if (receivedLikesLoadRef.current?.uid !== user.id) {
+      setLikesLoading(true);
+      const promise = api.receivedLikes().catch(() => ({ receivedLikes: [] })).then((payload) => {
+        const likes = payload.receivedLikes || [];
+        receivedLikesRef.current = likes;
+        setReceivedLikes(likes);
+        setLikesLoading(false);
+        return likes;
+      });
+      receivedLikesLoadRef.current = { uid: user.id, promise };
+    }
+    return receivedLikesLoadRef.current.promise;
+  }
+
   async function refreshReceivedLikes() {
     if (!user) return;
-    setLikesLoading(true);
-    const payload = await api.receivedLikes().catch(() => ({ receivedLikes: [] }));
-    setReceivedLikes(payload.receivedLikes || []);
-    setLikesLoading(false);
+    receivedLikesLoadRef.current = null; // キャッシュを捨てて再取得
+    await loadReceivedLikes();
   }
 
   async function refreshFootprints() {
@@ -493,7 +520,7 @@ function App() {
 
   useEffect(() => { if (user) refreshProfiles(); }, [user?.id, plan, targetGender, targetRank, entitlements.rankFilter]);
 
-  useEffect(() => { if (user) { refreshMatches(); refreshReceivedLikes(); refreshDmThreads(); refreshFootprints(); } }, [user?.id]);
+  useEffect(() => { if (user) { refreshMatches(); loadReceivedLikes(); refreshDmThreads(); refreshFootprints(); } }, [user?.id]);
   useEffect(() => {
     if (!user) return;
     let cancelled = false;

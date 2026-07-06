@@ -793,6 +793,11 @@ html body #root .auth-modal-panel--profile .pv-field textarea {
   background-color: #fffdf9 !important;
 }
 
+/* 上の padding ショートハンドが chevron 用の右余白を潰すため select だけ復元する */
+html body #root .auth-modal-panel--profile .pv-field select {
+  padding-right: 36px !important;
+}
+
 html body #root .auth-modal-panel--profile .pv-chip-row,
 html body #root .auth-modal-panel--profile .pv-chip-grid,
 html body #root .auth-modal-panel--profile .pv-gender-row {
@@ -998,5 +1003,21 @@ html body #root .auth-modal-panel--profile .profile-setup-actions .secondary {
   html body #root .auth-modal-panel--profile .pv-rank-section .pv-role-card {
     min-height: 62px !important;
     padding: 8px !important;
+  }
+}
+
+/* public/mobile-profile-modal-fix.js が注入する overflow-y:auto は #root 無しの
+   セレクタ(0,3,2)のため、上の非メディアの overflow:hidden(1,3,2)に常に負ける。
+   ステップ内スクロールの許可はこの #root 層で行う。820px はランタイム修正と同じ閾値。 */
+@media (max-width: 820px) {
+  html body #root .auth-modal-panel--profile .profile-setup-card > .pv-basic-grid,
+  html body #root .auth-modal-panel--profile .profile-setup-card > .pv-rank-section,
+  html body #root .auth-modal-panel--profile .profile-setup-card > .setup-stack,
+  html body #root .auth-modal-panel--profile .profile-setup-card > .terms-box {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
