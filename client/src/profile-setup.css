@@ -4,18 +4,7 @@
    同じ !important で上書きするため、ここには記載しない */
 .eyebrow{display:none!important}
 
-.auth-modal--profile .pv-basic-grid select,
-.auth-modal--profile .region-visible-field select,
-.auth-modal--profile select{
-  appearance:none!important;
-  -webkit-appearance:none!important;
-  background-color:#fffdf9!important;
-  background-image:url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 5l4 4 4-4' fill='none' stroke='%237A716A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")!important;
-  background-repeat:no-repeat!important;
-  background-size:14px 14px!important;
-  background-position:right 14px center!important;
-  padding-right:42px!important;
-}
+/* select の矢印差し替えは profile-visual.css の .pv-basic-grid select に集約 */
 
 .profile-setup-panel{padding:28px!important}
 .profile-setup-heading{

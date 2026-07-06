@@ -1,466 +1,12 @@
-/* Profile Visual — Pairly カードUI
-   pv-* プレフィックスで既存スタイルと衝突しない */
+/* Profile Visual — プロフィール作成/編集モーダル(SignupForm)の見た目を集約するファイル。
+   読み込み順: styles.css → profile-setup.css → profile-validation.css →
+   (matching-icons.css 経由で) auth-layout.css → 本ファイル。
+   先に読み込まれるファイルの !important 指定に勝つ必要がある宣言のみ !important を付ける。
+   同一セレクタの再定義（ファイル内上書き）を追加しないこと。値を変えるときは既存ルールを直接編集する。 */
 
-/* ── 基本情報: 2カラムグリッド ── */
-.pv-basic-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  align-items: start;
-}
-@media (max-width: 520px) {
-  .pv-basic-grid { grid-template-columns: 1fr; }
-}
-.pv-span-all { grid-column: 1 / -1; }
-.pv-basic-grid > .pv-field,
-.pv-basic-grid > .pv-field-group {
-  position: relative;
-  z-index: 3;
-  min-width: 0;
-}
-.pv-basic-grid select {
-  min-height: 52px;
-  line-height: 1.25;
-  display: block;
-  position: relative;
-  z-index: 4;
-}
-
-/* ── 写真アップロードカード ── */
-.pv-photo-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 20px 16px 16px;
-  min-height: 200px;
-  background: linear-gradient(160deg, #fff7fb 0%, #f0faf7 100%);
-  border: 2px dashed #e0c8d8;
-  border-radius: 22px;
-  cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
-  overflow: hidden;
-}
-.pv-photo-card:hover {
-  border-color: #ff4f83;
-  box-shadow: 0 6px 24px rgba(255, 79, 131, 0.18);
-  transform: translateY(-1px);
-}
-.pv-photo-card:active {
-  transform: scale(0.99);
-}
-.pv-photo-input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-}
-.pv-photo-preview {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: #f0ebe5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid #fff;
-  box-shadow: 0 4px 18px rgba(24, 22, 20, 0.14);
-  flex-shrink: 0;
-}
-.pv-photo-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.pv-photo-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-.pv-photo-plus {
-  font-size: 38px;
-  line-height: 1;
-  color: #d8b0c8;
-  font-weight: 300;
-}
-.pv-photo-hint {
-  font-size: 12px;
-  color: #b0a0a8;
-  font-weight: 600;
-}
-.pv-photo-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  text-align: center;
-}
-.pv-photo-btn {
-  font-size: 12.5px;
-  font-weight: 800;
-  color: #ff4f83;
-  background: #fff0f5;
-  padding: 6px 16px;
-  border-radius: 999px;
-  border: 1.5px solid #ffd0e4;
-  pointer-events: none;
-}
-.pv-photo-footer small {
-  font-size: 11px;
-  color: #b8a8b0;
-}
-
-/* ── テキストフィールド群 ── */
-.pv-text-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.pv-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.pv-field input,
-.pv-field select,
-.pv-field textarea {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1.5px solid #e7e0d8;
-  border-radius: 12px;
-  font-size: 15px;
-  font-family: inherit;
-  background: #fff;
-  color: #181614;
-  transition: border-color 0.18s, box-shadow 0.18s;
-  box-sizing: border-box;
-}
-.pv-field input:focus,
-.pv-field select:focus,
-.pv-field textarea:focus {
-  outline: none;
-  border-color: #ff4f83;
-  box-shadow: 0 0 0 3px rgba(255, 79, 131, 0.12);
-}
-.pv-field input[aria-invalid="true"],
-.pv-field select[aria-invalid="true"] {
-  border-color: #ff4f83;
-}
-
-/* ── ラベル類 ── */
-.pv-label {
-  font-size: 12.5px;
-  font-weight: 800;
-  color: #5a5050;
-  letter-spacing: 0.02em;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.pv-label small {
-  font-weight: 500;
-  color: #b0a0a8;
-  font-size: 11px;
-}
-.pv-req {
-  font-size: 10px;
-  font-weight: 800;
-  color: #fff;
-  background: #ff4f83;
-  padding: 1px 7px;
-  border-radius: 999px;
-  letter-spacing: 0;
-}
-.pv-hint {
-  font-size: 11px;
-  color: #b8a8b0;
-  margin-top: 2px;
-}
-.pv-char-count {
-  font-size: 11px;
-  color: #b8a8b0;
-  text-align: right;
-  margin-top: 2px;
-  font-variant-numeric: tabular-nums;
-}
-.pv-char-count--warn {
-  color: #e83f70;
-  font-weight: 900;
-}
-
-/* ── フィールドグループ ── */
-.pv-field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* ── チップ行/グリッド ── */
-.pv-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.pv-chip-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.pv-chip-grid--compact {
-  gap: 6px;
-}
-
-/* ── チップ基本スタイル ── */
-.pv-chip {
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: 1.5px solid #e7e0d8;
-  background: #fff;
-  color: #5a5050;
-  font-size: 13px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.12s;
-  white-space: nowrap;
-  line-height: 1.4;
-}
-.pv-chip:hover {
-  border-color: #ff4f83;
-  color: #ff4f83;
-  background: #fff5f8;
-}
-.pv-chip:active {
-  transform: scale(0.96);
-}
-.pv-chip--on {
-  background: linear-gradient(135deg, #ff6fa0, #22c4a0) !important;
-  border-color: transparent !important;
-  color: #fff !important;
-  box-shadow: 0 2px 10px rgba(255, 79, 131, 0.28) !important;
-}
-.pv-chip--tag {
-  padding: 7px 16px;
-  font-size: 13.5px;
-}
-.pv-chip--agent {
-  padding: 5px 11px;
-  font-size: 12.5px;
-  border-radius: 10px;
-}
-.pv-chip--map {
-  padding: 6px 13px;
-  font-size: 12.5px;
-}
-.pv-chip--weapon {
-  padding: 6px 14px;
-  font-size: 13px;
-  letter-spacing: 0.01em;
-}
-
-/* ── 性別ボタン ── */
-.pv-gender-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.pv-gender-btn {
-  flex: 1;
-  min-width: 76px;
-  padding: 10px 8px;
-  border-radius: 14px;
-  border: 2px solid #e7e0d8;
-  background: #fff;
-  color: #5a5050;
-  font-size: 13px;
-  font-weight: 800;
-  font-family: inherit;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.12s;
-}
-.pv-gender-btn:hover {
-  border-color: #ff4f83;
-  color: #ff4f83;
-  background: #fff5f8;
-}
-.pv-gender-btn:active {
-  transform: scale(0.96);
-}
-.pv-gender-btn--on {
-  background: linear-gradient(135deg, #ff6fa0, #ff3d7a) !important;
-  border-color: transparent !important;
-  color: #fff !important;
-  box-shadow: 0 3px 14px rgba(255, 79, 131, 0.35) !important;
-}
-
-/* ── ランクセクション ── */
-.pv-rank-section {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-.pv-rank-tiers {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 320px;
-  overflow-y: auto;
-  padding: 2px 4px 2px 2px;
-  border-radius: 12px;
-}
-.pv-rank-tiers::-webkit-scrollbar {
-  width: 4px;
-}
-.pv-rank-tiers::-webkit-scrollbar-track {
-  background: #f5f0ec;
-  border-radius: 4px;
-}
-.pv-rank-tiers::-webkit-scrollbar-thumb {
-  background: #e0d8d0;
-  border-radius: 4px;
-}
-.pv-rank-tier-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 0;
-}
-.pv-rank-tier-name {
-  min-width: 74px;
-  font-size: 11.5px;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  flex-shrink: 0;
-}
-.pv-rank-badge-group {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.pv-rank-badge {
-  padding: 5px 13px;
-  border-radius: 10px;
-  border: 2px solid #e7e0d8;
-  background: #f8f5f2;
-  color: #5a5050;
-  font-size: 12.5px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.12s;
-}
-.pv-rank-badge:hover {
-  border-color: var(--rc, #ff4f83);
-  color: var(--rc, #ff4f83);
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-.pv-rank-badge:active {
-  transform: scale(0.96);
-}
-.pv-rank-badge--on {
-  background: var(--rc, #ff4f83) !important;
-  border-color: transparent !important;
-  color: #fff !important;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2) !important;
-}
-
-/* ── ロールカード ── */
-.pv-role-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-@media (max-width: 380px) {
-  .pv-role-grid { grid-template-columns: 1fr; }
-}
-.pv-role-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 18px 12px 14px;
-  border-radius: 20px;
-  border: 2px solid #e7e0d8;
-  background: #fff;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
-  text-align: center;
-  font-family: inherit;
-}
-.pv-role-card:hover {
-  border-color: #22c4a0;
-  background: #f5fdf9;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(34, 196, 160, 0.2);
-}
-.pv-role-card:active {
-  transform: translateY(-1px) scale(0.96);
-}
-.pv-role-card--on {
-  background: linear-gradient(160deg, #edfaf4, #d8f7ec) !important;
-  border-color: #22c4a0 !important;
-  box-shadow: 0 4px 18px rgba(34, 196, 160, 0.32) !important;
-  transform: translateY(-1px) !important;
-}
-.pv-role-icon {
-  font-size: 30px;
-  line-height: 1;
-}
-.pv-role-name {
-  font-size: 13.5px;
-  font-weight: 800;
-  color: #2a2220;
-  letter-spacing: 0.01em;
-}
-.pv-role-desc {
-  font-size: 11px;
-  color: #8a8080;
-  font-weight: 500;
-  text-wrap: pretty;
-}
-
-/* ── 自己紹介テキストエリア ── */
-.pv-bio-area {
-  resize: vertical;
-  min-height: 110px;
-  font-size: 14px;
-  line-height: 1.7;
-}
-
-/* ── 声の自己紹介: 録音完了バッジ ── */
-.pv-voice-done {
-  font-size: 12px;
-  font-weight: 800;
-  color: #22c4a0;
-  background: #e8faf4;
-  padding: 4px 12px;
-  border-radius: 999px;
-  border: 1px solid #c0f0e0;
-}
-
-/* ── セクション区切り (setup-stack 内で使用) ── */
-.profile-setup-card .pv-field-group + .pv-field-group {
-  padding-top: 4px;
-}
-
-/* ── profile-visual.css で上書き: 基本情報タブの select を pv-field に合わせる ── */
-.pv-basic-grid select {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a09090' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
-}
-
-/* Pairly profile setup refresh */
+/* ══════════════════════════════════════════════════
+   モーダル外殻・カラートークン
+══════════════════════════════════════════════════ */
 .auth-modal--profile {
   padding: 14px !important;
   --pv-bg: #FFFDF9;
@@ -498,6 +44,9 @@
   box-shadow: 0 10px 24px rgba(31, 25, 20, .12) !important;
 }
 
+/* ══════════════════════════════════════════════════
+   パネル・見出し
+══════════════════════════════════════════════════ */
 .profile-setup-panel {
   width: 100% !important;
   padding: 26px !important;
@@ -523,6 +72,7 @@
   font-weight: 700 !important;
 }
 
+/* フォーム外枠は透明化し、カード装飾は各ステップコンテナ側に持たせる */
 .email-signup-form.profile-setup-card {
   gap: 16px !important;
   padding: 0 !important;
@@ -532,6 +82,9 @@
   box-shadow: none !important;
 }
 
+/* ══════════════════════════════════════════════════
+   進捗バー・ステップタブ
+══════════════════════════════════════════════════ */
 .profile-setup-card .setup-progress {
   height: 7px !important;
   background: #EFE6DD !important;
@@ -561,6 +114,11 @@
   font-size: 12px !important;
   letter-spacing: 0 !important;
   box-shadow: 0 4px 12px rgba(31, 25, 20, .03) !important;
+  transition: background .15s, color .15s, border-color .15s, box-shadow .15s, transform .12s !important;
+}
+
+.profile-setup-card .setup-tabs button:active {
+  transform: scale(0.96) !important;
 }
 
 .profile-setup-card .setup-tabs button.active {
@@ -575,14 +133,9 @@
   cursor: not-allowed !important;
 }
 
-.profile-setup-card .setup-tabs button {
-  transition: background .15s, color .15s, border-color .15s, box-shadow .15s, transform .12s !important;
-}
-
-.profile-setup-card .setup-tabs button:active {
-  transform: scale(0.96) !important;
-}
-
+/* ══════════════════════════════════════════════════
+   ステップコンテナ(白カード)
+══════════════════════════════════════════════════ */
 .pv-basic-grid,
 .pv-rank-section,
 .profile-setup-card > .setup-stack,
@@ -592,12 +145,6 @@
   border-radius: 22px !important;
   padding: 18px !important;
   box-shadow: 0 12px 30px rgba(31, 25, 20, .055) !important;
-}
-
-.pv-basic-grid {
-  grid-template-columns: 280px minmax(0, 1fr) !important;
-  gap: 16px !important;
-  align-items: stretch !important;
 }
 
 /* ステップ切替時のエンターアニメーション: コンテナ全体ではなく子要素を分割してステージャー表示 */
@@ -653,219 +200,436 @@
   outline-offset: 2px;
 }
 
+/* ══════════════════════════════════════════════════
+   基本情報: レイアウトグリッド
+══════════════════════════════════════════════════ */
+.pv-basic-grid {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) !important;
+  gap: 10px 12px !important;
+  align-items: stretch !important;
+}
+
+.pv-span-all { grid-column: 1 / -1; }
+
+.pv-basic-grid > .pv-field,
+.pv-basic-grid > .pv-field-group {
+  position: relative;
+  z-index: 3;
+  min-width: 0;
+}
+
+/* select はネイティブ矢印を消してシェブロンに差し替える */
+.pv-basic-grid select {
+  display: block;
+  position: relative;
+  z-index: 4;
+  line-height: 1.25;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background-color: #FFFDF9 !important;
+  background-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 5l4 4 4-4' fill='none' stroke='%237A716A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-size: 14px 14px !important;
+  background-position: right 14px center !important;
+}
+
+/* ══════════════════════════════════════════════════
+   写真アップロードカード
+══════════════════════════════════════════════════ */
 .pv-photo-card {
-  min-height: 100% !important;
-  border-radius: 18px !important;
-  border: 1px dashed #EACFD7 !important;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 0 !important;
+  padding: 12px !important;
   background: linear-gradient(180deg, #FFF9F6, #FFF2F5) !important;
-  padding: 18px !important;
+  border: 1px dashed #EACFD7 !important;
+  border-radius: 18px !important;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .72) !important;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+  overflow: hidden;
 }
 
 .pv-photo-card:hover {
   border-color: var(--pv-accent) !important;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .72), 0 14px 28px rgba(255, 92, 138, .12) !important;
+  transform: translateY(-1px);
+}
+
+.pv-photo-card:active {
+  transform: scale(0.99);
+}
+
+.pv-photo-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
 }
 
 .pv-photo-preview {
-  width: 112px !important;
-  height: 112px !important;
-  border-radius: 28px !important;
+  width: 88px !important;
+  height: 88px !important;
+  border-radius: 22px !important;
+  overflow: hidden;
   background: #F8F3EE !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--pv-line) !important;
   box-shadow: 0 14px 30px rgba(31, 25, 20, .1) !important;
+  flex-shrink: 0;
+}
+
+.pv-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pv-photo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
 .pv-photo-plus {
+  font-size: 38px;
+  line-height: 1;
   color: var(--pv-accent) !important;
+  font-weight: 300;
 }
 
-.pv-photo-hint,
-.pv-photo-footer small,
-.pv-hint,
-.pv-char-count {
+.pv-photo-hint {
+  font-size: 12px;
   color: var(--pv-muted) !important;
+  font-weight: 600;
+}
+
+.pv-photo-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
 }
 
 .pv-photo-btn {
+  font-size: 12.5px;
+  font-weight: 800;
   color: var(--pv-accent) !important;
   background: #FFFDF9 !important;
-  border-color: #F4D7DE !important;
+  padding: 6px 16px;
   border-radius: 12px !important;
+  border: 1.5px solid #F4D7DE !important;
+  pointer-events: none;
 }
 
-.pv-text-fields,
-.setup-stack {
-  gap: 14px !important;
-}
-
-.pv-field,
-.pv-field-group {
-  gap: 8px !important;
-}
-
-.pv-label {
-  color: var(--pv-ink) !important;
-  letter-spacing: 0 !important;
-  font-size: 12px !important;
-}
-
-.pv-label small {
+.pv-photo-footer small {
+  font-size: 11px;
   color: var(--pv-muted) !important;
 }
 
-.pv-req {
-  background: #FFE2EA !important;
-  color: #C93462 !important;
-  border: 1px solid #F5C8D3 !important;
+/* ══════════════════════════════════════════════════
+   入力フィールド
+══════════════════════════════════════════════════ */
+.pv-text-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px !important;
+}
+
+.pv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px !important;
 }
 
 .pv-field input,
 .pv-field select,
 .pv-field textarea {
-  min-height: 48px !important;
+  width: 100%;
+  border: 1.5px solid var(--pv-line, #e8ded5);
   border-color: var(--pv-line) !important;
   border-radius: 15px !important;
+  font-size: 15px;
+  font-family: inherit;
   background: #FFFDF9 !important;
   color: var(--pv-ink) !important;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  box-sizing: border-box;
+}
+
+.pv-field input,
+.pv-field select {
+  min-height: 44px !important;
+  padding: 10px 14px !important;
+}
+
+.pv-field textarea {
+  min-height: 48px !important;
   padding: 12px 14px !important;
+}
+
+/* シェブロン分の右余白 */
+.pv-basic-grid select,
+.pv-field select {
+  padding-right: 36px !important;
 }
 
 .pv-field input:focus,
 .pv-field select:focus,
 .pv-field textarea:focus {
+  outline: none;
   border-color: var(--pv-accent) !important;
   box-shadow: 0 0 0 4px rgba(255, 92, 138, .13) !important;
 }
 
-.pv-basic-grid select {
-  background-color: #FFFDF9 !important;
-  background-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 5l4 4 4-4' fill='none' stroke='%237A716A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+/* バリデーションNGの項目は枠をアクセント色に */
+.pv-field input[aria-invalid="true"],
+.pv-field select[aria-invalid="true"] {
+  border-color: var(--pv-accent) !important;
 }
 
-.rank-inline {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 7px !important;
-  min-width: 0 !important;
+/* ══════════════════════════════════════════════════
+   ラベル類
+══════════════════════════════════════════════════ */
+.pv-label {
+  font-size: 12px !important;
+  font-weight: 800;
+  color: var(--pv-ink) !important;
+  letter-spacing: 0 !important;
+  line-height: 1.3 !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
-.rank-inline-icon {
-  width: 26px !important;
-  height: 26px !important;
-  min-width: 26px !important;
-  display: inline-grid !important;
-  place-items: center !important;
-  border-radius: 9px !important;
-  background: #FFFFFF !important;
-  border: 1px solid var(--pv-line, #E8DED5) !important;
-  box-shadow: 0 5px 12px rgba(31, 25, 20, .08) !important;
+.pv-label small {
+  font-weight: 500;
+  color: var(--pv-muted) !important;
+  font-size: 11px;
 }
 
-.rank-inline-icon img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
-  display: block !important;
+.pv-req {
+  font-size: 10px;
+  font-weight: 800;
+  color: #C93462 !important;
+  background: #FFE2EA !important;
+  border: 1px solid #F5C8D3 !important;
+  padding: 1px 7px;
+  border-radius: 999px;
+  letter-spacing: 0;
 }
 
-.rank-inline-icon--overlay {
-  width: 24px !important;
-  height: 24px !important;
-  min-width: 24px !important;
-  border-color: rgba(255, 255, 255, .55) !important;
-  background: rgba(255, 255, 255, .94) !important;
-  box-shadow: 0 5px 14px rgba(0, 0, 0, .24) !important;
+.pv-hint {
+  font-size: 11px;
+  color: var(--pv-muted) !important;
+  margin-top: 2px;
 }
 
-.profile-rank-line,
-.dm-rank-line,
-.profile-detail-rank,
-.mp-rank-meta {
-  line-height: 1.25 !important;
+.pv-char-count {
+  font-size: 11px;
+  color: var(--pv-muted) !important;
+  text-align: right;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
 }
 
-.profile-rank-line > span:last-child,
-.dm-rank-line > span:last-child,
-.profile-detail-rank > span:last-child,
-.mp-rank-meta > span:last-child {
-  min-width: 0 !important;
-  overflow-wrap: anywhere !important;
+.pv-char-count--warn {
+  color: #e83f70 !important;
+  font-weight: 900;
 }
 
-.profile-preview .profile-rank-line {
-  color: var(--pv-ink, #181614) !important;
-  font-weight: 900 !important;
-}
-
-.profile-detail-rank {
-  justify-content: flex-start !important;
-}
-
-.mp-rank-meta {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 7px !important;
-}
-
-.pv-photo-area {
+/* ══════════════════════════════════════════════════
+   フィールドグループ
+══════════════════════════════════════════════════ */
+.pv-field-group {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  gap: 8px !important;
+}
+
+/* 各ステップ内ではラベルと入力の間隔をさらに詰める */
+.pv-basic-grid .pv-field,
+.pv-basic-grid .pv-field-group,
+.setup-stack .pv-field,
+.setup-stack .pv-field-group,
+.pv-rank-section .pv-field,
+.pv-rank-section .pv-field-group {
+  gap: 6px !important;
+}
+
+.profile-setup-card .pv-field-group + .pv-field-group {
+  padding-top: 4px;
+}
+
+/* 追加情報/自己紹介などの縦積みコンテナ */
+.setup-stack {
+  gap: 12px !important;
+}
+
+/* ══════════════════════════════════════════════════
+   チップ行/グリッド
+══════════════════════════════════════════════════ */
+.pv-chip-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+}
+
+.pv-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.pv-photo-tabs {
-  display: flex;
-  gap: 6px;
+/* 目的タグ (10個 → 5列2行) */
+.pv-chip-grid:has(.pv-chip--tag) {
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 6px !important;
 }
 
-.pv-photo-tab {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--line, #e7e0d8);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--muted, #77706a);
-  font-size: 12px;
-  font-weight: 900;
-  display: grid;
-  place-items: center;
+/* MAP (12個 → 4列3行) */
+.pv-chip-grid:has(.pv-chip--map) {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 6px !important;
+}
+
+/* エージェント (7列グリッド) */
+.pv-chip-grid--compact {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 4px !important;
+}
+
+/* ══════════════════════════════════════════════════
+   チップ
+══════════════════════════════════════════════════ */
+.pv-chip {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--pv-line, #e8ded5);
+  border-color: var(--pv-line) !important;
+  background: #FFFDF9 !important;
+  color: var(--pv-muted) !important;
+  box-shadow: 0 3px 10px rgba(31, 25, 20, .035) !important;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
   cursor: pointer;
-  transition: background .1s, color .1s, border-color .1s, transform .12s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+  white-space: nowrap;
+  line-height: 1.4;
 }
 
-.pv-photo-tab:active:not(:disabled) {
+.pv-chip:hover {
+  background: #FFF7F8 !important;
+  color: var(--pv-accent) !important;
+  border-color: #F3C9D4 !important;
+}
+
+.pv-chip:active {
   transform: scale(0.96);
 }
 
-.pv-photo-tab:disabled {
-  opacity: .35;
-  cursor: not-allowed;
+.pv-chip--on {
+  background: #FFF1F5 !important;
+  color: #C93462 !important;
+  border-color: #FFB8CB !important;
+  box-shadow: 0 7px 18px rgba(255, 92, 138, .13) !important;
 }
 
-.pv-photo-tab.active {
-  background: var(--ink, #181614);
-  color: #fff;
-  border-color: var(--ink, #181614);
+.pv-chip--tag {
+  padding: 7px 16px;
+  font-size: 13.5px;
 }
 
-.pv-chip,
+.pv-chip--agent {
+  padding: 5px 11px;
+  font-size: 12.5px;
+  border-radius: 10px;
+}
+
+.pv-chip--map {
+  padding: 6px 13px;
+  font-size: 12.5px;
+}
+
+.pv-chip--weapon {
+  padding: 6px 14px;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+/* 年齢帯/VC/武器などの横並びチップ */
+.pv-chip-row .pv-chip {
+  padding: 6px 14px !important;
+  min-height: 36px !important;
+}
+
+/* エージェントグリッド内のチップ */
+.pv-chip-grid--compact .pv-chip {
+  padding: 5px 6px !important;
+  font-size: 11.5px !important;
+  border-radius: 10px !important;
+  min-height: 34px !important;
+  text-align: center !important;
+  justify-content: center !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* ══════════════════════════════════════════════════
+   性別ボタン
+══════════════════════════════════════════════════ */
+.pv-gender-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .pv-gender-btn {
-  background: #FFFDF9 !important;
+  flex: 1;
+  min-width: 76px;
+  min-height: 36px !important;
+  padding: 7px 14px !important;
+  border-radius: 14px;
+  border: 2px solid var(--pv-line, #e8ded5);
   border-color: var(--pv-line) !important;
+  background: #FFFDF9 !important;
   color: var(--pv-muted) !important;
   box-shadow: 0 3px 10px rgba(31, 25, 20, .035) !important;
+  font-size: 13px !important;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.12s;
 }
 
-.pv-chip:hover,
 .pv-gender-btn:hover {
   background: #FFF7F8 !important;
   color: var(--pv-accent) !important;
   border-color: #F3C9D4 !important;
 }
 
-.pv-chip--on,
+.pv-gender-btn:active {
+  transform: scale(0.96);
+}
+
 .pv-gender-btn--on {
   background: #FFF1F5 !important;
   color: #C93462 !important;
@@ -873,300 +637,16 @@
   box-shadow: 0 7px 18px rgba(255, 92, 138, .13) !important;
 }
 
+/* ══════════════════════════════════════════════════
+   ランク選択 — 一画面表示・スクロールなし
+══════════════════════════════════════════════════ */
 .pv-rank-section {
+  display: flex;
+  flex-direction: column;
   gap: 18px !important;
 }
 
-.pv-rank-tiers {
-  display: grid !important;
-  grid-template-columns: repeat(5, minmax(128px, 1fr)) !important;
-  gap: 10px !important;
-  max-height: none !important;
-  overflow: visible !important;
-  padding: 0 !important;
-}
-
-.pv-rank-card {
-  display: grid !important;
-  gap: 11px !important;
-  min-width: 0 !important;
-  border: 1px solid var(--pv-line) !important;
-  border-radius: 18px !important;
-  background: #FFFDF9 !important;
-  padding: 12px !important;
-  box-shadow: 0 8px 18px rgba(31, 25, 20, .045) !important;
-  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease !important;
-}
-
-.pv-rank-card:hover {
-  transform: translateY(-1px) !important;
-  border-color: color-mix(in srgb, var(--rc) 46%, var(--pv-line)) !important;
-  box-shadow: 0 12px 24px rgba(31, 25, 20, .07) !important;
-}
-
-.pv-rank-card--on {
-  background: linear-gradient(180deg, #FFF4F6, #FFFDF9) !important;
-  border-color: color-mix(in srgb, var(--rc) 58%, #FFB8CB) !important;
-  box-shadow: 0 12px 26px rgba(255, 92, 138, .14) !important;
-}
-
-.pv-rank-card-head {
-  display: grid !important;
-  justify-items: center !important;
-  gap: 8px !important;
-}
-
-.pv-rank-icon-wrap {
-  width: 56px !important;
-  height: 56px !important;
-  display: grid !important;
-  place-items: center !important;
-  border-radius: 18px !important;
-  background: #FFFFFF !important;
-  border: 1px solid rgba(232, 222, 213, .82) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .8), 0 8px 16px rgba(31, 25, 20, .06) !important;
-}
-
-.pv-rank-icon-wrap img,
-.pv-role-icon img {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
-}
-
-.pv-rank-tier-name {
-  min-width: 0 !important;
-  color: var(--pv-ink) !important;
-  font-size: 13px !important;
-  font-weight: 900 !important;
-  letter-spacing: 0 !important;
-  text-align: center !important;
-}
-
-.pv-rank-badge-group {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 6px !important;
-}
-
-.pv-rank-card:has(.pv-rank-badge:only-child) .pv-rank-badge-group {
-  grid-template-columns: 1fr !important;
-}
-
-.pv-rank-badge {
-  min-width: 0 !important;
-  min-height: 32px !important;
-  padding: 6px 7px !important;
-  border-radius: 11px !important;
-  background: #FFFFFF !important;
-  border: 1px solid var(--pv-line) !important;
-  color: var(--pv-muted) !important;
-  font-size: 12px !important;
-  font-weight: 900 !important;
-  box-shadow: none !important;
-}
-
-.pv-rank-badge:hover {
-  background: #FFF8F9 !important;
-  border-color: color-mix(in srgb, var(--rc) 55%, #FFB8CB) !important;
-  color: var(--pv-ink) !important;
-}
-
-.pv-rank-badge--on {
-  background: var(--pv-ink) !important;
-  border-color: var(--pv-ink) !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 7px 16px rgba(31, 25, 20, .18) !important;
-}
-
-.pv-role-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 10px !important;
-}
-
-.pv-role-card {
-  min-width: 0 !important;
-  min-height: 150px !important;
-  gap: 8px !important;
-  border: 1px solid var(--pv-line) !important;
-  border-radius: 18px !important;
-  background: #FFFDF9 !important;
-  padding: 16px 12px !important;
-  box-shadow: 0 8px 18px rgba(31, 25, 20, .045) !important;
-}
-
-.pv-role-card:hover {
-  background: #F8FFFC !important;
-  border-color: #BFEDE2 !important;
-  box-shadow: 0 12px 24px rgba(113, 216, 190, .14) !important;
-  transform: translateY(-1px) !important;
-}
-
-.pv-role-card--on {
-  background: linear-gradient(180deg, #F5FFFB, #FFFDF9) !important;
-  border-color: var(--pv-mint) !important;
-  box-shadow: 0 12px 26px rgba(113, 216, 190, .18) !important;
-}
-
-.pv-role-icon {
-  width: 54px !important;
-  height: 54px !important;
-  display: grid !important;
-  place-items: center !important;
-  border-radius: 18px !important;
-  background: #FFFFFF !important;
-  border: 1px solid var(--pv-line) !important;
-  box-shadow: 0 8px 16px rgba(31, 25, 20, .055) !important;
-}
-
-.pv-role-name {
-  color: var(--pv-ink) !important;
-  font-size: 14px !important;
-  letter-spacing: 0 !important;
-}
-
-.pv-role-desc {
-  color: var(--pv-muted) !important;
-  font-size: 11px !important;
-  line-height: 1.45 !important;
-}
-
-.voice-record-box,
-.terms-box {
-  background: #FFFDF9 !important;
-  border-color: var(--pv-line) !important;
-}
-
-.voice-record-box b,
-.terms-box h3 {
-  color: var(--pv-ink) !important;
-}
-
-.voice-record-box p,
-.terms-box p {
-  color: var(--pv-muted) !important;
-}
-
-.pv-voice-done {
-  background: #F1FFFA !important;
-  border-color: #C8F0E5 !important;
-  color: #2C8E78 !important;
-}
-
-.profile-setup-actions {
-  border-top-color: var(--pv-line) !important;
-}
-
-@media (max-width: 920px) {
-  .profile-setup-card .setup-tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-  .pv-basic-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .pv-photo-card {
-    min-height: 220px !important;
-  }
-  .pv-rank-tiers {
-    grid-template-columns: repeat(3, minmax(118px, 1fr)) !important;
-  }
-  .pv-role-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-}
-
-@media (max-width: 560px) {
-  .auth-modal--profile {
-    padding: 8px !important;
-  }
-  .auth-modal--profile .auth-modal-panel,
-  .auth-modal--profile .auth-modal-panel--profile {
-    width: 100% !important;
-    max-height: calc(100svh - 16px) !important;
-    border-radius: 24px 24px 0 0 !important;
-    padding: 10px !important;
-  }
-  .profile-setup-panel {
-    padding: 22px 14px 16px !important;
-  }
-  .profile-setup-heading h2 {
-    font-size: 28px !important;
-  }
-  .profile-setup-card .setup-tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-  .pv-basic-grid,
-  .pv-rank-section,
-  .profile-setup-card > .setup-stack,
-  .profile-setup-card > .terms-box {
-    padding: 14px !important;
-    border-radius: 20px !important;
-  }
-  .pv-rank-tiers {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-  .pv-role-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .pv-role-card {
-    min-height: 124px !important;
-  }
-}
-
-/* Mobile matching: dedicated app-like layout instead of shrinking desktop. */
-@media(max-width:760px){html,body,#root,.appv2{width:100%!important;max-width:100%!important;overflow-x:hidden!important}html body .appv2{min-height:100svh!important;height:100svh!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;padding:6px 6px calc(108px + env(safe-area-inset-bottom,0px))!important}html body .appv2>.site-header{flex:0 0 auto!important;width:100%!important;max-width:100%!important;min-height:0!important;margin:0 0 8px!important;padding:8px!important;border-radius:18px!important;overflow:hidden!important}html body .appv2 .brand img,html body .appv2 .app-brand-button img{width:92px!important;max-width:30vw!important}html body .appv2 .site-nav{width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}html body .appv2 .site-nav::-webkit-scrollbar{display:none!important}html body .appv2 .nav-button{min-height:40px!important;padding:8px 13px!important;border-radius:18px!important;white-space:nowrap!important}html body .appv2-content{flex:1 1 auto!important;width:100%!important;max-width:100%!important;min-height:0!important;height:auto!important;margin:0 0 16px!important;padding:10px!important;border-radius:20px!important;overflow:hidden!important}html body .mp-wrap{width:100%!important;max-width:100%!important;height:100%!important;min-height:0!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto minmax(0,1fr) auto!important;grid-template-areas:"filter" "card" "actions"!important;gap:10px!important;overflow:hidden!important;align-items:stretch!important;justify-items:stretch!important}html body .mp-filter-row{grid-area:filter!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:46px!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:8px!important;padding:7px 8px!important;overflow:hidden!important;border-radius:18px!important}html body .mp-filter-label{font-size:0!important;min-width:0!important}html body .mp-filter-label::after{content:'性別'!important;font-size:12px!important;font-weight:1000!important}html body .mp-filter-select{width:100%!important;max-width:100%!important;min-width:0!important;height:38px!important;padding:7px 10px!important;font-size:13px!important;border-radius:999px!important}html body .mp-lock-hint{min-width:0!important;max-width:112px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;padding:7px 9px!important;font-size:11px!important}html body .mp-card-wrap{grid-area:card!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:0!important;height:100%!important;overflow:hidden!important;display:grid!important;place-items:center!important}html body .mp-card,html body .mp-empty{width:min(100%,340px)!important;max-width:340px!important;height:100%!important;max-height:min(520px,100%)!important;min-height:0!important;margin:0 auto!important;overflow:hidden!important;border-radius:24px!important}html body .mp-card{display:block!important}html body .mp-photo,html body .mp-photo-placeholder{width:100%!important;height:100%!important;min-height:0!important;object-fit:cover!important}html body .mp-card-info{max-height:58%!important;overflow:hidden!important;padding:12px!important}html body .mp-bio{display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important}html body .mp-empty{display:grid!important;place-items:center!important;align-content:center!important;text-align:center!important;padding:24px 18px!important;background:#fff!important;border:1px solid var(--line,#e7e0d8)!important}html body .mp-actions{grid-area:actions!important;width:min(100%,340px)!important;max-width:340px!important;margin:0 auto!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;padding:0!important}html body .mp-actions .mp-btn{height:50px!important;min-height:50px!important;border-radius:16px!important}html body .appv2-bottom-nav{width:calc(100vw - 14px)!important;max-width:calc(100vw - 14px)!important;bottom:calc(7px + env(safe-area-inset-bottom,0px))!important;padding:7px!important;border-radius:20px!important}html body .appv2-nav-btn{min-width:0!important;padding:7px 4px!important;font-size:10px!important}}
-
-/* リスト系タブ（通知/プロフィール/足あと/料金/管理）はスクロールを許可する。
-   マッチング・DMは画面ぴったりの固定レイアウトなので overflow:hidden のまま維持。 */
-.appv2-content--scroll{
-  overflow-y:auto!important;
-  overflow-x:hidden!important;
-  -webkit-overflow-scrolling:touch!important;
-}
-
-@media(max-width:760px){
-  html body .appv2-content.appv2-content--scroll{
-    /* 行1028の .appv2-content{overflow:hidden} より詳細度を高くして
-       スクロールを確実に有効化する(料金/プロフィール/足あと/通知タブ)。 */
-    overflow-y:auto!important;
-    overflow-x:hidden!important;
-    -webkit-overflow-scrolling:touch!important;
-    /* 固定ボトムナビ(~78px) + 余白 を確保してコンテンツが隠れないようにする */
-    padding-bottom:100px!important;
-  }
-
-  /* スクロール対象タブ(プロフィール/足あと/料金など)のパネルは高さ固定だと
-     中身が画面より高いとき下に届かない。可変にしてスクロールできるようにする。
-     min-height は styles.css 側で確保されるので短い時も画面を満たす。 */
-  html body .appv2-content.appv2-content--scroll .list-panel{
-    height:auto!important;
-  }
-
-  /* ボタンを円形に統一（profile-visual内の高優先度ブロックを上書き） */
-  html body .mp-actions{
-    display:flex!important;
-    justify-content:center!important;
-    align-items:center!important;
-    gap:24px!important;
-    grid-template-columns:unset!important;
-    width:100%!important;
-    max-width:340px!important;
-  }
-  html body .mp-actions .mp-btn{
-    width:60px!important;
-    height:60px!important;
-    flex:0 0 60px!important;
-    min-height:0!important;
-    border-radius:50%!important;
-  }
-}
-
-/* ══════════════════════════════════════════════════
-   ランク/ロール選択 — 一画面表示・スクロールなし
-══════════════════════════════════════════════════ */
-
-/* rank section: スクロールさせず内容をコンパクトに収める */
+/* ステップ直下ではスクロールさせず内容をコンパクトに収める */
 .profile-setup-card > .pv-rank-section {
   overflow: visible !important;
   flex: 0 0 auto !important;
@@ -1180,7 +660,6 @@
   gap: 6px !important;
 }
 
-/* 全ボタン同サイズ */
 .pv-rank-icon-btn {
   display: flex !important;
   flex-direction: column !important;
@@ -1261,11 +740,77 @@
   color: #fff !important;
 }
 
-/* ロールカード: コンパクトに */
+/* ══════════════════════════════════════════════════
+   ロールカード
+══════════════════════════════════════════════════ */
+.pv-role-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.pv-role-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px !important;
+  min-width: 0 !important;
+  min-height: 150px !important;
+  padding: 16px 12px !important;
+  border: 1px solid var(--pv-line) !important;
+  border-radius: 18px !important;
+  background: #FFFDF9 !important;
+  box-shadow: 0 8px 18px rgba(31, 25, 20, .045) !important;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  text-align: center;
+  font-family: inherit;
+}
+
+.pv-role-card:hover {
+  background: #F8FFFC !important;
+  border-color: #BFEDE2 !important;
+  box-shadow: 0 12px 24px rgba(113, 216, 190, .14) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* :hover の transform より優先させて押下フィードバックを効かせる */
+.pv-role-card:active {
+  transform: translateY(-1px) scale(0.96) !important;
+}
+
+.pv-role-card--on {
+  background: linear-gradient(180deg, #F5FFFB, #FFFDF9) !important;
+  border-color: var(--pv-mint) !important;
+  box-shadow: 0 12px 26px rgba(113, 216, 190, .18) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ランク/ロールタブ内ではコンパクト表示 */
 .pv-rank-section .pv-role-card {
   min-height: 88px !important;
   padding: 10px 8px !important;
   gap: 6px !important;
+}
+
+.pv-role-icon {
+  width: 54px !important;
+  height: 54px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 18px !important;
+  background: #FFFFFF !important;
+  border: 1px solid var(--pv-line) !important;
+  box-shadow: 0 8px 16px rgba(31, 25, 20, .055) !important;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.pv-role-icon img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
 }
 
 .pv-rank-section .pv-role-icon img {
@@ -1273,8 +818,64 @@
   height: 36px !important;
 }
 
+.pv-role-name {
+  font-size: 14px !important;
+  font-weight: 800;
+  color: var(--pv-ink) !important;
+  letter-spacing: 0 !important;
+}
+
+.pv-role-desc {
+  font-size: 11px !important;
+  color: var(--pv-muted) !important;
+  font-weight: 500;
+  line-height: 1.45 !important;
+  text-wrap: pretty;
+}
+
 /* ══════════════════════════════════════════════════
-   戻る/次へ ボタンを大きく・横並び
+   自己紹介・声の自己紹介・規約
+══════════════════════════════════════════════════ */
+.pv-bio-area {
+  resize: vertical !important;
+  height: auto !important;
+  min-height: 0 !important;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.voice-record-box,
+.terms-box {
+  background: #FFFDF9 !important;
+  border-color: var(--pv-line) !important;
+}
+
+.voice-record-box {
+  padding: 12px !important;
+}
+
+.voice-record-box b,
+.terms-box h3 {
+  color: var(--pv-ink) !important;
+}
+
+.voice-record-box p,
+.terms-box p {
+  color: var(--pv-muted) !important;
+}
+
+.pv-voice-done {
+  font-size: 12px;
+  font-weight: 800;
+  color: #2C8E78 !important;
+  background: #F1FFFA !important;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid #C8F0E5 !important;
+}
+
+/* ══════════════════════════════════════════════════
+   アクションボタン(戻る/次へ/完成)
 ══════════════════════════════════════════════════ */
 .profile-setup-actions {
   display: flex !important;
@@ -1282,6 +883,7 @@
   flex-wrap: wrap !important;
   gap: 8px !important;
   grid-template-columns: unset !important;
+  border-top-color: var(--pv-line) !important;
 }
 
 .profile-setup-actions .secondary {
@@ -1305,145 +907,208 @@
 }
 
 /* ══════════════════════════════════════════════════
-   全タブ共通: コンテンツをコンパクト化してスクロール不要に
-   (overflow-yは安全網として残す)
+   レスポンシブ(≤760px の app モーダルは profile-setup.css 側が担当)
 ══════════════════════════════════════════════════ */
-
-/* ══════════════════════════════════════════════════
-   基本情報: コンパクト化
-══════════════════════════════════════════════════ */
-
-/* 2カラムをより狭く */
-.pv-basic-grid {
-  grid-template-columns: 200px minmax(0, 1fr) !important;
-  gap: 12px !important;
+@media (max-width: 920px) {
+  .profile-setup-card .setup-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .pv-role-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 
-/* 写真カード: 高さを右カラムに合わせつつコンパクト */
-.pv-photo-card {
-  min-height: 0 !important;
-  padding: 12px !important;
-}
-
-.pv-photo-preview {
-  width: 88px !important;
-  height: 88px !important;
-  border-radius: 22px !important;
-}
-
-/* 入力フィールド高さ削減 */
-.pv-field input,
-.pv-field select {
-  min-height: 44px !important;
-  padding: 10px 14px !important;
-}
-
-/* セレクトのドロップダウン矢印スペース復元 */
-.pv-basic-grid select,
-.pv-field select {
-  padding-right: 36px !important;
-}
-
-/* テキストフィールド間隔詰め */
-.pv-text-fields {
-  gap: 10px !important;
-}
-
-/* 年齢帯/性別/地域の間隔詰め */
-.pv-basic-grid {
-  row-gap: 10px !important;
-}
-
-/* 性別ボタンコンパクト */
-.pv-gender-btn {
-  padding: 7px 14px !important;
-  min-height: 36px !important;
-  font-size: 13px !important;
-}
-
-/* 年齢チップコンパクト */
-.pv-chip-row .pv-chip {
-  padding: 6px 14px !important;
-  min-height: 36px !important;
-}
-
-/* フィールドとラベルの間隔詰め (全タブ共通) */
-.pv-basic-grid .pv-field,
-.pv-basic-grid .pv-field-group,
-.setup-stack .pv-field,
-.setup-stack .pv-field-group,
-.pv-rank-section .pv-field,
-.pv-rank-section .pv-field-group {
-  gap: 6px !important;
-}
-
-.pv-label {
-  line-height: 1.3 !important;
+@media (max-width: 560px) {
+  .auth-modal--profile {
+    padding: 8px !important;
+  }
+  .auth-modal--profile .auth-modal-panel,
+  .auth-modal--profile .auth-modal-panel--profile {
+    width: 100% !important;
+    max-height: calc(100svh - 16px) !important;
+    border-radius: 24px 24px 0 0 !important;
+    padding: 10px !important;
+  }
+  .profile-setup-panel {
+    padding: 22px 14px 16px !important;
+  }
+  .profile-setup-heading h2 {
+    font-size: 28px !important;
+  }
+  .profile-setup-card .setup-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .pv-basic-grid,
+  .pv-rank-section,
+  .profile-setup-card > .setup-stack,
+  .profile-setup-card > .terms-box {
+    padding: 14px !important;
+    border-radius: 20px !important;
+  }
+  .pv-role-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* ══════════════════════════════════════════════════
-   プレイスタイル: エージェント一覧コンパクト
+   rank-inline — ダッシュボード各所のランク表示(共用)
 ══════════════════════════════════════════════════ */
-
-/* 目的タグ (10個 → 5列2行) */
-.pv-chip-grid:has(.pv-chip--tag) {
-  display: grid !important;
-  grid-template-columns: repeat(5, 1fr) !important;
-  gap: 6px !important;
+.rank-inline {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  min-width: 0 !important;
 }
 
-/* MAP (12個 → 4列3行) */
-.pv-chip-grid:has(.pv-chip--map) {
-  display: grid !important;
-  grid-template-columns: repeat(4, 1fr) !important;
-  gap: 6px !important;
+.rank-inline-icon {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  border-radius: 9px !important;
+  background: #FFFFFF !important;
+  border: 1px solid var(--pv-line, #E8DED5) !important;
+  box-shadow: 0 5px 12px rgba(31, 25, 20, .08) !important;
 }
 
-/* エージェント: 7列の極小チップ */
-.pv-chip-grid--compact {
-  display: grid !important;
-  grid-template-columns: repeat(7, 1fr) !important;
-  gap: 4px !important;
+.rank-inline-icon img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  display: block !important;
 }
 
-.pv-chip-grid--compact .pv-chip {
-  padding: 5px 6px !important;
-  font-size: 11.5px !important;
-  border-radius: 10px !important;
-  min-height: 34px !important;
-  text-align: center !important;
-  justify-content: center !important;
-  line-height: 1.2 !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+.rank-inline-icon--overlay {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  border-color: rgba(255, 255, 255, .55) !important;
+  background: rgba(255, 255, 255, .94) !important;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, .24) !important;
 }
 
-/* VC/武器は flex wrap */
-.pv-chip-row {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 6px !important;
+.profile-rank-line,
+.dm-rank-line,
+.profile-detail-rank,
+.mp-rank-meta {
+  line-height: 1.25 !important;
 }
 
-/* フィールドグループ間隔詰め */
-.setup-stack {
-  gap: 12px !important;
+.profile-rank-line > span:last-child,
+.dm-rank-line > span:last-child,
+.profile-detail-rank > span:last-child,
+.mp-rank-meta > span:last-child {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.profile-preview .profile-rank-line {
+  color: var(--pv-ink, #181614) !important;
+  font-weight: 900 !important;
+}
+
+.profile-detail-rank {
+  justify-content: flex-start !important;
+}
+
+.mp-rank-meta {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
 }
 
 /* ══════════════════════════════════════════════════
-   自己紹介: テキストエリア高さ削減
+   写真タブ — ダッシュボード ProfilePanel(共用)
 ══════════════════════════════════════════════════ */
-
-.pv-bio-area {
-  height: auto !important;
-  min-height: 0 !important;
-  resize: vertical !important;
+.pv-photo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
-/* 声の自己紹介ボックスコンパクト */
-.voice-record-box {
-  padding: 12px !important;
+.pv-photo-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.pv-photo-tab {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line, #e7e0d8);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted, #77706a);
+  font-size: 12px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background .1s, color .1s, border-color .1s, transform .12s;
+}
+
+.pv-photo-tab:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.pv-photo-tab:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.pv-photo-tab.active {
+  background: var(--ink, #181614);
+  color: #fff;
+  border-color: var(--ink, #181614);
+}
+
+/* Mobile matching: dedicated app-like layout instead of shrinking desktop. */
+@media(max-width:760px){html,body,#root,.appv2{width:100%!important;max-width:100%!important;overflow-x:hidden!important}html body .appv2{min-height:100svh!important;height:100svh!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;padding:6px 6px calc(108px + env(safe-area-inset-bottom,0px))!important}html body .appv2>.site-header{flex:0 0 auto!important;width:100%!important;max-width:100%!important;min-height:0!important;margin:0 0 8px!important;padding:8px!important;border-radius:18px!important;overflow:hidden!important}html body .appv2 .brand img,html body .appv2 .app-brand-button img{width:92px!important;max-width:30vw!important}html body .appv2 .site-nav{width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}html body .appv2 .site-nav::-webkit-scrollbar{display:none!important}html body .appv2 .nav-button{min-height:40px!important;padding:8px 13px!important;border-radius:18px!important;white-space:nowrap!important}html body .appv2-content{flex:1 1 auto!important;width:100%!important;max-width:100%!important;min-height:0!important;height:auto!important;margin:0 0 16px!important;padding:10px!important;border-radius:20px!important;overflow:hidden!important}html body .mp-wrap{width:100%!important;max-width:100%!important;height:100%!important;min-height:0!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto minmax(0,1fr) auto!important;grid-template-areas:"filter" "card" "actions"!important;gap:10px!important;overflow:hidden!important;align-items:stretch!important;justify-items:stretch!important}html body .mp-filter-row{grid-area:filter!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:46px!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:8px!important;padding:7px 8px!important;overflow:hidden!important;border-radius:18px!important}html body .mp-filter-label{font-size:0!important;min-width:0!important}html body .mp-filter-label::after{content:'性別'!important;font-size:12px!important;font-weight:1000!important}html body .mp-filter-select{width:100%!important;max-width:100%!important;min-width:0!important;height:38px!important;padding:7px 10px!important;font-size:13px!important;border-radius:999px!important}html body .mp-lock-hint{min-width:0!important;max-width:112px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;padding:7px 9px!important;font-size:11px!important}html body .mp-card-wrap{grid-area:card!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:0!important;height:100%!important;overflow:hidden!important;display:grid!important;place-items:center!important}html body .mp-card,html body .mp-empty{width:min(100%,340px)!important;max-width:340px!important;height:100%!important;max-height:min(520px,100%)!important;min-height:0!important;margin:0 auto!important;overflow:hidden!important;border-radius:24px!important}html body .mp-card{display:block!important}html body .mp-photo,html body .mp-photo-placeholder{width:100%!important;height:100%!important;min-height:0!important;object-fit:cover!important}html body .mp-card-info{max-height:58%!important;overflow:hidden!important;padding:12px!important}html body .mp-bio{display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important}html body .mp-empty{display:grid!important;place-items:center!important;align-content:center!important;text-align:center!important;padding:24px 18px!important;background:#fff!important;border:1px solid var(--line,#e7e0d8)!important}html body .mp-actions{grid-area:actions!important;width:min(100%,340px)!important;max-width:340px!important;margin:0 auto!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;padding:0!important}html body .mp-actions .mp-btn{height:50px!important;min-height:50px!important;border-radius:16px!important}html body .appv2-bottom-nav{width:calc(100vw - 14px)!important;max-width:calc(100vw - 14px)!important;bottom:calc(7px + env(safe-area-inset-bottom,0px))!important;padding:7px!important;border-radius:20px!important}html body .appv2-nav-btn{min-width:0!important;padding:7px 4px!important;font-size:10px!important}}
+
+/* リスト系タブ（通知/プロフィール/足あと/料金/管理）はスクロールを許可する。
+   マッチング・DMは画面ぴったりの固定レイアウトなので overflow:hidden のまま維持。 */
+.appv2-content--scroll{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+}
+
+@media(max-width:760px){
+  html body .appv2-content.appv2-content--scroll{
+    /* .appv2-content{overflow:hidden} より詳細度を高くして
+       スクロールを確実に有効化する(料金/プロフィール/足あと/通知タブ)。 */
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    /* 固定ボトムナビ(~78px) + 余白 を確保してコンテンツが隠れないようにする */
+    padding-bottom:100px!important;
+  }
+
+  /* スクロール対象タブ(プロフィール/足あと/料金など)のパネルは高さ固定だと
+     中身が画面より高いとき下に届かない。可変にしてスクロールできるようにする。
+     min-height は styles.css 側で確保されるので短い時も画面を満たす。 */
+  html body .appv2-content.appv2-content--scroll .list-panel{
+    height:auto!important;
+  }
+
+  /* ボタンを円形に統一（profile-visual内の高優先度ブロックを上書き） */
+  html body .mp-actions{
+    display:flex!important;
+    justify-content:center!important;
+    align-items:center!important;
+    gap:24px!important;
+    grid-template-columns:unset!important;
+    width:100%!important;
+    max-width:340px!important;
+  }
+  html body .mp-actions .mp-btn{
+    width:60px!important;
+    height:60px!important;
+    flex:0 0 60px!important;
+    min-height:0!important;
+    border-radius:50%!important;
+  }
 }
 
 /* ══════════════════════════════════════════════════
@@ -1556,5 +1221,3 @@
     border-radius: 28px 28px 0 0 !important;
   }
 }
-
-
