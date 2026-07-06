@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { api } from './api.js';
+import { computeMatch } from './matching.js';
 import PublicPricing from './Pricing.jsx';
 
 const LazyAppDashboard = lazy(() => import('./AppDashboard.jsx'));
@@ -64,29 +65,6 @@ function publicUserToForm(user) {
     favoriteWeapon: user?.favoriteWeapon || '',
     agreed: true,
   };
-}
-
-// 候補プロフィールの相性スコアをクライアントで簡易算出する。
-// サーバー（getCandidateProfiles）はスコアを返さないため、共通点（目的タグ/エージェント/
-// ランク帯/ロール/地域）から決定的に 60〜99% を組み立てる。再レンダーで値が揺れないよう
-// 乱数は使わない。ログインユーザー情報が無い場合は中立値を返す。
-function rankTierOf(rank) {
-  return String(rank || '').split(' ')[0];
-}
-function overlapCount(a, b) {
-  if (!Array.isArray(a) || !Array.isArray(b) || !a.length || !b.length) return 0;
-  const setB = new Set(b);
-  return a.reduce((n, item) => (setB.has(item) ? n + 1 : n), 0);
-}
-function computeMatchScore(user, candidate) {
-  if (!user || !candidate) return 75;
-  let score = 60;
-  score += Math.min(overlapCount(user.tags, candidate.tags), 3) * 6;      // 目的タグの一致
-  score += Math.min(overlapCount(user.agents, candidate.agents), 3) * 3;  // よく使うエージェント
-  if (candidate.role && user.role && candidate.role === user.role) score += 6;
-  if (candidate.rank && user.rank && rankTierOf(candidate.rank) === rankTierOf(user.rank)) score += 8;
-  if (candidate.region && user.region && candidate.region === user.region) score += 5;
-  return Math.max(60, Math.min(99, score));
 }
 
 function firebaseErrorMessage(error) {
@@ -435,11 +413,19 @@ function App() {
     if (!user) return;
     try {
       const payload = await api.profiles({ plan, targetGender, targetRank, userId: user.id });
-      const profiles = (payload.profiles || []).map((p) => ({
-        ...p,
-        profilePhotoUrl: p.profilePhotoThumbUrl || p.profilePhotoUrl || '',
-        matchScore: Number.isFinite(p.matchScore) ? p.matchScore : computeMatchScore(user, p),
-      }));
+      // 互恵性ブースト: 自分に pending のいいねを送っている相手を優遇する。
+      const likedMeIds = new Set(receivedLikes.map((rl) => rl.fromProfileId).filter(Boolean));
+      const profiles = (payload.profiles || []).map((p) => {
+        const { score, reasons } = computeMatch(user, p, { likedMeIds });
+        return {
+          ...p,
+          profilePhotoUrl: p.profilePhotoThumbUrl || p.profilePhotoUrl || '',
+          matchScore: Number.isFinite(p.matchScore) ? p.matchScore : score,
+          reasons: Array.isArray(p.reasons) && p.reasons.length ? p.reasons : reasons,
+        };
+      });
+      // 相性の高い候補から提示する（sortは安定なので同点は元の順序を維持）。
+      profiles.sort((a, b) => b.matchScore - a.matchScore);
       setProfiles(profiles);
       setIndex(0);
     } catch (error) {

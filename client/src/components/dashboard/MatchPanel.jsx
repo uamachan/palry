@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { cx } from '../../constants.jsx';
+import { cx, rankTierLabels } from '../../constants.jsx';
 import TinderProfileCard from './TinderProfileCard.jsx';
 import ProfileDetailModal from './ProfileDetailModal.jsx';
 import { SkeletonCard } from '../../ui/primitives.jsx';
-
-const RANK_LABELS = { Iron: 'アイアン', Bronze: 'ブロンズ', Silver: 'シルバー', Gold: 'ゴールド', Platinum: 'プラチナ', Diamond: 'ダイヤモンド', Ascendant: 'アセンダント', Immortal: 'イモータル', Radiant: 'レディアント' };
 
 function useIsMounted() {
   const isMounted = useRef(true);
@@ -35,7 +33,7 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
   const filterActive = targetGender !== 'all' || targetRank !== 'all';
   const filterSummary = [
     targetGender !== 'all' ? targetGender : null,
-    targetRank !== 'all' ? (RANK_LABELS[targetRank] || targetRank) : null,
+    targetRank !== 'all' ? (rankTierLabels[targetRank] || targetRank) : null,
   ].filter(Boolean).join(' · ');
 
   const handleSwipe = useCallback(async (type) => {

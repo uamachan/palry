@@ -54,6 +54,8 @@ export function rankIconFor(rank) {
   return rankImages[value] || rankIconMap[rankTierFromRank(value)];
 }
 
+export const rankTierLabels = { Iron: 'アイアン', Bronze: 'ブロンズ', Silver: 'シルバー', Gold: 'ゴールド', Platinum: 'プラチナ', Diamond: 'ダイヤモンド', Ascendant: 'アセンダント', Immortal: 'イモータル', Radiant: 'レディアント' };
+
 export const roles = ['デュエリスト', 'イニシエーター', 'コントローラー', 'センチネル'];
 export const defaultRole = roles[0];
 
