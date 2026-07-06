@@ -60,6 +60,7 @@
   height:100%!important;
   border-radius:999px!important;
   background:linear-gradient(90deg,var(--pink,#ff4f83),#22201e)!important;
+  transition:width .4s cubic-bezier(.2,0,0,1)!important;
 }
 .setup-tabs{
   display:flex!important;

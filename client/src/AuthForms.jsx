@@ -225,7 +225,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
 
   useEffect(() => {
     if (setupError && !validateStep()) setSetupError('');
-  }, [activeSetupTab, form.name, form.riotId, form.age, form.region, form.gender, form.rank, form.role, form.tags, form.agents, form.agreed]);
+  }, [activeSetupTab, form.name, form.riotId, form.age, form.region, form.gender, form.rank, form.role, form.tags, form.agents, form.bio, form.agreed]);
 
   function notifyRequired(message) {
     const notice = message.startsWith('入力が必要です') ? message : `入力が必要です：${message}`;
@@ -473,6 +473,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
 
         {activeSetupTab === '自己紹介' && (
           <div className="setup-stack">
+            {setupError && <div className="setup-error" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}
             <label className="pv-field"><span className="pv-label">Xアカウント（任意）</span><input value={form.xHandle} maxLength="40" onChange={(e) => setForm({ ...form, xHandle: e.target.value })} placeholder="@pairly" /></label>
             <div className="pv-field"><span className="pv-label">自己紹介 <small>(10文字以上・最大240文字)</small></span><textarea className="pv-bio-area" value={form.bio} maxLength="240" onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="遊ぶ時間、VC、募集したい相手、得意なことなど（10文字以上）" rows={4} /><span className={cx('pv-char-count', (form.bio || '').length > 0 && (form.bio || '').length < 10 && 'pv-char-count--warn')}>{(form.bio || '').length} / 240{(form.bio || '').length < 10 && (form.bio || '').length > 0 ? ` (あと${10 - (form.bio || '').length}文字)` : ''}</span></div>
             <div className="voice-record-box"><div><b>声の自己紹介</b><p>任意で20秒まで録音できます。声を載せると雰囲気が伝わりやすくなります。</p></div><button type="button" className={isRecordingVoice ? 'danger' : 'secondary'} onClick={isRecordingVoice ? stopVoiceRecording : startVoiceRecording}>{isRecordingVoice ? '録音停止' : '録音する'}</button>{form.voiceIntro && <span className="pv-voice-done">録音済み</span>}</div>
@@ -480,7 +481,7 @@ function SignupForm({ form, setForm, onSubmit, onShowLogin, showToast, submitLab
         )}
 
         {activeSetupTab === '規約' && (
-          <div className="setup-stack terms-box"><h3>利用ルール</h3><p>迷惑行為、なりすまし、外部誘導、Riot Gamesの規約に反する行為は禁止です。PairlyはRiot Games公式サービスではありません。</p><label className="terms-check"><input type="checkbox" checked={form.agreed} onChange={(e) => setForm({ ...form, agreed: e.target.checked })} /><span>利用規約と禁止事項に同意します</span></label></div>
+          <div className="setup-stack terms-box">{setupError && <div className="setup-error" id="setup-error" role="alert" aria-live="assertive">{setupError}</div>}<h3>利用ルール</h3><p>迷惑行為、なりすまし、外部誘導、Riot Gamesの規約に反する行為は禁止です。PairlyはRiot Games公式サービスではありません。</p><label className="terms-check"><input type="checkbox" checked={form.agreed} onChange={(e) => setForm({ ...form, agreed: e.target.checked })} /><span>利用規約と禁止事項に同意します</span></label></div>
         )}
 
         <div className="email-signup-actions profile-setup-actions">

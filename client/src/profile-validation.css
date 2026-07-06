@@ -1,5 +1,9 @@
 /* Profile setup validation notices only. Layout lives in auth-layout.css. */
+@keyframes setup-error-in{
+  from{opacity:0;transform:translateY(-4px)}
+}
 .setup-error{
+  animation:setup-error-in .28s cubic-bezier(.2,0,0,1);
   display:flex!important;
   align-items:center!important;
   gap:8px!important;

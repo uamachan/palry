@@ -402,7 +402,7 @@
   box-shadow: 0 4px 16px rgba(34, 196, 160, 0.2);
 }
 .pv-role-card:active {
-  transform: translateY(-1px) scale(0.97);
+  transform: translateY(-1px) scale(0.96);
 }
 .pv-role-card--on {
   background: linear-gradient(160deg, #edfaf4, #d8f7ec) !important;
@@ -572,6 +572,7 @@
 .profile-setup-card .setup-tabs button.locked {
   background: #F2EBE4 !important;
   opacity: .55 !important;
+  cursor: not-allowed !important;
 }
 
 .profile-setup-card .setup-tabs button {
@@ -579,7 +580,7 @@
 }
 
 .profile-setup-card .setup-tabs button:active {
-  transform: scale(0.97) !important;
+  transform: scale(0.96) !important;
 }
 
 .pv-basic-grid,
@@ -597,6 +598,59 @@
   grid-template-columns: 280px minmax(0, 1fr) !important;
   gap: 16px !important;
   align-items: stretch !important;
+}
+
+/* ステップ切替時のエンターアニメーション: コンテナ全体ではなく子要素を分割してステージャー表示 */
+@keyframes pv-step-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+.profile-setup-card > .pv-basic-grid > *,
+.profile-setup-card > .pv-rank-section > *,
+.profile-setup-card > .setup-stack > * {
+  animation: pv-step-in .36s cubic-bezier(.2, 0, 0, 1) backwards;
+}
+.profile-setup-card > .pv-basic-grid > :nth-child(2),
+.profile-setup-card > .pv-rank-section > :nth-child(2),
+.profile-setup-card > .setup-stack > :nth-child(2) {
+  animation-delay: .05s;
+}
+.profile-setup-card > .pv-basic-grid > :nth-child(3),
+.profile-setup-card > .pv-rank-section > :nth-child(3),
+.profile-setup-card > .setup-stack > :nth-child(3) {
+  animation-delay: .1s;
+}
+.profile-setup-card > .pv-basic-grid > :nth-child(4),
+.profile-setup-card > .pv-rank-section > :nth-child(4),
+.profile-setup-card > .setup-stack > :nth-child(4) {
+  animation-delay: .15s;
+}
+.profile-setup-card > .pv-basic-grid > :nth-child(n+5),
+.profile-setup-card > .pv-rank-section > :nth-child(n+5),
+.profile-setup-card > .setup-stack > :nth-child(n+5) {
+  animation-delay: .2s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-setup-card > .pv-basic-grid > *,
+  .profile-setup-card > .pv-rank-section > *,
+  .profile-setup-card > .setup-stack > *,
+  .setup-error {
+    animation: none;
+  }
+  .setup-progress span {
+    transition: none !important;
+  }
+}
+
+/* キーボード操作時のフォーカスリング（チップ/カード型ボタンはデフォルト枠が消えがち） */
+.pv-chip:focus-visible,
+.pv-gender-btn:focus-visible,
+.pv-rank-icon-btn:focus-visible,
+.pv-rank-sub-btn:focus-visible,
+.pv-role-card:focus-visible,
+.pv-photo-tab:focus-visible,
+.profile-setup-card .setup-tabs button:focus-visible {
+  outline: 2px solid var(--pv-accent, #FF5C8A);
+  outline-offset: 2px;
 }
 
 .pv-photo-card {
@@ -1309,8 +1363,8 @@
 
 /* 年齢チップコンパクト */
 .pv-chip-row .pv-chip {
-  padding: 5px 12px !important;
-  min-height: 32px !important;
+  padding: 6px 14px !important;
+  min-height: 36px !important;
 }
 
 /* フィールドとラベルの間隔詰め (全タブ共通) */
@@ -1353,10 +1407,10 @@
 }
 
 .pv-chip-grid--compact .pv-chip {
-  padding: 4px 4px !important;
-  font-size: 10.5px !important;
-  border-radius: 8px !important;
-  min-height: 26px !important;
+  padding: 5px 6px !important;
+  font-size: 11.5px !important;
+  border-radius: 10px !important;
+  min-height: 34px !important;
   text-align: center !important;
   justify-content: center !important;
   line-height: 1.2 !important;
