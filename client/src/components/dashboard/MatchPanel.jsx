@@ -14,7 +14,7 @@ function useIsMounted() {
   return isMounted;
 }
 
-export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, targetRank, setTargetRank, filterLocked, receivedLikes, acceptLike, profilesLoading, refreshProfiles }) {
+export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent, targetGender, setTargetGender, targetRank, setTargetRank, filterLocked, receivedLikes, acceptLike, profilesLoading, refreshProfiles, recordProfileView }) {
   const [swipeDir, setSwipeDir] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [acceptingLikeId, setAcceptingLikeId] = useState('');
@@ -55,6 +55,11 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
       }
     }
   }, [actionBusy, current, swipe, isMounted]);
+
+  const handleOpenProfile = useCallback((profile) => {
+    setDetailProfile(profile);
+    recordProfileView?.(profile?.id);
+  }, [recordProfileView]);
 
   const handleAcceptLike = useCallback(async (id) => {
     if (acceptingLikeId) return;
@@ -141,7 +146,7 @@ export default function MatchPanel({ current, swipe, reportCurrent, blockCurrent
       {/* プロフィールカード */}
       <div className="mp-card-wrap">
         {current ? (
-          <TinderProfileCard key={current.id} profile={current} onReport={reportCurrent} onBlock={blockCurrent} swipeDir={swipeDir} onOpenProfile={setDetailProfile} />
+          <TinderProfileCard key={current.id} profile={current} onReport={reportCurrent} onBlock={blockCurrent} swipeDir={swipeDir} onOpenProfile={handleOpenProfile} />
         ) : profilesLoading ? (
           <SkeletonCard />
         ) : (

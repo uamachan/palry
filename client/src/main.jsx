@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { api } from './api.js';
 import PublicPricing from './Pricing.jsx';
@@ -562,6 +562,14 @@ function App() {
 
   function nextCard() { setIndex((i) => Math.min(i + 1, profiles.length)); }
 
+  // 候補のプロフィール詳細を開いたら「プロフィール閲覧」の足あとを相手側に記録する。
+  // 足あと（自分のプロフィールを見た相手の記録）の主目的がこれ。footprintId は
+  // profileId_from_uid_day で日次デデュープされるため、同日に何度開いても1件に集約される。
+  const recordProfileView = useCallback((profileId) => {
+    if (!profileId) return;
+    api.recordFootprint({ profileId, action: 'プロフィール閲覧' }).catch(() => null);
+  }, []);
+
   async function swipe(type) {
     if (!current || !user) return;
     const directionLabel = type === 'pass' ? '見送り' : type === 'dual' ? '両LIKE' : 'LIKE';
@@ -770,7 +778,7 @@ function App() {
   // 認証フォームの表示条件
   const showAuthForms = (isAuthed && profileEditorOpen) || (!isAuthed && Boolean(authMode));
 
-  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, targetRank, setTargetRank, filterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, alerts, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form, setForm, openApp, openProfileEditor, logout, refreshProfiles }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, targetRank, filterLocked, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, alerts, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form]);
+  const shared = useMemo(() => ({ user, isAuthed, activeTab, setActiveTab, tabs: visibleTabs, current, plan, setPlan, activePlan, plansData, entitlements, pricingTab, setPricingTab, buyPlan, buyItem, targetGender, setTargetGender, targetRank, setTargetRank, filterLocked, swipe, reportCurrent, blockCurrent, reportProfile, blockProfile, recordProfileView, stats, matches, receivedLikes, acceptLike, dmThreads, unreadDmCount, notificationCount, activeThreadId, setActiveThreadId, selectDmThread, markDmRead, dmDraft, setDmDraft, sendDm, dmSending, footprints, reports, alerts, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form, setForm, openApp, openProfileEditor, logout, refreshProfiles }), [user, isAuthed, activeTab, visibleTabs, current, plan, activePlan, plansData, entitlements, pricingTab, targetGender, targetRank, filterLocked, recordProfileView, stats, matches, receivedLikes, dmThreads, unreadDmCount, notificationCount, activeThreadId, dmDraft, dmSending, footprints, reports, alerts, auditLog, profilesLoading, dmLoading, likesLoading, profiles, index, form]);
 
   if (isUnknownRoute) return <NotFound />;
 
