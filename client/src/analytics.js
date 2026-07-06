@@ -12,7 +12,7 @@ function isAnalyticsConfigured() {
   return Boolean(GA_ID);
 }
 
-export function getConsent() {
+function getConsent() {
   try {
     return localStorage.getItem(CONSENT_KEY); // 'granted' | 'denied' | null(未決定)
   } catch {

@@ -735,19 +735,6 @@ export const api = {
     return { reports, alerts };
   },
 
-  adminUnhide: async ({ profileId }) => {
-    await currentUserOrThrow();
-    if (!profileId) throw apiError('対象ユーザーが必要です', 400);
-    const { httpsCallable, functions } = await getFunctionsMods();
-    try {
-      await httpsCallable(functions, 'adminUnhide')({ profileId });
-    } catch (e) {
-      if (e.code === 'functions/permission-denied') throw apiError('権限がありません', 403);
-      throw e;
-    }
-    return {};
-  },
-
   adminAudit: async () => ({ audit: [] }),
 
   getNotificationCounts: async () => {

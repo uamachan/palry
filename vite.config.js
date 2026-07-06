@@ -56,10 +56,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), inlineEntryCss()],
     define: viteDefines,
     server: {
-      port: 5173,
-      proxy: {
-        '/api': 'http://localhost:3001'
-      }
+      port: 5173
     },
     build: {
       outDir: resolve(projectRoot, 'dist'),

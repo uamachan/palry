@@ -34,7 +34,6 @@ function firebaseConfigError() {
 
 let app = null;
 let auth = null;
-let appCheck = null;
 
 if (missingConfigKeys.length) {
   console.warn('[firebase] Missing Firebase config:', missingConfigKeys.join(', '));
@@ -101,7 +100,7 @@ function getTurnstileToken(siteKey) {
 
 if (app && turnstileSiteKey) {
   try {
-    appCheck = initializeAppCheck(app, {
+    initializeAppCheck(app, {
       provider: new CustomProvider({
         getToken: async () => {
           const turnstileToken = await getTurnstileToken(turnstileSiteKey);
@@ -126,7 +125,6 @@ if (app && turnstileSiteKey) {
 export const firebaseApp = app;
 export const firebaseAuth = auth;
 export const firebaseDb = app ? getFirestore(app) : null;
-export const firebaseAppCheck = appCheck;
 
 if (import.meta.env.VITE_USE_EMULATOR === 'true' && app) {
   connectAuthEmulator(firebaseAuth, 'http://127.0.0.1:9099', { disableWarnings: true });
