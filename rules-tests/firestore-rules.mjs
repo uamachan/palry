@@ -180,6 +180,53 @@ if (rulesTesting && emulatorHost) {
     }));
   });
 
+  test('users は Admin SDK 由来フィールド（isAdmin/autoHidden）があっても本人が更新できる', async () => {
+    await seed((db) => setDoc(doc(db, 'users', 'alice'), {
+      id: 'alice',
+      name: 'Alice',
+      plan: 'FREE',
+      verified: false,
+      isAdmin: true,
+      autoHidden: false,
+      createdAt: '2026-06-16T00:00:00.000Z',
+      updatedAt: '2026-06-16T00:00:00.000Z',
+    }));
+    await assertSucceeds(setDoc(doc(authDb('alice'), 'users', 'alice'), {
+      bio: 'よろしくお願いします',
+      updatedAt: '2026-06-17T00:00:00.000Z',
+    }, { merge: true }));
+  });
+
+  test('users 更新で plan / verified / isAdmin / autoHidden は変更できない', async () => {
+    await seed((db) => setDoc(doc(db, 'users', 'alice'), {
+      id: 'alice',
+      name: 'Alice',
+      plan: 'FREE',
+      verified: false,
+      createdAt: '2026-06-16T00:00:00.000Z',
+      updatedAt: '2026-06-16T00:00:00.000Z',
+    }));
+    const db = authDb('alice');
+    await assertFails(setDoc(doc(db, 'users', 'alice'), { plan: 'VIP' }, { merge: true }));
+    await assertFails(setDoc(doc(db, 'users', 'alice'), { verified: true }, { merge: true }));
+    await assertFails(setDoc(doc(db, 'users', 'alice'), { isAdmin: true }, { merge: true }));
+    await assertFails(setDoc(doc(db, 'users', 'alice'), { autoHidden: false }, { merge: true }));
+  });
+
+  test('publicProfiles は visible フィールド（adminUnhide由来）があっても本人が更新できる', async () => {
+    await seed((db) => setDoc(doc(db, 'publicProfiles', 'alice'), {
+      ...validPublicProfile('alice'),
+      visible: true,
+    }));
+    await assertSucceeds(setDoc(doc(authDb('alice'), 'publicProfiles', 'alice'), {
+      bio: 'よろしくお願いします',
+      updatedAt: '2026-06-17T00:00:00.000Z',
+    }, { merge: true }));
+    // verified / visible 自体の変更は不可
+    await assertFails(setDoc(doc(authDb('alice'), 'publicProfiles', 'alice'), { verified: false }, { merge: true }));
+    await assertFails(setDoc(doc(authDb('alice'), 'publicProfiles', 'alice'), { visible: false }, { merge: true }));
+  });
+
   test('users 作成は verified:true をクライアントから立てられない（spoofing防止）', async () => {
     const db = authDb('alice');
     const baseUserCreate = {

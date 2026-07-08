@@ -51,6 +51,16 @@ const PUBLIC_PROFILE_KEYS = [
   'favoriteWeapon', 'verified', 'createdAt', 'updatedAt',
 ];
 
+// プロフィール編集で書き込んでよいフィールド。editForm には users doc 全体
+// （plan / verified / isAdmin / autoHidden など）が展開されるため、そのまま送ると
+// firestore.rules の検証で保存全体が permission-denied になる。
+const PROFILE_EDIT_KEYS = [
+  'name', 'riotId', 'gender', 'region', 'rank', 'role',
+  'tags', 'agents', 'xHandle', 'bio', 'vc', 'maps', 'favoriteWeapon',
+  'profilePhoto', 'voiceIntro',
+  'profilePhotoUrl', 'profilePhotoPath', 'voiceIntroUrl', 'voiceIntroPath',
+];
+
 const PROFILE_RESULT_LIMIT = 20;
 const PROFILE_FALLBACK_READ_LIMIT = 50;
 const MATCH_THREAD_LIMIT = 100;
@@ -463,11 +473,17 @@ export const api = {
 
   updateProfile: async (body) => {
     const uid = await currentUserOrThrow();
-    const { password, emailConfirm, age, agreed, email, ...rest } = body || {};
+    const source = body || {};
     const { deleteField } = await getMods();
+    const edited = {};
+    for (const key of PROFILE_EDIT_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) edited[key] = source[key];
+    }
     const { user, mediaWarning } = await writeUserProfile(uid, {
-      ...rest,
-      ageRange: age || rest.ageRange || '',
+      ...edited,
+      // publicProfiles が未作成のユーザーでも create ルール（id == uid）を満たせるよう常に付与する。
+      id: uid,
+      ageRange: source.age || source.ageRange || '',
       email: deleteField(),
       updatedAt: now(),
     });

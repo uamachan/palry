@@ -90,20 +90,23 @@ service cloud.firestore {
         && (!('autoHidden' in request.resource.data));
     }
 
+    // 更新は「変更されたキー」だけを検証する。merge書き込みでは request.resource.data が
+    // マージ後の最終ドキュメントになるため、最終docに対する hasOnlyKeys だと
+    // Admin SDK が付与した isAdmin / autoHidden 等が存在するだけで本人の更新が全拒否される。
+    // plan / verified / isAdmin / autoHidden は許可リスト外＝クライアントから変更不可。
     function validProfileUpdate(uid) {
       return isSelf(uid)
-        && hasOnlyKeys([
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'id', 'name', 'riotId', 'ageRange', 'age', 'gender', 'region',
           'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role',
           'tags', 'agents', 'xHandle', 'bio', 'voiceIntroUrl',
-          'voiceIntroPath', 'vc', 'maps', 'favoriteWeapon', 'plan', 'verified',
-          'agreedAt', 'createdAt', 'updatedAt'
+          'voiceIntroPath', 'vc', 'maps', 'favoriteWeapon',
+          'email', 'updatedAt'
         ])
         && profileFieldsValid(uid, request.resource.data)
         && request.resource.data.id == uid
-        && request.resource.data.plan == resource.data.plan
-        && (!('verified' in request.resource.data) || request.resource.data.verified == resource.data.verified)
-        && (!('autoHidden' in request.resource.data));
+        // 'email' は旧データの削除（deleteField）だけを許可し、追加・保持は拒否する。
+        && !('email' in request.resource.data);
     }
 
     match /users/{uid} {
@@ -126,16 +129,16 @@ service cloud.firestore {
         && (!('verified' in request.resource.data) ||
             !exists(/databases/$(database)/documents/users/$(uid)) ||
             request.resource.data.verified == get(/databases/$(database)/documents/users/$(uid)).data.verified);
+      // 更新は変更キーだけを検証（validProfileUpdate と同じ理由）。
+      // verified / visible / autoHidden は許可リスト外＝クライアントから変更不可。
       allow update: if isSelf(uid)
-        && hasOnlyKeys(['id', 'name', 'ageRange', 'age', 'gender', 'region',
-                        'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role', 'tags', 'agents',
-                        'bio', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
-                        'favoriteWeapon', 'verified', 'createdAt', 'updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'id', 'name', 'ageRange', 'age', 'gender', 'region',
+          'profilePhotoUrl', 'profilePhotoPath', 'rank', 'role', 'tags', 'agents',
+          'bio', 'voiceIntroUrl', 'voiceIntroPath', 'vc', 'maps',
+          'favoriteWeapon', 'updatedAt'])
         && profileFieldsValid(uid, request.resource.data)
-        && request.resource.data.id == uid
-        && (!('verified' in request.resource.data) ||
-            !exists(/databases/$(database)/documents/users/$(uid)) ||
-            request.resource.data.verified == get(/databases/$(database)/documents/users/$(uid)).data.verified);
+        && request.resource.data.id == uid;
       allow delete: if false;
     }
 

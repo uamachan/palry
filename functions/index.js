@@ -308,10 +308,12 @@ exports.markDmRead = onCall({ region: 'asia-northeast1', maxInstances: 20 }, asy
       writes += 1;
     }
   });
-  batch.set(matchRef, {
+  // set(merge:true) はドット付きキーをネストパスとして解釈せず「lastReadAtBy.xxx」という
+  // リテラル名のフィールドを作ってしまうため、必ず update() を使う（存在は assertDmAllowed 確認済み）。
+  batch.update(matchRef, {
     [`lastReadAtBy.${uid}`]: readAt,
     [`unreadCountBy.${uid}`]: 0,
-  }, { merge: true });
+  });
   await batch.commit();
   return { updatedMessages: writes };
 });
@@ -376,7 +378,9 @@ exports.sendDm = onCall({ region: 'asia-northeast1', maxInstances: 40 }, async (
     }
 
     tx.set(messageRef, message);
-    tx.set(matchRef, update, { merge: true });
+    // update にはドット付きキー（lastReadAtBy.xxx / unreadCountBy.xxx）が含まれるため、
+    // ネストパスとして解釈される update() を使う（set+merge だとリテラル名フィールドになる）。
+    tx.update(matchRef, update);
   });
 
   return { message: { id: messageRef.id, sender: 'user', body, createdAt, readAt: null } };
@@ -724,6 +728,12 @@ exports.adminBackfillMatches = onCall({ region: 'asia-northeast1', maxInstances:
     }
     if (profileDataChanged) update.profileData = profileData;
 
+    // 旧バージョンの set(merge) が作った「unreadCountBy.xxx」等のリテラル名フィールドを掃除する。
+    // set(merge) はキーをリテラル扱いするため、同名キーに delete() を渡せばゴミ側だけ消える。
+    for (const key of Object.keys(match)) {
+      if (key.includes('.')) update[key] = FieldValue.delete();
+    }
+
     if (Object.keys(update).length === 0) {
       skipped += 1;
       continue;
@@ -771,7 +781,8 @@ exports.updateMatchSummaryOnMessage = onDocumentCreated(
           update[`unreadCountBy.${recipientUid}`] = FieldValue.increment(1);
         }
       }
-      tx.set(matchRef, update, { merge: true });
+      // ドット付きキーをネストパスとして扱うため update() を使う（マッチの存在は上で確認済み）。
+      tx.update(matchRef, update);
     });
   }
 );
